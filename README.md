@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ListenLayer
 
-## Getting Started
+ListenLayer is a lightweight MVP SaaS that turns blog posts and RSS feeds into narrated audio episodes with transcripts, chapters, a hosted player page, and embeddable widgets. Background generation runs in durable Inngest jobs, audio is stored privately in Cloudflare R2, and playback analytics are stored in Postgres.
 
-First, run the development server:
+## Tech stack
+- Next.js App Router + TypeScript + Tailwind + shadcn/ui
+- Prisma ORM + Postgres
+- Auth.js (NextAuth) credentials provider
+- Inngest background jobs
+- OpenAI TTS (`gpt-4o-mini-tts`)
+- Cloudflare R2 via AWS SDK v3
+
+## Prerequisites
+- Node.js 20+
+- pnpm
+- Docker (for local Postgres)
+
+## Local setup
+
+1) Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+If Prisma or esbuild postinstall scripts were skipped, approve them once:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm approve-builds
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2) Start Postgres
 
-## Learn More
+```bash
+docker-compose up -d
+```
 
-To learn more about Next.js, take a look at the following resources:
+3) Configure env
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cp .env.example .env
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Fill in the required values (OpenAI + R2 + NEXTAUTH_SECRET).
 
-## Deploy on Vercel
+4) Run migrations + seed demo user
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5) Start Inngest dev server
+
+```bash
+pnpm dlx inngest-cli@latest dev -u http://localhost:3000/api/inngest
+```
+
+Or:
+
+```bash
+pnpm inngest:dev
+```
+
+6) Start the app
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:3000.
+
+## Demo login
+- Email: `demo@listenlayer.local`
+- Password: `demo1234`
+
+Or bypass auth entirely:
+
+```bash
+DEV_AUTH_BYPASS=true
+```
+
+## Generate an episode
+1. Log in and create a site.
+2. Add an RSS or URL source.
+3. Click **Generate latest episode** on a source.
+4. Watch the Inngest dev server logs to see the job progress.
+5. Open the episode detail page to get the hosted player URL and embeds.
+
+## Embed testing
+Create a simple HTML file and paste:
+
+```html
+<iframe src="http://localhost:3000/embed/e/YOUR_PUBLIC_ID" style="width:100%;height:160px;border:0" loading="lazy"></iframe>
+<script async src="http://localhost:3000/widget.js" data-episode="YOUR_PUBLIC_ID"></script>
+```
+
+## Environment variables
+See `.env.example` for the full list.
+
+Required for generation:
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+- `OPENAI_API_KEY`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
+- `R2_ENDPOINT`
+
+Optional:
+- `INNGEST_EVENT_KEY`
+- `DEV_AUTH_BYPASS`
+- `OPENAI_TTS_VOICE` (default: `marin`)
+- `AUDIO_URL_TTL_SECONDS` (default: 21600)
+
+## Deployment notes
+- Set all environment variables in your hosting provider.
+- Run `pnpm db:migrate` against your production database.
+- Ensure your Inngest production endpoint points to `/api/inngest`.
+- R2 bucket remains private; audio is served via presigned URLs.

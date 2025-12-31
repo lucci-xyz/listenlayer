@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SourceType {
+  RSS
+  URL
+}
+
+enum EpisodeStatus {
+  QUEUED
+  RUNNING
+  PUBLISHED
+  FAILED
+}
+
+enum PlaybackKind {
+  play
+  progress
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  sites        Site[]
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  domain    String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources   Source[]
+  episodes  Episode[]
+}
+
+model Source {
+  id            String     @id @default(cuid())
+  siteId        String
+  type          SourceType
+  url           String
+  createdAt     DateTime   @default(now())
+  lastFetchedAt DateTime?
+  site          Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  episodes      Episode[]
+}
+
+model Episode {
+  id             String        @id @default(cuid())
+  siteId         String
+  sourceId       String
+  title          String
+  sourceUrl      String
+  status         EpisodeStatus
+  scriptText     String
+  transcriptText String
+  chaptersJson   Json
+  audioObjectKey String?
+  durationSec    Int?
+  publicId       String        @unique
+  createdAt      DateTime      @default(now())
+  publishedAt    DateTime?
+  errorMessage   String?
+  site           Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  source         Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  playbackEvents PlaybackEvent[]
+}
+
+model PlaybackEvent {
+  id        String       @id @default(cuid())
+  episodeId String
+  kind      PlaybackKind
+  value     Int?
+  createdAt DateTime     @default(now())
+  ua        String?
+  referrer  String?
+  episode   Episode      @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([episodeId])
+  @@index([createdAt])
+}
