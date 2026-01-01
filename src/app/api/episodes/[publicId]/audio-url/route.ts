@@ -5,12 +5,13 @@ import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   request: Request,
-  { params }: { params: { publicId: string } }
+  { params }: { params: Promise<{ publicId: string }> }
 ) {
   const pathname = new URL(request.url).pathname;
   const segments = pathname.split("/").filter(Boolean);
   const fallbackPublicId = segments.length >= 2 ? segments[segments.length - 2] : null;
-  const publicId = params?.publicId || fallbackPublicId;
+  const resolvedParams = await params;
+  const publicId = resolvedParams?.publicId || fallbackPublicId;
   if (!publicId) {
     return NextResponse.json({ error: "Missing publicId" }, { status: 400 });
   }

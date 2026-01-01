@@ -11,12 +11,17 @@ function getBaseUrl() {
 
 export const dynamic = "force-dynamic";
 
-export default async function EpisodeDetailPage({ params }: { params: { id: string } }) {
+export default async function EpisodeDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const episode = await prisma.episode.findFirst({
-    where: { id: params.id, site: { userId: user.id } },
+    where: { id, site: { userId: user.id } },
     include: { site: true, source: true },
   });
 

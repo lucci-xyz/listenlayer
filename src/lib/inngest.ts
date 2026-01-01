@@ -132,19 +132,12 @@ export const generateEpisode = inngest.createFunction(
         return { canonicalUrl: source.url, episodeTitle: "Latest Episode" };
       });
 
-      const html = await step.run("fetch-html", async () => {
-        return fetchHtml(canonicalUrl);
-      });
-
-      const readableText = await step.run("extract-text", async () => {
-        const text = extractReadableText(html, canonicalUrl);
-        if (!text || text.length < 200) {
+      const { script, chapters } = await step.run("generate-script", async () => {
+        const html = await fetchHtml(canonicalUrl);
+        const readableText = extractReadableText(html, canonicalUrl);
+        if (!readableText || readableText.length < 200) {
           throw new Error("Extracted text too short");
         }
-        return text;
-      });
-
-      const { script, chapters } = await step.run("generate-script", async () => {
         return generateScriptAndChapters(episodeTitle, canonicalUrl, readableText);
       });
 

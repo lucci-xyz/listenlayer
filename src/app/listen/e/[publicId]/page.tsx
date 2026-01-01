@@ -4,9 +4,14 @@ import { AudioPlayer } from "@/components/audio-player";
 
 export const dynamic = "force-dynamic";
 
-export default async function ListenPage({ params }: { params: { publicId: string } }) {
+export default async function ListenPage({
+  params,
+}: {
+  params: Promise<{ publicId: string }>;
+}) {
+  const { publicId } = await params;
   const episode = await prisma.episode.findUnique({
-    where: { publicId: params.publicId },
+    where: { publicId },
     include: { site: true },
   });
 

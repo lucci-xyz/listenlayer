@@ -17,7 +17,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Link href="/app" className="text-lg font-semibold">
             ListenLayer
           </Link>
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
+          <div className="flex items-center gap-4 text-sm text-zinc-500">
+            <Link className="text-zinc-700 hover:text-zinc-900" href="/app/embed-preview">
+              Embed preview
+            </Link>
             <span>{user.email}</span>
             {process.env.DEV_AUTH_BYPASS === "true" ? null : <SignOutButton />}
           </div>
