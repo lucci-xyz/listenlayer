@@ -1,107 +1,140 @@
-You are Codex 5.2 Thinking. Refactor the ListenLayer UI to be radically simpler and more intuitive, without breaking existing backend functionality.
+Update the ListenLayer MVP UI/UX to feel premium, simple, and intuitive, based on the plan below. The product already works end-to-end; do NOT break generation, playback, embeds, or analytics. Focus on UI, UX flow, and small supporting data improvements.
 
-Context:
-- The app already works end-to-end: sources → generate episode (Inngest) → OpenAI TTS → R2 private storage → presigned playback → hosted player + iframe + widget.js → analytics.
-- Keep all existing API routes and core logic intact. This task is primarily UI/UX + light data plumbing for embed styling.
+CURRENT STATE (assume exists):
+- Next.js App Router + TS + Tailwind + shadcn/ui
+- Prisma + Postgres
+- Auth works
+- Sources exist (RSS/URL)
+- Episode generation via Inngest works
+- Public player (/listen/e/:publicId), embed (/embed/e/:publicId), widget.js exist
+- Style defaults exist and are applied via query params and widget data-attrs
+- There is a workspace sub-nav including Overview, Sources, Style, Embeds, Episodes
 
-Goals:
-1) Replace the current “Create Site” + “Add Source” + “Episodes table” clutter with an organized flow:
-   - Onboarding wizard: Paste website or RSS → auto-detect → choose format → generate first episode → land on Embed screen.
-2) Reduce raw typing:
-   - Users should paste ONE thing (a site URL or RSS feed). The app should infer source type and propose defaults.
-3) Add embed styling controls:
-   - Theme (light/dark/auto), accent color, radius, size preset, show/hide chapters + transcript button.
-   - Provide a live embed preview and copyable snippets.
+TOP GOALS:
+1) Radically simplify user mental model: “Connect content → Generate → Copy embed”.
+2) Reduce raw typing and raw URLs.
+3) Make Sources, Style, Episodes pages feel premium.
+4) Remove the need for a dedicated Embeds page: embed snippets should be a modal, available contextually.
 
-Constraints:
-- Use existing stack: Next.js App Router, TS, Tailwind, shadcn/ui.
-- Keep design minimal and premium. One primary action per screen.
-- Do not add new third-party services. Minor new dependencies are ok if tiny (e.g., color picker) but prefer building simply.
-- Avoid large schema changes. If needed, add a single JSON column (e.g., Site.embedConfig) or a new small table (EmbedPreset) but keep it minimal.
+HARD CONSTRAINTS:
+- Keep existing backend endpoints and job pipeline working.
+- Prefer minimal schema changes. UI can rename “Site” to “Workspace” without touching DB model.
+- If schema changes are needed, keep them additive + small.
+- Use shadcn/ui components (Card, Button, Dialog, Tabs, Badge, Switch, DropdownMenu, Tooltip, Skeleton, Separator).
+- No heavy new dependencies unless clearly justified.
 
-Required new UI structure:
-Left navigation:
-- Sites
-- Episodes
-- Embed
-- Analytics
-- Settings
+IMPLEMENTATION TASKS:
 
-Within a Site (tabs):
-- Overview
-- Sources
-- Style
-- Embeds
-- Episodes
+A) NAMING + NAV CLEANUP
+- Rename UI labels “Sites” -> “Workspaces” everywhere in the dashboard.
+- Remove “No domain set” from all pages. Domain should be moved into Settings -> Advanced (collapsed), not shown on Overview/Sources/Style/Episodes.
+- Keep the DB model name as-is (Site) to avoid migrations; just change labels and headings.
 
-Key screens:
+B) WORKSPACE OVERVIEW REDESIGN
+- Redesign the Overview page layout to:
+  - Header: Workspace name + small meta line (e.g., “1 source • Auto: Off • Style: Standard”).
+  - Right-aligned actions: Primary “Generate latest” and Secondary “Copy embed”.
+  - Main content: 2-column grid of Cards:
+    1) Latest Episode card:
+       - title (clamped), status badge, created relative time
+       - play button or mini player (MVP can be play button -> open episode)
+       - “Open episode” link
+    2) Embed Preview card:
+       - framed live preview (iframe)
+       - “Copy embed” button
+  - Second row: small Cards for Sources summary, Style summary, Analytics snapshot.
+- For brand-new workspaces, show a simple 3-step checklist instead of empty cards:
+  1) Add a source
+  2) Choose style
+  3) Copy embed
+- Ensure Overview has no raw URLs shown by default. If needed, show source domain + a “View details” link.
 
-A) /app (Sites)
-- Shows list of sites (cards with favicon/name).
-- Primary CTA: “Add site”.
-- Clicking “Add site” opens onboarding wizard.
+C) SOURCES PAGE PREMIUM REDESIGN
+- Replace the current plain list with Source Cards.
+- Each Source Card should include:
+  - favicon + display name (domain or detected name)
+  - type badge: RSS / Website / Single URL
+  - “Latest item: <title>” for RSS (if available)
+  - “Checked X ago” (relative) with tooltip for exact timestamp
+  - Actions: Primary “Generate”, and a “…” menu with Edit, Copy URL, Remove, Test fetch.
+  - Collapsible details area (Accordion) showing:
+    - raw URL (truncated) + copy button
+    - last error message (if any)
+    - backfill controls for RSS: buttons for last 1/3/5/10
+    - per-source Auto toggle (optional, if exists; otherwise stub UI but disabled with “Coming soon”)
+- Add Source modal:
+  - one primary input and three options (tabs or segmented):
+    1) Website (recommended): user pastes domain; attempt RSS autodiscovery; if multiple feeds found, show a selection list.
+    2) RSS feed
+    3) Single URL
+  - After paste, show a “Detected:” preview (name/type) before Connect.
+- (Optional small schema upgrade, recommended for premium UI):
+  Add nullable columns to Source:
+    - displayName, faviconUrl
+    - lastFetchStatus (success/fail), lastError
+    - latestItemTitle, latestItemUrl
+  If you add these, populate them when a source is created and whenever it is fetched.
+  If you do NOT add columns, compute these server-side and return via API to render.
 
-B) Onboarding Wizard (Modal or dedicated route)
-Step 1: Paste website or RSS feed (single input)
-- Auto-detect if RSS or website.
-- If website: attempt RSS autodiscovery (rel=alternate RSS/Atom; common paths).
-- Auto-fill site name + icon if possible.
-- Allow editing via a small “Edit” link (not required).
+D) STYLE PAGE “STYLE STUDIO” UPGRADE
+- Convert Style page into 2-column layout:
+  - left: controls grouped as:
+    - Presets: Minimal / Modern / Bold (one click applies a bundle)
+    - Theme segmented: light/dark/auto
+    - Accent swatches row + “Custom” picker. Hide hex input in “Advanced”.
+    - Layout: radius chips + size chips
+    - Features switches: Chapters / Transcript / Open player link with short descriptions
+  - right: sticky preview card with a framed embed preview (simulate article container behind)
+  - top-right action: “Copy embed” (opens EmbedModal)
+- Replace “Save styles” with auto-save:
+  - Save on change with debounce (500–800ms)
+  - Show small “Saving…” -> “Saved” indicator
+  - Provide a “Reset to defaults” action.
+- Keep the existing query param + widget attr behavior working.
 
-Step 2: Choose format (3 cards)
-- Narration (single host)
-- Two-host conversation
-- TL;DR recap
+E) EMBEDS: REMOVE PAGE, ADD MODAL
+- Remove “Embeds” from the workspace sub-navigation.
+- Keep the route /app/sites/:id/embeds as a redirect to /style OR /overview to avoid dead links.
+- Implement a reusable EmbedModal component:
+  - Tabs: Iframe (default), Widget, Link
+  - Each tab shows a short explanation + code snippet + Copy button.
+  - Include “Test embed” link (to existing embed preview route if present).
+  - Embed snippets should reflect the workspace default style (theme/accent/radius/size/toggles).
+  - Allow embedding either:
+     - the latest published episode OR
+     - a selected episode (when opened from an episode row), whichever context is available.
+- Add “Copy embed” triggers in:
+  - Overview header
+  - Style page header
+  - Episodes list row actions
+  - Episode detail page (if exists)
 
-Step 3: Generate
-- Calls existing endpoint that triggers generation.
-- Shows a progress UI (friendly status messages).
-- On completion, redirect to the site’s Embed/Style page.
+F) EPISODES PAGE: PREMIUM LIBRARY
+- Replace the current table with Episode Cards list:
+  - Status badge (Published/Processing/Failed)
+  - Title (clamped)
+  - Source badge (domain)
+  - Created relative time
+  - Actions: Open/Play, Copy embed, “…” menu (Regenerate optional, Delete later)
+- Add filters: All / Published / Processing / Failed
+- Add search by title
+- Add sort dropdown: Newest/Oldest
+- Pin processing episodes at top in an “In progress” section.
+- If you have access to generation step status, show a simple progress line; otherwise show spinner + “Generating…”
 
-C) Site Overview
-- Top: site name/icon + single CTA “Generate latest”
-- Secondary: “Copy embed snippet”
-- Show latest episode player + quick link to episode detail
-- Show mini embed preview
+G) POLISH
+- Ensure consistent spacing, typography, truncation, and empty states.
+- Use toasts on successful generation with an action “Copy embed”.
+- Ensure all Dialogs and menus are accessible and keyboard navigable.
+- Keep mobile responsive: cards stack, sticky preview becomes top/bottom.
 
-D) Sources
-- List sources with “Generate latest”
-- “Add source” opens a modal with options:
-  - Auto-import from website (default)
-  - RSS feed
-  - Single URL
-- For backfill, include buttons: Generate last 1 / 3 / 5 / 10 (cap reasonable)
-- All forms should have strong inline validation and minimal typing.
+ACCEPTANCE CRITERIA
+- Existing generation still works from Overview/Sources.
+- Style changes update preview and embed snippets.
+- Copy embed modal works from Overview, Style, Episodes list.
+- No raw “No domain set” appears in the main UI.
+- Sources list looks premium and hides raw URLs unless expanded.
+- Episodes page is card-based with filters/search and feels like a content library.
+- /app/sites/:id/embeds no longer appears in nav and does not present a redundant page (redirect OK).
 
-E) Style + Embeds
-- Controls:
-  - Theme: light/dark/auto
-  - Accent color: one picker
-  - Radius: sharp/soft/round
-  - Size: compact/standard/tall
-  - Toggles: chapters, transcript button, open-full-player link
-- Live preview: render /embed/e/{publicId} in an iframe with query params reflecting style.
-- “Copy” buttons:
-  - Hosted player URL
-  - iframe snippet
-  - widget.js snippet
-- Store the style config per site (Site.embedConfig JSON) and use it as defaults in embed URLs.
-- Update /embed/e/[publicId] page to read query params and apply styles (without external fonts).
-
-Implementation details:
-- Reuse existing endpoints:
-  - POST /api/sites
-  - POST /api/sources
-  - POST /api/episodes/generate
-  - GET /api/episodes/[publicId]/audio-url
-  - POST /api/analytics/playback
-- Add any needed endpoints for updating site embedConfig (e.g., PATCH /api/sites/[id]) but keep minimal.
-
-Deliverables:
-- Updated UI with organized navigation and flows described above.
-- No TODOs; app runs locally.
-- Ensure existing episode generation still works.
-- Update README screenshots/notes if needed.
-
-Now implement the UI refactor.
-
+Now implement this UI/UX overhaul in the existing repository. Do not leave TODOs.
