@@ -55,7 +55,7 @@ export default async function AnalyticsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Episode</TableHead>
-              <TableHead>Site</TableHead>
+              <TableHead>Workspace</TableHead>
               <TableHead>Plays</TableHead>
               <TableHead>25%</TableHead>
               <TableHead>50%</TableHead>

@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
+import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AudioPlayer } from "@/components/audio-player";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
-import { getBaseUrl } from "@/lib/url";
+import { CopyField } from "@/components/copy-field";
+import { EmbedButton } from "@/components/embed-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,18 +40,26 @@ export default async function EpisodeDetailPage({
   const embedUrl = `${baseUrl}/embed/e/${episode.publicId}?${embedQuery}`;
   const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${embedHeightPx}px;border:0\" loading=\"lazy\"></iframe>`;
   const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${episode.publicId}\" data-theme=\"${config.theme}\" data-accent=\"${config.accentColor}\" data-radius=\"${config.radius}\" data-size=\"${config.size}\" data-chapters=\"${config.showChapters ? "1" : "0"}\" data-transcript=\"${config.showTranscript ? "1" : "0"}\" data-open=\"${config.showOpenPlayer ? "1" : "0"}\"></script>`;
+  const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <div className="text-sm text-zinc-500">{episode.site.name}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold">{episode.title}</h1>
-          <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
-            {episode.status}
-          </Badge>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="text-sm text-zinc-500">{episode.site.name}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold">{episode.title}</h1>
+            <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
+              {statusLabel}
+            </Badge>
+          </div>
+          <div className="text-sm text-zinc-500">Source: {getDomainFromUrl(episode.sourceUrl)}</div>
         </div>
-        <div className="text-sm text-zinc-500">Source: {episode.sourceUrl}</div>
+        <EmbedButton
+          publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
+          baseUrl={baseUrl}
+          config={config}
+        />
       </div>
 
       <Card>
@@ -57,7 +67,12 @@ export default async function EpisodeDetailPage({
           <CardTitle>Audio</CardTitle>
         </CardHeader>
         <CardContent>
-          {episode.errorMessage ? (
+          {episode.status === "CANCELLED" ? (
+            <div className="mb-3 text-sm text-amber-700">
+              Generation was cancelled.
+            </div>
+          ) : null}
+          {episode.errorMessage && episode.status !== "CANCELLED" ? (
             <div className="mb-3 text-sm text-red-600">
               Generation failed: {episode.errorMessage}
             </div>
@@ -106,18 +121,9 @@ export default async function EpisodeDetailPage({
           <CardTitle>Embed</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <div>
-            <div className="text-xs font-semibold uppercase text-zinc-400">Hosted Player URL</div>
-            <div className="rounded-md bg-zinc-100 p-3 text-xs">{playerUrl}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase text-zinc-400">Iframe snippet</div>
-            <div className="rounded-md bg-zinc-100 p-3 font-mono text-xs">{iframeSnippet}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase text-zinc-400">Widget.js snippet</div>
-            <div className="rounded-md bg-zinc-100 p-3 font-mono text-xs">{widgetSnippet}</div>
-          </div>
+          <CopyField label="Hosted player URL" value={playerUrl} />
+          <CopyField label="Iframe snippet" value={iframeSnippet} mono />
+          <CopyField label="Widget.js snippet" value={widgetSnippet} mono />
         </CardContent>
       </Card>
     </div>

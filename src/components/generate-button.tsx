@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function GenerateButton({
   siteId,
@@ -36,6 +37,12 @@ export function GenerateButton({
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || "Failed to generate");
       }
+      toast.success("Episode queued.", {
+        action: {
+          label: "Copy embed",
+          onClick: () => router.push("/app/embed"),
+        },
+      });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate");

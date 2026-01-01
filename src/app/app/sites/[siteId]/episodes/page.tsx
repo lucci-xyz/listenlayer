@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { getBaseUrl } from "@/lib/url";
+import EpisodesClient, { EpisodeListItem } from "@/app/app/episodes/episodes-client";
 
 export const dynamic = "force-dynamic";
 
@@ -32,54 +31,27 @@ export default async function SiteEpisodesPage({
     take: 50,
   });
 
+  const baseUrl = getBaseUrl();
+  const items: EpisodeListItem[] = episodes.map((episode) => ({
+    id: episode.id,
+    title: episode.title,
+    status: episode.status,
+    createdAt: episode.createdAt.toISOString(),
+    sourceUrl: episode.sourceUrl,
+    publicId: episode.publicId,
+    siteName: site.name,
+    siteId: site.id,
+    embedConfig: site.embedConfig || null,
+  }));
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Episodes</h2>
-        <p className="text-sm text-zinc-500">Latest episodes generated for this site.</p>
+        <p className="text-sm text-zinc-500">Your episode library for this workspace.</p>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {episodes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-sm text-zinc-500">
-                  No episodes yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              episodes.map((episode) => (
-                <TableRow key={episode.id}>
-                  <TableCell>
-                    <Link
-                      href={`/app/episodes/${episode.id}`}
-                      className="text-sm font-semibold text-zinc-900 underline"
-                    >
-                      {episode.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
-                      {episode.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {episode.createdAt.toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <EpisodesClient episodes={items} baseUrl={baseUrl} />
     </div>
   );
 }

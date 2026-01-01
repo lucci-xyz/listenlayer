@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { extractReadableText } from "@/lib/content";
 import { chunkText, estimateDurationSec, extractJsonObject } from "@/lib/text";
 import { openai } from "@/lib/openai";
-import { getR2Client, getR2Bucket } from "@/lib/r2";
+import { getR2Client, getR2Bucket, deleteAudioObjects } from "@/lib/r2";
 import { maybeNormalizeMp3 } from "@/lib/audio";
 
 export const inngest = new Inngest({ id: "listenlayer" });
@@ -26,6 +26,7 @@ async function fetchLatestFromRss(url: string) {
   return {
     title: item.title || feed.title || "Untitled Episode",
     link: item.link,
+    feedTitle: feed.title || null,
   };
 }
 
@@ -112,19 +113,34 @@ export const generateEpisode = inngest.createFunction(
   async ({ event, step }) => {
     const { userId, siteId, sourceId, episodeId, canonicalUrl, episodeTitle, format } =
       event.data as {
-      userId: string;
-      siteId: string;
-      sourceId: string;
-      episodeId: string;
-      canonicalUrl?: string;
-      episodeTitle?: string;
-      format?: string;
-    };
+        userId: string;
+        siteId: string;
+        sourceId: string;
+        episodeId: string;
+        canonicalUrl?: string;
+        episodeTitle?: string;
+        format?: string;
+      };
 
     try {
-      await step.run("mark-running", async () => {
-        await prisma.episode.update({
+      const episodeState = await step.run("load-episode", async () => {
+        return prisma.episode.findUnique({
           where: { id: episodeId },
+          select: { status: true },
+        });
+      });
+
+      if (!episodeState) {
+        return { skipped: true };
+      }
+
+      if (episodeState.status === "CANCELLED") {
+        return { cancelled: true };
+      }
+
+      await step.run("mark-running", async () => {
+        await prisma.episode.updateMany({
+          where: { id: episodeId, status: { not: "CANCELLED" } },
           data: { status: "RUNNING" },
         });
       });
@@ -132,6 +148,7 @@ export const generateEpisode = inngest.createFunction(
       const source = await step.run("load-source", async () => {
         const record = await prisma.source.findFirst({
           where: { id: sourceId, siteId },
+          select: { id: true, type: true, url: true, displayName: true },
         });
         if (!record) {
           throw new Error("Source not found");
@@ -144,34 +161,113 @@ export const generateEpisode = inngest.createFunction(
           return {
             canonicalUrl,
             episodeTitle: episodeTitle || "Latest Episode",
+            latestItemTitle: episodeTitle || "Latest Episode",
+            latestItemUrl: canonicalUrl,
+            feedTitle: null,
           };
         }
         if (source.type === "RSS") {
           const latest = await fetchLatestFromRss(source.url);
-          return { canonicalUrl: latest.link, episodeTitle: latest.title };
+          return {
+            canonicalUrl: latest.link,
+            episodeTitle: latest.title,
+            latestItemTitle: latest.title,
+            latestItemUrl: latest.link,
+            feedTitle: latest.feedTitle,
+          };
         }
-        return { canonicalUrl: source.url, episodeTitle: "Latest Episode" };
+        return {
+          canonicalUrl: source.url,
+          episodeTitle: "Latest Episode",
+          latestItemTitle: null,
+          latestItemUrl: null,
+          feedTitle: null,
+        };
       });
 
-      const { script, chapters } = await step.run("generate-script", async () => {
+      await step.run("update-source-meta", async () => {
+        await prisma.source.update({
+          where: { id: source.id },
+          data: {
+            latestItemTitle: resolved.latestItemTitle,
+            latestItemUrl: resolved.latestItemUrl,
+            displayName: resolved.feedTitle || source.displayName || undefined,
+            lastFetchStatus: "success",
+            lastError: null,
+            lastFetchedAt: new Date(),
+          },
+        });
+      });
+
+      const cancelBeforeScript = await step.run("check-cancel-before-script", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { status: true },
+        });
+        if (!episode) return true;
+        return episode.status === "CANCELLED";
+      });
+      if (cancelBeforeScript) {
+        return { cancelled: true };
+      }
+
+      await step.run("generate-script", async () => {
         const html = await fetchHtml(resolved.canonicalUrl);
         const readableText = extractReadableText(html, resolved.canonicalUrl);
-        if (!readableText || readableText.length < 200) {
-          throw new Error("Extracted text too short");
+        const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
+        if (!readableText || words.length < 300) {
+          throw new Error("Not enough article text to generate an episode");
         }
-        return generateScriptAndChapters(
+        const { script, chapters } = await generateScriptAndChapters(
           resolved.episodeTitle,
           resolved.canonicalUrl,
           readableText,
           format
         );
+        await prisma.episode.update({
+          where: { id: episodeId },
+          data: {
+            title: resolved.episodeTitle,
+            sourceUrl: resolved.canonicalUrl,
+            scriptText: script,
+            transcriptText: script,
+            chaptersJson: chapters,
+          },
+        });
+        return { length: script.length };
       });
 
+      const cancelBeforeAudio = await step.run("check-cancel-before-audio", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { status: true },
+        });
+        if (!episode) return true;
+        return episode.status === "CANCELLED";
+      });
+      if (cancelBeforeAudio) {
+        return { cancelled: true };
+      }
+
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { scriptText: true },
+        });
+        if (!episode?.scriptText) {
+          throw new Error("Script is missing");
+        }
         const voice = process.env.OPENAI_TTS_VOICE || "marin";
-        const chunks = chunkText(script, 3500);
+        const chunks = chunkText(episode.scriptText, 3500);
         const buffers: Buffer[] = [];
         for (const chunk of chunks) {
+          const cancelled = await prisma.episode.findUnique({
+            where: { id: episodeId },
+            select: { status: true },
+          });
+          if (!cancelled || cancelled.status === "CANCELLED") {
+            return null;
+          }
           const audio = await openai.audio.speech.create({
             model: "gpt-4o-mini-tts",
             voice,
@@ -180,6 +276,9 @@ export const generateEpisode = inngest.createFunction(
           });
           const buffer = Buffer.from(await audio.arrayBuffer());
           buffers.push(buffer);
+        }
+        if (buffers.length === 0) {
+          return null;
         }
         const combined = Buffer.concat(buffers);
         const normalized = await maybeNormalizeMp3(combined);
@@ -198,32 +297,56 @@ export const generateEpisode = inngest.createFunction(
         return key;
       });
 
+      if (!uploadKey) {
+        return { cancelled: true };
+      }
+
+      const cancelBeforePublish = await step.run("check-cancel-before-publish", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { status: true },
+        });
+        if (!episode) return true;
+        return episode.status === "CANCELLED";
+      });
+      if (cancelBeforePublish) {
+        await step.run("cleanup-audio", async () => {
+          try {
+            await deleteAudioObjects([uploadKey]);
+          } catch {
+            // Ignore cleanup failures in local/dev environments.
+          }
+        });
+        return { cancelled: true };
+      }
+
       await step.run("update-episode", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { scriptText: true },
+        });
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
-            title: resolved.episodeTitle,
-            sourceUrl: resolved.canonicalUrl,
             status: "PUBLISHED",
-            scriptText: script,
-            transcriptText: script,
-            chaptersJson: chapters,
             audioObjectKey: uploadKey,
-            durationSec: estimateDurationSec(script),
+            durationSec: episode?.scriptText ? estimateDurationSec(episode.scriptText) : null,
             publishedAt: new Date(),
             errorMessage: null,
           },
-        });
-
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: { lastFetchedAt: new Date() },
         });
       });
 
       return { episodeId, userId };
     } catch (error) {
-      await step.run("mark-failed", async () => {
+      const shouldThrow = await step.run("mark-failed", async () => {
+        const episode = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { status: true },
+        });
+        if (!episode || episode.status === "CANCELLED") {
+          return false;
+        }
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
@@ -231,9 +354,21 @@ export const generateEpisode = inngest.createFunction(
             errorMessage: error instanceof Error ? error.message : "Unknown error",
           },
         });
+
+        await prisma.source.update({
+          where: { id: sourceId },
+          data: {
+            lastFetchStatus: "fail",
+            lastError: error instanceof Error ? error.message : "Unknown error",
+          },
+        });
+        return true;
       });
 
-      throw error;
+      if (shouldThrow) {
+        throw error;
+      }
+      return { cancelled: true };
     }
   }
 );

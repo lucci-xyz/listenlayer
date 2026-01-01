@@ -2,14 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl } from "@/lib/url";
+import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
 import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { formatRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AudioPlayer } from "@/components/audio-player";
 import { GenerateButton } from "@/components/generate-button";
-import { CopyField } from "@/components/copy-field";
+import { EmbedButton } from "@/components/embed-button";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,13 @@ export default async function SiteOverviewPage({
     orderBy: { createdAt: "desc" },
   });
 
+  const playbackPlays = await prisma.playbackEvent.count({
+    where: { episode: { siteId: site.id }, kind: "play" },
+  });
+  const playbackCompletions = await prisma.playbackEvent.count({
+    where: { episode: { siteId: site.id }, kind: "progress", value: 100 },
+  });
+
   const primarySource = site.sources[0] || null;
   const baseUrl = getBaseUrl();
   const config = mergeEmbedConfig(site.embedConfig);
@@ -51,19 +59,21 @@ export default async function SiteOverviewPage({
   const embedUrl = publishedEpisode
     ? `${baseUrl}/embed/e/${publishedEpisode.publicId}?${embedQuery}`
     : null;
-  const iframeSnippet = embedUrl
-    ? `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${embedHeightPx}px;border:0\" loading=\"lazy\"></iframe>`
-    : null;
+
+  const isNewWorkspace = site.sources.length === 0 && !latestEpisode;
+  const styleLabel = config.size === "compact" ? "Compact" : config.size === "tall" ? "Tall" : "Standard";
+  const latestStatusLabel = latestEpisode?.status === "CANCELLED" ? "Canceled" : latestEpisode?.status;
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-zinc-400">Quick actions</div>
-            <div className="text-lg font-semibold text-zinc-900">Generate your next episode</div>
-            <p className="text-sm text-zinc-500">Runs the latest source and publishes new audio.</p>
-          </div>
+      <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold text-zinc-900">{site.name}</h2>
+          <p className="text-sm text-zinc-500">
+            {site.sources.length} source{site.sources.length === 1 ? "" : "s"} · Auto: Off · Style: {styleLabel}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {primarySource ? (
             <GenerateButton
               siteId={site.id}
@@ -72,72 +82,152 @@ export default async function SiteOverviewPage({
               size="lg"
             />
           ) : (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="lg">
               <Link href={`/app/sites/${site.id}/sources`}>Add a source</Link>
             </Button>
           )}
-        </CardContent>
-      </Card>
+          <EmbedButton
+            label="Copy embed"
+            size="lg"
+            publicId={publishedEpisode?.publicId || null}
+            baseUrl={baseUrl}
+            config={config}
+          />
+        </div>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      {isNewWorkspace ? (
         <Card>
           <CardHeader>
-            <CardTitle>Latest episode</CardTitle>
+            <CardTitle>Get started in 3 steps</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {latestEpisode ? (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-semibold text-zinc-900">
-                    {latestEpisode.title}
+          <CardContent className="space-y-3 text-sm text-zinc-600">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">1</span>
+              Add a source (RSS or website).
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">2</span>
+              Choose a style preset in the Style tab.
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">3</span>
+              Copy the embed snippet and publish it.
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest episode</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {latestEpisode ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-semibold text-zinc-900">
+                        {latestEpisode.title}
+                      </div>
+                      <Badge variant={latestEpisode.status === "PUBLISHED" ? "default" : "secondary"}>
+                        {latestStatusLabel}
+                      </Badge>
+                      <span className="text-xs text-zinc-400">
+                        {formatRelativeTime(latestEpisode.createdAt)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      Source: {getDomainFromUrl(latestEpisode.sourceUrl)}
+                    </div>
+                    {latestEpisode.status === "PUBLISHED" ? (
+                      <AudioPlayer publicId={latestEpisode.publicId} />
+                    ) : (
+                      <p className="text-sm text-zinc-500">
+                        Audio will appear once the episode is published.
+                      </p>
+                    )}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/app/episodes/${latestEpisode.id}`}>Open episode</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-zinc-500">No episodes yet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Embed preview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {embedUrl ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-zinc-200 bg-white">
+                      <iframe
+                        title="Embed preview"
+                        src={embedUrl}
+                        style={{ height: embedHeightPx }}
+                        className="w-full"
+                        loading="lazy"
+                      />
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/app/embed?siteId=${site.id}`}>Open preview page</Link>
+                    </Button>
                   </div>
-                  <Badge variant={latestEpisode.status === "PUBLISHED" ? "default" : "secondary"}>
-                    {latestEpisode.status}
-                  </Badge>
-                </div>
-                <div className="text-xs text-zinc-500">{latestEpisode.sourceUrl}</div>
-                {latestEpisode.status === "PUBLISHED" ? (
-                  <AudioPlayer publicId={latestEpisode.publicId} />
                 ) : (
                   <p className="text-sm text-zinc-500">
-                    Audio will appear once the episode is published.
+                    Publish an episode to preview the embed.
                   </p>
                 )}
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/app/episodes/${latestEpisode.id}`}>Open episode</Link>
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-zinc-500">No episodes yet.</p>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Embed preview</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {embedUrl ? (
-              <div className="space-y-3">
-                <div className="rounded-xl border border-zinc-200 bg-white">
-                  <iframe title="Embed preview" src={embedUrl} style={{ height: embedHeightPx }} className="w-full" />
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="space-y-2 py-5">
+                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Sources</div>
+                <div className="text-2xl font-semibold text-zinc-900">{site.sources.length}</div>
+                <div className="text-sm text-zinc-500">
+                  {primarySource
+                    ? `Primary: ${getDomainFromUrl(primarySource.url)}`
+                    : "Add your first source"}
                 </div>
-                {iframeSnippet ? (
-                  <CopyField label="Embed snippet" value={iframeSnippet} mono />
-                ) : null}
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/app/sites/${site.id}/embeds`}>Edit embed styles</Link>
+                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                  <Link href={`/app/sites/${site.id}/sources`}>View sources →</Link>
                 </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-500">
-                Publish an episode to preview the embed.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="space-y-2 py-5">
+                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Style</div>
+                <div className="text-2xl font-semibold text-zinc-900">{styleLabel}</div>
+                <div className="text-sm text-zinc-500">
+                  Theme: {config.theme} · Radius: {config.radius}
+                </div>
+                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                  <Link href={`/app/sites/${site.id}/style`}>Edit style →</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="space-y-2 py-5">
+                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Analytics</div>
+                <div className="text-2xl font-semibold text-zinc-900">{playbackPlays}</div>
+                <div className="text-sm text-zinc-500">{playbackCompletions} completions</div>
+                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                  <Link href="/app/analytics">View analytics →</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

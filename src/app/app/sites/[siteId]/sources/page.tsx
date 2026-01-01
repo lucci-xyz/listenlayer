@@ -32,6 +32,12 @@ export default async function SourcesPage({
         id: source.id,
         type: source.type,
         url: source.url,
+        displayName: source.displayName,
+        faviconUrl: source.faviconUrl,
+        latestItemTitle: source.latestItemTitle,
+        latestItemUrl: source.latestItemUrl,
+        lastFetchStatus: source.lastFetchStatus,
+        lastError: source.lastError,
         lastFetchedAt: source.lastFetchedAt?.toISOString() || null,
       }))}
     />

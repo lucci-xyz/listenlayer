@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/app", label: "Sites" },
+  { href: "/app", label: "Workspaces" },
   { href: "/app/episodes", label: "Episodes" },
-  { href: "/app/embed", label: "Embed" },
+  { href: "/app/embed", label: "Embed Preview" },
   { href: "/app/analytics", label: "Analytics" },
   { href: "/app/settings", label: "Settings" },
 ];

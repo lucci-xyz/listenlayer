@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mergeEmbedConfig } from "@/lib/embed";
+import { getBaseUrl } from "@/lib/url";
 import StyleClient from "@/app/app/sites/[siteId]/style/style-client";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +32,14 @@ export default async function StylePage({
   });
 
   const config = mergeEmbedConfig(site.embedConfig);
+  const baseUrl = getBaseUrl();
 
   return (
     <StyleClient
       siteId={site.id}
       initialConfig={config}
       previewPublicId={episode?.publicId || null}
+      baseUrl={baseUrl}
     />
   );
 }

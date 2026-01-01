@@ -8,7 +8,6 @@ const tabItems = [
   { key: "overview", label: "Overview", path: "" },
   { key: "sources", label: "Sources", path: "sources" },
   { key: "style", label: "Style", path: "style" },
-  { key: "embeds", label: "Embeds", path: "embeds" },
   { key: "episodes", label: "Episodes", path: "episodes" },
 ];
 

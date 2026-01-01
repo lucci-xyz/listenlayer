@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SidebarNav } from "@/app/app/sidebar-nav";
+import { GenerationStatus } from "@/components/generation-status";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -27,7 +28,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             {process.env.DEV_AUTH_BYPASS === "true" ? null : <SignOutButton />}
           </div>
         </aside>
-        <main className="flex-1 px-8 py-8">{children}</main>
+        <main className="flex-1 px-8 py-8">
+          <GenerationStatus />
+          {children}
+        </main>
       </div>
     </div>
   );

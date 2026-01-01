@@ -31,6 +31,8 @@ async function main() {
       siteId: site.id,
       type: "RSS",
       url: "https://feeds.feedburner.com/TechCrunch/",
+      displayName: "TechCrunch",
+      faviconUrl: "https://techcrunch.com/favicon.ico",
     },
   });
 

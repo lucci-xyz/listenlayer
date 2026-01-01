@@ -34,7 +34,7 @@ export default async function SiteLayout({
     <div className="space-y-6">
       <div className="space-y-2">
         <Link href="/app" className="text-xs uppercase tracking-widest text-zinc-400">
-          ← All sites
+          ← All workspaces
         </Link>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 text-lg font-semibold text-zinc-700">
@@ -47,7 +47,7 @@ export default async function SiteLayout({
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900">{site.name}</h1>
-            <p className="text-sm text-zinc-500">{site.domain || "No domain set"}</p>
+            <p className="text-sm text-zinc-500">Workspace</p>
           </div>
         </div>
       </div>

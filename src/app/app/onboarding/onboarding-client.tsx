@@ -44,6 +44,7 @@ export default function OnboardingClient() {
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
   const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [siteName, setSiteName] = useState("");
   const [siteDomain, setSiteDomain] = useState("");
@@ -52,7 +53,7 @@ export default function OnboardingClient() {
   const [format, setFormat] = useState<FormatId>("narration");
   const [progress, setProgress] = useState("Preparing...");
   const [episodeStatus, setEpisodeStatus] = useState<
-    "QUEUED" | "RUNNING" | "PUBLISHED" | "FAILED" | null
+    "QUEUED" | "RUNNING" | "PUBLISHED" | "FAILED" | "CANCELLED" | null
   >(null);
 
   const canContinue = useMemo(() => {
@@ -62,6 +63,7 @@ export default function OnboardingClient() {
 
   const handleDiscovery = async () => {
     setError(null);
+    setWarning(null);
     setLoadingDiscovery(true);
     setDiscovery(null);
     try {
@@ -78,8 +80,14 @@ export default function OnboardingClient() {
       setDiscovery(data);
       setSiteName(data.siteName || "");
       setSiteDomain(data.domain || "");
-      setSourceType(data.detectedType);
-      setSourceUrl(data.sourceUrl || "");
+      if (data.rssUrl) {
+        setSourceType("RSS");
+        setSourceUrl(data.sourceUrl || "");
+      } else {
+        setSourceType("URL");
+        setSourceUrl("");
+        setWarning("No RSS feed found. Paste a specific article URL instead.");
+      }
       setEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discovery failed");
@@ -92,7 +100,7 @@ export default function OnboardingClient() {
     if (!discovery) return;
     setError(null);
     setStep(3);
-    setProgress("Creating your site...");
+      setProgress("Creating your workspace...");
 
     try {
       const siteRes = await fetch("/api/sites", {
@@ -100,7 +108,7 @@ export default function OnboardingClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: siteName, domain: siteDomain }),
       });
-      if (!siteRes.ok) throw new Error("Failed to create site");
+      if (!siteRes.ok) throw new Error("Failed to create workspace");
       const siteData = await siteRes.json();
       const siteId = siteData.site.id as string;
 
@@ -108,7 +116,13 @@ export default function OnboardingClient() {
       const sourceRes = await fetch("/api/sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siteId, type: sourceType, url: sourceUrl }),
+        body: JSON.stringify({
+          siteId,
+          type: sourceType,
+          url: sourceUrl,
+          displayName: discovery?.siteName,
+          faviconUrl: discovery?.iconUrl || undefined,
+        }),
       });
       if (!sourceRes.ok) throw new Error("Failed to add source");
       const sourceData = await sourceRes.json();
@@ -134,13 +148,14 @@ export default function OnboardingClient() {
           | "QUEUED"
           | "RUNNING"
           | "PUBLISHED"
-          | "FAILED";
+          | "FAILED"
+          | "CANCELLED";
         setEpisodeStatus(status);
-        if (status === "PUBLISHED") {
-          router.push(`/app/sites/${siteId}/embeds`);
+      if (status === "PUBLISHED") {
+          router.push(`/app/embed?siteId=${siteId}`);
           return;
         }
-        if (status === "FAILED") {
+        if (status === "FAILED" || status === "CANCELLED") {
           setError(data.episode?.errorMessage || "Generation failed");
           return;
         }
@@ -155,7 +170,7 @@ export default function OnboardingClient() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Add a new site</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">Add a new workspace</h1>
         <p className="text-sm text-zinc-500">Paste a URL once. We handle the rest.</p>
       </div>
 
@@ -179,6 +194,7 @@ export default function OnboardingClient() {
               </Button>
             </div>
 
+            {warning ? <div className="text-sm text-amber-600">{warning}</div> : null}
             {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
             {discovery ? (
@@ -225,9 +241,12 @@ export default function OnboardingClient() {
                       name="sourceType"
                       checked={sourceType === "URL"}
                       onChange={() => {
-                        setSourceType("URL");
-                        setSourceUrl(discovery.pageUrl);
+                        if (discovery.rssUrl) {
+                          setSourceType("URL");
+                          setSourceUrl(discovery.pageUrl);
+                        }
                       }}
+                      disabled={!discovery.rssUrl}
                     />
                     Use website URL
                   </label>
@@ -237,7 +256,7 @@ export default function OnboardingClient() {
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-zinc-500">
-                  <span>Site details</span>
+                  <span>Workspace details</span>
                   <button
                     className="text-xs font-semibold text-zinc-800"
                     onClick={() => setEditing((prev) => !prev)}
@@ -250,12 +269,12 @@ export default function OnboardingClient() {
                 {editing ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     <Input
-                      placeholder="Site name"
+                      placeholder="Workspace name"
                       value={siteName}
                       onChange={(event) => setSiteName(event.target.value)}
                     />
                     <Input
-                      placeholder="Domain"
+                      placeholder="Domain (optional)"
                       value={siteDomain}
                       onChange={(event) => setSiteDomain(event.target.value)}
                     />
@@ -315,7 +334,7 @@ export default function OnboardingClient() {
             <div className="text-sm text-zinc-600">{progress}</div>
             {episodeStatus ? (
               <Badge variant={episodeStatus === "FAILED" ? "destructive" : "secondary"}>
-                {episodeStatus}
+                {episodeStatus === "CANCELLED" ? "Canceled" : episodeStatus}
               </Badge>
             ) : null}
             {error ? <div className="text-sm text-red-600">{error}</div> : null}

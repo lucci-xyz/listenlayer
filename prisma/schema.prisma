@@ -16,6 +16,7 @@ enum EpisodeStatus {
   RUNNING
   PUBLISHED
   FAILED
+  CANCELLED
 }
 
 enum PlaybackKind {
@@ -44,14 +45,20 @@ model Site {
 }
 
 model Source {
-  id            String     @id @default(cuid())
-  siteId        String
-  type          SourceType
-  url           String
-  createdAt     DateTime   @default(now())
-  lastFetchedAt DateTime?
-  site          Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  episodes      Episode[]
+  id              String     @id @default(cuid())
+  siteId          String
+  type            SourceType
+  url             String
+  displayName     String?
+  faviconUrl      String?
+  latestItemTitle String?
+  latestItemUrl   String?
+  lastFetchStatus String?
+  lastError       String?
+  createdAt       DateTime   @default(now())
+  lastFetchedAt   DateTime?
+  site            Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  episodes        Episode[]
 }
 
 model Episode {

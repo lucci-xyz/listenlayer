@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { deleteAudioObjects } from "@/lib/r2";
 
 const embedConfigSchema = z
   .object({
@@ -66,4 +67,46 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const site = await prisma.site.findFirst({
+    where: { id, userId: user.id },
+    include: {
+      episodes: { select: { audioObjectKey: true } },
+    },
+  });
+  if (!site) {
+    return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+  }
+
+  await prisma.episode.updateMany({
+    where: { siteId: site.id, status: { in: ["QUEUED", "RUNNING"] } },
+    data: { status: "CANCELLED", errorMessage: "Workspace deleted" },
+  });
+
+  const keys = site.episodes
+    .map((episode) => episode.audioObjectKey)
+    .filter((key): key is string => !!key);
+
+  try {
+    await deleteAudioObjects(keys);
+  } catch {
+    // If R2 isn't configured locally, still allow deletion.
+  }
+
+  await prisma.site.delete({ where: { id: site.id } });
+  return NextResponse.json({ ok: true });
 }

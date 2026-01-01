@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function getR2Config() {
@@ -36,4 +36,22 @@ export async function getPresignedAudioUrl(key: string, expiresInSeconds = 21600
     Key: key,
   });
   return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+}
+
+export async function deleteAudioObjects(keys: string[]) {
+  if (keys.length === 0) return;
+  const client = getR2Client();
+  const bucket = getR2Bucket();
+  for (let i = 0; i < keys.length; i += 1000) {
+    const chunk = keys.slice(i, i + 1000);
+    await client.send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: {
+          Objects: chunk.map((Key) => ({ Key })),
+          Quiet: true,
+        },
+      })
+    );
+  }
 }

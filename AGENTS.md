@@ -1,140 +1,148 @@
-Update the ListenLayer MVP UI/UX to feel premium, simple, and intuitive, based on the plan below. The product already works end-to-end; do NOT break generation, playback, embeds, or analytics. Focus on UI, UX flow, and small supporting data improvements.
+Update the ListenLayer onboarding UX to be non-technical-user friendly, remove jargon (RSS), and fix the current “Website detected but Continue is disabled” bug. Keep all existing backend logic working; this is primarily UI flow + detection improvements. Do not break existing workspace pages, generation, embeds, or analytics.
 
-CURRENT STATE (assume exists):
-- Next.js App Router + TS + Tailwind + shadcn/ui
-- Prisma + Postgres
-- Auth works
-- Sources exist (RSS/URL)
-- Episode generation via Inngest works
-- Public player (/listen/e/:publicId), embed (/embed/e/:publicId), widget.js exist
-- Style defaults exist and are applied via query params and widget data-attrs
-- There is a workspace sub-nav including Overview, Sources, Style, Embeds, Episodes
+Context (current UI at /app/onboarding):
+- User pastes a URL and clicks “Detect source”.
+- UI shows results (e.g., “Website detected”, “No RSS feed found. Paste a specific article URL instead.”).
+- Radio options exist: “Use RSS feed” / “Use website URL”.
+- In some cases (e.g., Substack profile URL like https://substack.com/@username?...), it detects “Substack” and “Website detected” but “Continue to format” becomes non-clickable (disabled). This is confusing and must be fixed.
 
-TOP GOALS:
-1) Radically simplify user mental model: “Connect content → Generate → Copy embed”.
-2) Reduce raw typing and raw URLs.
-3) Make Sources, Style, Episodes pages feel premium.
-4) Remove the need for a dedicated Embeds page: embed snippets should be a modal, available contextually.
+Primary goals:
+1) Make onboarding understandable for non-technical people:
+   - Lead with “Create audio from a link” instead of “Create a workspace”.
+   - Hide the term “RSS” behind “Advanced”. Default language should be “Auto-sync feed”.
+2) Progressive disclosure:
+   - Users paste a link, we detect what it is, then ask if they want ongoing auto-sync only when relevant.
+   - If recurring content is detected (feed found), offer “Keep it synced (recommended)” vs “Just this one”.
+3) Fix the bug where “Use website URL” is selectable but user cannot continue.
+4) Improve detection for Substack links:
+   - Recognize Substack profile URLs and resolve them to the publication/home URL and then discover the feed at {origin}/feed.
+   - Substack publications are expected to have RSS at /feed on the publication subdomain (e.g., https://example.substack.com/feed). Implement this path when Substack is detected.
 
-HARD CONSTRAINTS:
-- Keep existing backend endpoints and job pipeline working.
-- Prefer minimal schema changes. UI can rename “Site” to “Workspace” without touching DB model.
-- If schema changes are needed, keep them additive + small.
-- Use shadcn/ui components (Card, Button, Dialog, Tabs, Badge, Switch, DropdownMenu, Tooltip, Skeleton, Separator).
-- No heavy new dependencies unless clearly justified.
+Design/UX requirements:
+- One primary action per step.
+- No “RSS” jargon in the main UI.
+- Clear next steps when detection fails.
+- Keep UI clean/minimal, using shadcn/ui components (Card, Button, Dialog, Tabs/SegmentedControl, Badge, Alert).
+- Make the flow feel like: paste → detect → generate → optional “save workspace/auto-sync”.
 
-IMPLEMENTATION TASKS:
+Implementation plan (execute all):
 
-A) NAMING + NAV CLEANUP
-- Rename UI labels “Sites” -> “Workspaces” everywhere in the dashboard.
-- Remove “No domain set” from all pages. Domain should be moved into Settings -> Advanced (collapsed), not shown on Overview/Sources/Style/Episodes.
-- Keep the DB model name as-is (Site) to avoid migrations; just change labels and headings.
+A) Rename and restructure onboarding to start with a “Create audio” mental model
+- Change the heading from “Add a new workspace” to something like:
+  - Title: “Create audio from a link”
+  - Subtitle: “Paste a link once. We’ll handle the rest.”
+- The user should not be forced to create a workspace first. Instead:
+  - Step 1: Paste link
+  - Step 2: Confirm what we found + choose between:
+     - “Keep it synced (recommended)” (only shown if feed discovered OR if we can infer recurring publication)
+     - “Just this one”
+  - Step 3: Choose format (existing format page) and proceed
 
-B) WORKSPACE OVERVIEW REDESIGN
-- Redesign the Overview page layout to:
-  - Header: Workspace name + small meta line (e.g., “1 source • Auto: Off • Style: Standard”).
-  - Right-aligned actions: Primary “Generate latest” and Secondary “Copy embed”.
-  - Main content: 2-column grid of Cards:
-    1) Latest Episode card:
-       - title (clamped), status badge, created relative time
-       - play button or mini player (MVP can be play button -> open episode)
-       - “Open episode” link
-    2) Embed Preview card:
-       - framed live preview (iframe)
-       - “Copy embed” button
-  - Second row: small Cards for Sources summary, Style summary, Analytics snapshot.
-- For brand-new workspaces, show a simple 3-step checklist instead of empty cards:
-  1) Add a source
-  2) Choose style
-  3) Copy embed
-- Ensure Overview has no raw URLs shown by default. If needed, show source domain + a “View details” link.
+B) Change option labels to non-technical language + hide RSS
+- Replace “Use RSS feed” with “Auto-sync feed (recommended)”
+- Replace “Use website URL” with “Use this website link”
+- Add “Advanced” disclosure that reveals the technical details:
+  - Show the detected feed URL(s)
+  - Option to paste an RSS URL manually
+  - Label it explicitly “RSS (advanced)”
+- Default selection should be “Auto-sync feed” if found; otherwise “Just this one” (article mode).
 
-C) SOURCES PAGE PREMIUM REDESIGN
-- Replace the current plain list with Source Cards.
-- Each Source Card should include:
-  - favicon + display name (domain or detected name)
-  - type badge: RSS / Website / Single URL
-  - “Latest item: <title>” for RSS (if available)
-  - “Checked X ago” (relative) with tooltip for exact timestamp
-  - Actions: Primary “Generate”, and a “…” menu with Edit, Copy URL, Remove, Test fetch.
-  - Collapsible details area (Accordion) showing:
-    - raw URL (truncated) + copy button
-    - last error message (if any)
-    - backfill controls for RSS: buttons for last 1/3/5/10
-    - per-source Auto toggle (optional, if exists; otherwise stub UI but disabled with “Coming soon”)
-- Add Source modal:
-  - one primary input and three options (tabs or segmented):
-    1) Website (recommended): user pastes domain; attempt RSS autodiscovery; if multiple feeds found, show a selection list.
-    2) RSS feed
-    3) Single URL
-  - After paste, show a “Detected:” preview (name/type) before Connect.
-- (Optional small schema upgrade, recommended for premium UI):
-  Add nullable columns to Source:
-    - displayName, faviconUrl
-    - lastFetchStatus (success/fail), lastError
-    - latestItemTitle, latestItemUrl
-  If you add these, populate them when a source is created and whenever it is fetched.
-  If you do NOT add columns, compute these server-side and return via API to render.
+C) Fix gating logic for Continue (the current bug)
+Currently: user can select “Use website URL” but Continue is disabled.
+Fix:
+- Define a clear “supported next step” predicate and use it both for:
+  - enabling/disabling “Continue”
+  - what options are shown as selectable
+- Implement:
+  - If feed discovered => Continue enabled (workspace/auto-sync path available)
+  - Else if URL is a specific article/post URL => Continue enabled (one-off generation path available)
+  - Else (homepage/profile/non-article and no feed) => Continue disabled and show a helpful message with actions:
+      - “Paste a specific post link”
+      - “Or paste your homepage (we’ll try again)”
+- IMPORTANT: Do not show a selectable option that still blocks Continue. If an option is shown, it must be viable OR show a clear “Coming soon” disabled state.
 
-D) STYLE PAGE “STYLE STUDIO” UPGRADE
-- Convert Style page into 2-column layout:
-  - left: controls grouped as:
-    - Presets: Minimal / Modern / Bold (one click applies a bundle)
-    - Theme segmented: light/dark/auto
-    - Accent swatches row + “Custom” picker. Hide hex input in “Advanced”.
-    - Layout: radius chips + size chips
-    - Features switches: Chapters / Transcript / Open player link with short descriptions
-  - right: sticky preview card with a framed embed preview (simulate article container behind)
-  - top-right action: “Copy embed” (opens EmbedModal)
-- Replace “Save styles” with auto-save:
-  - Save on change with debounce (500–800ms)
-  - Show small “Saving…” -> “Saved” indicator
-  - Provide a “Reset to defaults” action.
-- Keep the existing query param + widget attr behavior working.
+D) Improve detection: resolve and canonicalize URLs
+- Always canonicalize the input URL:
+  - trim, ensure scheme
+  - follow redirects (fetch with redirect: "follow")
+  - keep final URL and origin
+- Parse HTML for <link rel="canonical"> and OpenGraph if needed to derive a canonical URL for detection.
 
-E) EMBEDS: REMOVE PAGE, ADD MODAL
-- Remove “Embeds” from the workspace sub-navigation.
-- Keep the route /app/sites/:id/embeds as a redirect to /style OR /overview to avoid dead links.
-- Implement a reusable EmbedModal component:
-  - Tabs: Iframe (default), Widget, Link
-  - Each tab shows a short explanation + code snippet + Copy button.
-  - Include “Test embed” link (to existing embed preview route if present).
-  - Embed snippets should reflect the workspace default style (theme/accent/radius/size/toggles).
-  - Allow embedding either:
-     - the latest published episode OR
-     - a selected episode (when opened from an episode row), whichever context is available.
-- Add “Copy embed” triggers in:
-  - Overview header
-  - Style page header
-  - Episodes list row actions
-  - Episode detail page (if exists)
+E) Substack-specific improvement (critical)
+When a pasted URL is on substack.com and matches a profile style (e.g., /@username, /profile, or has utm tracking):
+- Fetch the page and derive the publication/home URL.
+  - Prefer canonical link tags or OpenGraph site URL.
+  - If the page redirects to a subdomain like https://username.substack.com, use that origin.
+- After obtaining the publication origin, attempt feed autodiscovery:
+  - Try `${origin}/feed` (Substack standard) first.
+  - Then try head <link rel="alternate"> from the publication homepage.
+- If `${origin}/feed` returns valid RSS/Atom, mark “Auto-sync feed found” and proceed.
+- If still no feed, treat it as a “website link” and require a specific post URL; show guidance.
 
-F) EPISODES PAGE: PREMIUM LIBRARY
-- Replace the current table with Episode Cards list:
-  - Status badge (Published/Processing/Failed)
-  - Title (clamped)
-  - Source badge (domain)
-  - Created relative time
-  - Actions: Open/Play, Copy embed, “…” menu (Regenerate optional, Delete later)
-- Add filters: All / Published / Processing / Failed
-- Add search by title
-- Add sort dropdown: Newest/Oldest
-- Pin processing episodes at top in an “In progress” section.
-- If you have access to generation step status, show a simple progress line; otherwise show spinner + “Generating…”
+F) Detection engine behavior (general)
+Implement robust feed discovery for generic websites:
+1) Fetch HTML of the candidate page (homepage).
+2) Look for <link rel="alternate" type="application/rss+xml|application/atom+xml"> candidates, resolve relative URLs.
+3) If none, probe common endpoints on the origin:
+   - /rss.xml, /feed, /feed.xml, /rss, /atom.xml, /index.xml
+4) Validate a candidate as a feed by:
+   - fetching it
+   - checking for <rss or <feed in first ~2KB
+   - parsing with rss-parser
+Return a structured result:
+- kind: "feed" | "article" | "website" | "unknown"
+- platformHint: "substack" | "medium" | "wordpress" | etc (if detected)
+- feeds: array of { url, title?, type: rss|atom, itemCount?, latestItemTitle? }
+- recommendedFeedUrl
+- canonicalUrl, origin, displayName, faviconUrl
 
-G) POLISH
-- Ensure consistent spacing, typography, truncation, and empty states.
-- Use toasts on successful generation with an action “Copy embed”.
-- Ensure all Dialogs and menus are accessible and keyboard navigable.
-- Keep mobile responsive: cards stack, sticky preview becomes top/bottom.
+G) UI behavior on detection results
+- If feed found:
+  - Show a success state: “We can keep this updated automatically.”
+  - Default selection: “Keep it synced (recommended)”
+  - Continue enabled
+- If article URL:
+  - Show: “We’ll generate audio for this post.”
+  - Default selection: “Just this one”
+  - Continue enabled
+- If website detected but no feed and not an article:
+  - Show an Alert:
+    - “We couldn’t find an auto-sync feed for this link.”
+    - “Paste a specific article link, or paste your homepage again.”
+  - Continue disabled
+  - Provide an inline example placeholder for post URLs
+- Always show platform badge when detected (e.g., “Substack detected”) but keep it subtle.
 
-ACCEPTANCE CRITERIA
-- Existing generation still works from Overview/Sources.
-- Style changes update preview and embed snippets.
-- Copy embed modal works from Overview, Style, Episodes list.
-- No raw “No domain set” appears in the main UI.
-- Sources list looks premium and hides raw URLs unless expanded.
-- Episodes page is card-based with filters/search and feels like a content library.
-- /app/sites/:id/embeds no longer appears in nav and does not present a redundant page (redirect OK).
+H) Workspace creation behavior
+- If user chooses “Keep it synced”:
+  - Create a workspace (Site) + Source using the recommended feed URL (RSS/Atom) behind the scenes.
+  - Name workspace automatically from extracted title/OG title; allow edit via small “Edit name” link.
+  - Then send them to format step.
+- If user chooses “Just this one”:
+  - Create a lightweight “draft generation” flow:
+    - Either create a workspace silently (minimal default) OR create an “episode draft” first and offer to save later.
+  - MVP acceptable: create a workspace automatically but label it as “Project” or “Workspace” only later.
+  - The important part: user experience begins with “Create audio” not “Manage workspaces”.
 
-Now implement this UI/UX overhaul in the existing repository. Do not leave TODOs.
+I) Update copy everywhere in onboarding
+- Replace “Detect source” with:
+  - “Continue” (and auto-detect on paste/blur), OR keep “Detect” but the primary CTA should lead forward.
+- Ensure the call-to-action reads like a human action:
+  - “Create audio” / “Continue to format”
+- Keep buttons always enabled only when the next step is possible; otherwise show why.
+
+J) Tests / sanity checks
+Add lightweight tests or at least a manual checklist documented in README:
+- Pasting a valid RSS URL => auto-sync option available, continue works.
+- Pasting a blog homepage with <link rel="alternate"> => feed found, continue works.
+- Pasting Substack profile URL (substack.com/@user...) => resolves to publication, detects /feed, continue works.
+- Pasting a non-feed homepage without a feed => continue disabled with clear guidance.
+- Pasting a specific article URL => “Just this one” path works and proceeds.
+
+Deliverables:
+- Updated onboarding UI with the above UX.
+- Fixed Continue button gating bug.
+- Substack profile URL detection improved to discover /feed on publication origin.
+- No TODOs; app runs locally.
+
+Now implement these changes in the existing repository. Ensure the UX is simple for non-technical users and that the “website detected but can’t continue” bug is gone.
