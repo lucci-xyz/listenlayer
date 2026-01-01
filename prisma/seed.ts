@@ -19,6 +19,7 @@ async function main() {
       id: `${user.id}-demo-site`,
       userId: user.id,
       name: "Demo Site",
+      domain: "techcrunch.com",
     },
   });
 

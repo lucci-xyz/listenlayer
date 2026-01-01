@@ -45,8 +45,19 @@ async function fetchHtml(url: string) {
   return buffer.toString("utf-8");
 }
 
-async function generateScriptAndChapters(title: string, url: string, text: string) {
+async function generateScriptAndChapters(
+  title: string,
+  url: string,
+  text: string,
+  format: string | undefined
+) {
   const trimmed = text.slice(0, 12000);
+  const formatGuidance =
+    format === "two-host"
+      ? "Write as a two-host conversation. Label speakers as Host 1 and Host 2. Plain text only."
+      : format === "tldr"
+        ? "Write as a tight TL;DR recap with punchy narration, still 500-900 words. Plain text only."
+        : "Write as a single-host narration. Plain text only.";
   const response = await openai.responses.create({
     model: "gpt-4o-mini",
     temperature: 0.3,
@@ -54,7 +65,7 @@ async function generateScriptAndChapters(title: string, url: string, text: strin
       {
         role: "system",
         content:
-          "You are a podcast script writer. Only use the provided article text. Do not add outside facts. Return JSON only, with keys 'script' and 'chapters'. 'script' must be plain text, 500-900 words, 3-6 minutes. 'chapters' is an array of {title, startApproxSec} with ascending start times.",
+          `You are a podcast script writer. Only use the provided article text. Do not add outside facts. ${formatGuidance} Return JSON only, with keys 'script' and 'chapters'. 'script' must be plain text, 500-900 words, 3-6 minutes. 'chapters' is an array of {title, startApproxSec} with ascending start times.`,
       },
       {
         role: "user",
@@ -99,11 +110,15 @@ export const generateEpisode = inngest.createFunction(
   { id: "episode-generate" },
   { event: "episode/generate.requested" },
   async ({ event, step }) => {
-    const { userId, siteId, sourceId, episodeId } = event.data as {
+    const { userId, siteId, sourceId, episodeId, canonicalUrl, episodeTitle, format } =
+      event.data as {
       userId: string;
       siteId: string;
       sourceId: string;
       episodeId: string;
+      canonicalUrl?: string;
+      episodeTitle?: string;
+      format?: string;
     };
 
     try {
@@ -124,7 +139,13 @@ export const generateEpisode = inngest.createFunction(
         return record;
       });
 
-      const { canonicalUrl, episodeTitle } = await step.run("resolve-source", async () => {
+      const resolved = await step.run("resolve-source", async () => {
+        if (canonicalUrl) {
+          return {
+            canonicalUrl,
+            episodeTitle: episodeTitle || "Latest Episode",
+          };
+        }
         if (source.type === "RSS") {
           const latest = await fetchLatestFromRss(source.url);
           return { canonicalUrl: latest.link, episodeTitle: latest.title };
@@ -133,12 +154,17 @@ export const generateEpisode = inngest.createFunction(
       });
 
       const { script, chapters } = await step.run("generate-script", async () => {
-        const html = await fetchHtml(canonicalUrl);
-        const readableText = extractReadableText(html, canonicalUrl);
+        const html = await fetchHtml(resolved.canonicalUrl);
+        const readableText = extractReadableText(html, resolved.canonicalUrl);
         if (!readableText || readableText.length < 200) {
           throw new Error("Extracted text too short");
         }
-        return generateScriptAndChapters(episodeTitle, canonicalUrl, readableText);
+        return generateScriptAndChapters(
+          resolved.episodeTitle,
+          resolved.canonicalUrl,
+          readableText,
+          format
+        );
       });
 
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
@@ -176,8 +202,8 @@ export const generateEpisode = inngest.createFunction(
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
-            title: episodeTitle,
-            sourceUrl: canonicalUrl,
+            title: resolved.episodeTitle,
+            sourceUrl: resolved.canonicalUrl,
             status: "PUBLISHED",
             scriptText: script,
             transcriptText: script,

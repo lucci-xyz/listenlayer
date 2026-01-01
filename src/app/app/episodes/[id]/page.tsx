@@ -4,10 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AudioPlayer } from "@/components/audio-player";
-
-function getBaseUrl() {
-  return (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
-}
+import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { getBaseUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +31,13 @@ export default async function EpisodeDetailPage({
     ? episode.chaptersJson
     : []) as { title: string; startApproxSec: number }[];
   const baseUrl = getBaseUrl();
+  const config = mergeEmbedConfig(episode.site.embedConfig);
+  const embedHeightPx = embedHeight(config);
+  const embedQuery = embedConfigToQuery(config);
   const playerUrl = `${baseUrl}/listen/e/${episode.publicId}`;
-  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}`;
-  const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:160px;border:0\" loading=\"lazy\"></iframe>`;
-  const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${episode.publicId}\"></script>`;
+  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}?${embedQuery}`;
+  const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${embedHeightPx}px;border:0\" loading=\"lazy\"></iframe>`;
+  const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${episode.publicId}\" data-theme=\"${config.theme}\" data-accent=\"${config.accentColor}\" data-radius=\"${config.radius}\" data-size=\"${config.size}\" data-chapters=\"${config.showChapters ? "1" : "0"}\" data-transcript=\"${config.showTranscript ? "1" : "0"}\" data-open=\"${config.showOpenPlayer ? "1" : "0"}\"></script>`;
 
   return (
     <div className="space-y-6">
@@ -61,7 +62,13 @@ export default async function EpisodeDetailPage({
               Generation failed: {episode.errorMessage}
             </div>
           ) : null}
-          <AudioPlayer publicId={episode.publicId} />
+          {episode.status === "PUBLISHED" ? (
+            <AudioPlayer publicId={episode.publicId} />
+          ) : (
+            <div className="text-sm text-zinc-500">
+              Audio will be available once the episode is published.
+            </div>
+          )}
         </CardContent>
       </Card>
 

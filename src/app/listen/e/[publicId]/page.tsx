@@ -19,6 +19,10 @@ export default async function ListenPage({
     notFound();
   }
 
+  const chapters = (Array.isArray(episode.chaptersJson)
+    ? episode.chaptersJson
+    : []) as { title: string; startApproxSec: number }[];
+
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-12">
       <div className="mx-auto w-full max-w-3xl space-y-6">
@@ -30,7 +34,22 @@ export default async function ListenPage({
             <AudioPlayer publicId={episode.publicId} />
           </div>
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <div id="chapters" className="rounded-2xl border border-zinc-200 bg-white p-6">
+          <h2 className="text-lg font-semibold">Chapters</h2>
+          {chapters.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-500">No chapters available yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm text-zinc-600">
+              {chapters.map((chapter, index) => (
+                <li key={`${chapter.title}-${index}`}>
+                  <span className="font-semibold text-zinc-800">{chapter.title}</span>
+                  <span className="ml-2 text-xs text-zinc-400">~{chapter.startApproxSec}s</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div id="transcript" className="rounded-2xl border border-zinc-200 bg-white p-6">
           <h2 className="text-lg font-semibold">Transcript</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-600">
             {episode.transcriptText}

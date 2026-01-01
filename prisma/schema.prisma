@@ -36,6 +36,7 @@ model Site {
   userId    String
   name      String
   domain    String?
+  embedConfig Json?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sources   Source[]

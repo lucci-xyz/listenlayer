@@ -81,18 +81,17 @@ DEV_AUTH_BYPASS=true
 ```
 
 ## Generate an episode
-1. Log in and create a site.
-2. Add an RSS or URL source.
-3. Click **Generate latest episode** on a source.
-4. Watch the Inngest dev server logs to see the job progress.
-5. Open the episode detail page to get the hosted player URL and embeds.
+1. Log in and click **Add site**.
+2. Paste a website or RSS feed, choose a format, and generate your first episode.
+3. Watch the Inngest dev server logs to see the job progress.
+4. Visit **Embeds** for the hosted player URL and copyable snippets.
 
 ## Embed testing
 Create a simple HTML file and paste:
 
 ```html
 <iframe src="http://localhost:3000/embed/e/YOUR_PUBLIC_ID" style="width:100%;height:160px;border:0" loading="lazy"></iframe>
-<script async src="http://localhost:3000/widget.js" data-episode="YOUR_PUBLIC_ID"></script>
+<script async src="http://localhost:3000/widget.js" data-episode="YOUR_PUBLIC_ID" data-theme="auto" data-accent="#111827" data-radius="soft" data-size="standard" data-chapters="1" data-transcript="1" data-open="1"></script>
 ```
 
 ## Environment variables

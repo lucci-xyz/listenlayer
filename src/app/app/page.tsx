@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import DashboardClient from "@/app/app/dashboard-client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -16,70 +18,57 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  const siteIds = sites.map((site) => site.id);
-  const sources = siteIds.length
-    ? await prisma.source.findMany({
-        where: { siteId: { in: siteIds } },
-        orderBy: { createdAt: "asc" },
-      })
-    : [];
-
-  const episodes = siteIds.length
-    ? await prisma.episode.findMany({
-        where: { siteId: { in: siteIds } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      })
-    : [];
-
-  const playbackCounts = episodes.length
-    ? await prisma.playbackEvent.groupBy({
-        by: ["episodeId", "kind", "value"],
-        _count: { _all: true },
-      })
-    : [];
-
-  const stats: Record<
-    string,
-    { plays: number; progress: Record<number, number> }
-  > = {};
-  for (const row of playbackCounts) {
-    if (!stats[row.episodeId]) {
-      stats[row.episodeId] = { plays: 0, progress: {} };
-    }
-    if (row.kind === "play") {
-      stats[row.episodeId].plays += row._count._all;
-    }
-    if (row.kind === "progress" && row.value !== null) {
-      stats[row.episodeId].progress[row.value] =
-        (stats[row.episodeId].progress[row.value] || 0) + row._count._all;
-    }
-  }
-
   return (
-    <DashboardClient
-      sites={sites.map((site) => ({
-        id: site.id,
-        name: site.name,
-        domain: site.domain,
-      }))}
-      sources={sources.map((source) => ({
-        id: source.id,
-        siteId: source.siteId,
-        type: source.type,
-        url: source.url,
-        lastFetchedAt: source.lastFetchedAt?.toISOString() || null,
-      }))}
-      episodes={episodes.map((episode) => ({
-        id: episode.id,
-        siteId: episode.siteId,
-        sourceId: episode.sourceId,
-        title: episode.title,
-        status: episode.status,
-        publicId: episode.publicId,
-        createdAt: episode.createdAt.toISOString(),
-      }))}
-      stats={stats}
-    />
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900">Sites</h1>
+          <p className="text-sm text-zinc-500">
+            Create a site and turn fresh posts into podcast-ready audio.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/app/onboarding">Add site</Link>
+        </Button>
+      </div>
+
+      {sites.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-sm text-zinc-500">No sites yet. Add your first site to get started.</p>
+            <Button asChild className="mt-4">
+              <Link href="/app/onboarding">Start onboarding</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sites.map((site) => {
+            const domain = site.domain || "";
+            const favicon = domain ? `https://${domain}/favicon.ico` : null;
+            return (
+              <Link key={site.id} href={`/app/sites/${site.id}`} className="group">
+                <Card className="transition group-hover:border-zinc-300 group-hover:shadow-sm">
+                  <CardContent className="flex items-center gap-4 py-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 text-lg font-semibold text-zinc-700">
+                      {favicon ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={favicon} alt="" className="h-6 w-6" />
+                      ) : (
+                        site.name.slice(0, 1).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-zinc-900">{site.name}</div>
+                      <div className="text-xs text-zinc-500">{domain || "No domain set"}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
