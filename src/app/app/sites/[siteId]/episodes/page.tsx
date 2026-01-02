@@ -47,8 +47,10 @@ export default async function SiteEpisodesPage({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Episodes</h2>
-        <p className="text-sm text-zinc-500">Your episode library for this workspace.</p>
+        <h2 className="text-lg font-semibold text-foreground">Episodes</h2>
+        <p className="text-[13px] text-muted-foreground">
+          Your episode library for this publication.
+        </p>
       </div>
 
       <EpisodesClient episodes={items} baseUrl={baseUrl} />

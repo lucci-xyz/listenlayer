@@ -4,30 +4,65 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-zinc-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-6 py-16">
-        <header className="flex flex-col gap-6">
-          <div className="inline-flex w-fit items-center rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white">
-            ListenLayer MVP
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16">
+        <header className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="space-y-6">
+            <div className="inline-flex w-fit items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+              ListenLayer
+            </div>
+            <div className="space-y-4">
+              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+                Turn written posts into narrated audio.
+              </h1>
+              <p className="max-w-2xl text-[15px] text-muted-foreground">
+                ListenLayer pulls from your site or feed, scripts a tight summary,
+                and ships a hosted player with embed-ready audio in minutes.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/app">Go to Dashboard</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/login">Login</Link>
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-4">
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
-              Turn written posts into narrated episodes.
-            </h1>
-            <p className="max-w-2xl text-lg text-zinc-600">
-              ListenLayer pulls from RSS or URL sources, generates a narrated
-              script, publishes an MP3, and gives you a hosted player + embed
-              widgets in minutes.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/app">Go to Dashboard</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/login">Login</Link>
-            </Button>
-          </div>
+          <Card className="rounded-2xl shadow-soft-md">
+            <CardHeader>
+              <CardTitle>What you get</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-[13px] text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 text-center text-[13px] font-semibold text-primary">
+                  01
+                </div>
+                <div>
+                  <div className="text-[13px] font-semibold text-foreground">Script + chapters</div>
+                  Structured narration with clear takeaways and CTA.
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 text-center text-[13px] font-semibold text-primary">
+                  02
+                </div>
+                <div>
+                  <div className="text-[13px] font-semibold text-foreground">Safe audio hosting</div>
+                  MP3s stored in R2 with secure, signed playback URLs.
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 text-center text-[13px] font-semibold text-primary">
+                  03
+                </div>
+                <div>
+                  <div className="text-[13px] font-semibold text-foreground">Embeds + analytics</div>
+                  Iframe, widget.js, and playback milestones.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </header>
 
         <section className="grid gap-6 md:grid-cols-3">
@@ -49,7 +84,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>{item.title}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-zinc-600">
+              <CardContent className="text-[13px] text-muted-foreground">
                 {item.copy}
               </CardContent>
             </Card>

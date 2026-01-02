@@ -89,12 +89,12 @@ export async function DELETE(
     },
   });
   if (!site) {
-    return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    return NextResponse.json({ error: "Publication not found" }, { status: 404 });
   }
 
   await prisma.episode.updateMany({
     where: { siteId: site.id, status: { in: ["QUEUED", "RUNNING"] } },
-    data: { status: "CANCELLED", errorMessage: "Workspace deleted" },
+    data: { status: "CANCELLED", errorMessage: "Publication deleted" },
   });
 
   const keys = site.episodes

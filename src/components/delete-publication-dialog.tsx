@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-export function DeleteWorkspaceDialog({
+export function DeletePublicationDialog({
   siteId,
   siteName,
 }: {
@@ -33,9 +33,9 @@ export function DeleteWorkspaceDialog({
     try {
       const res = await fetch(`/api/sites/${siteId}`, { method: "DELETE" });
       if (!res.ok) {
-        throw new Error("Failed to delete workspace");
+        throw new Error("Failed to delete publication");
       }
-      toast.success("Workspace deleted.");
+      toast.success("Publication deleted.");
       setOpen(false);
       router.refresh();
       router.push("/app");
@@ -50,23 +50,23 @@ export function DeleteWorkspaceDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
-        Delete workspace
+        Delete publication
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete workspace</DialogTitle>
+        <DialogTitle>Delete publication</DialogTitle>
           <DialogDescription>
-            This permanently deletes the workspace, sources, episodes, and analytics.
+            This permanently deletes the publication, sources, episodes, and analytics.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 text-sm text-zinc-600">
+        <div className="space-y-3 text-[13px] text-muted-foreground">
           <p>
-            Type <span className="font-semibold text-zinc-900">{siteName}</span> to confirm.
+            Type <span className="font-semibold text-foreground">{siteName}</span> to confirm.
           </p>
           <Input
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
-            placeholder="Workspace name"
+            placeholder="Publication name"
           />
         </div>
         <DialogFooter className="mt-2">

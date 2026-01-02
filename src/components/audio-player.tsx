@@ -65,11 +65,11 @@ export function AudioPlayer({ publicId }: { publicId: string }) {
   }, [publicId, audioUrl]);
 
   if (error) {
-    return <div className="text-sm text-red-600">{error}</div>;
+    return <div className="text-[13px] text-red-600">{error}</div>;
   }
 
   if (!audioUrl) {
-    return <div className="text-sm text-zinc-500">Loading audio...</div>;
+    return <div className="text-[13px] text-muted-foreground">Loading audio...</div>;
   }
 
   return <audio ref={audioRef} controls className="w-full" src={audioUrl} />;

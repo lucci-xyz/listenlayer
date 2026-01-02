@@ -103,22 +103,22 @@ export default function EpisodesClient({
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-zinc-900">
+              <h3 className="text-[13px] font-semibold text-foreground">
                 {episode.title}
               </h3>
               <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
                 {statusLabel}
               </Badge>
-              <span className="text-xs text-zinc-400">
+              <span className="text-[12px] text-muted-foreground">
                 {formatRelativeTime(episode.createdAt)}
               </span>
             </div>
-            <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
+            <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
               <span>{getDomainFromUrl(episode.sourceUrl)}</span>
-              {showSite && episode.siteName ? <span>Workspace: {episode.siteName}</span> : null}
+              {showSite && episode.siteName ? <span>Publication: {episode.siteName}</span> : null}
             </div>
             {episode.status === "RUNNING" || episode.status === "QUEUED" ? (
-              <div className="text-xs text-zinc-500">Generating…</div>
+              <div className="text-[12px] text-muted-foreground">Generating…</div>
             ) : null}
           </div>
 
@@ -164,12 +164,13 @@ export default function EpisodesClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
           {filters.map((option) => (
             <Button
               key={option}
               size="sm"
-              variant={filter === option ? "default" : "outline"}
+              variant={filter === option ? "default" : "ghost"}
+              className={filter === option ? "text-white" : "text-muted-foreground"}
               onClick={() => setFilter(option)}
             >
               {option}
@@ -181,7 +182,7 @@ export default function EpisodesClient({
             placeholder="Search episodes"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="h-9 w-48"
+            className="w-48"
           />
           <Button
             size="sm"
@@ -196,7 +197,7 @@ export default function EpisodesClient({
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-zinc-500">
+          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
             No episodes yet.
           </CardContent>
         </Card>
@@ -204,7 +205,7 @@ export default function EpisodesClient({
         <div className="space-y-4">
           {inProgress.length > 0 ? (
             <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                 In progress
               </div>
               {inProgress.map(renderEpisode)}
@@ -213,7 +214,7 @@ export default function EpisodesClient({
           {rest.length > 0 ? (
             <div className="space-y-3">
               {inProgress.length > 0 ? (
-                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                   Library
                 </div>
               ) : null}

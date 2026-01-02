@@ -46,14 +46,16 @@ export default async function EpisodeDetailPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <div className="text-sm text-zinc-500">{episode.site.name}</div>
+          <div className="text-[12px] text-muted-foreground">{episode.site.name}</div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold">{episode.title}</h1>
             <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
               {statusLabel}
             </Badge>
           </div>
-          <div className="text-sm text-zinc-500">Source: {getDomainFromUrl(episode.sourceUrl)}</div>
+          <div className="text-[13px] text-muted-foreground">
+            Source: {getDomainFromUrl(episode.sourceUrl)}
+          </div>
         </div>
         <EmbedButton
           publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
@@ -68,19 +70,19 @@ export default async function EpisodeDetailPage({
         </CardHeader>
         <CardContent>
           {episode.status === "CANCELLED" ? (
-            <div className="mb-3 text-sm text-amber-700">
+            <div className="mb-3 text-[13px] text-amber-700">
               Generation was cancelled.
             </div>
           ) : null}
           {episode.errorMessage && episode.status !== "CANCELLED" ? (
-            <div className="mb-3 text-sm text-red-600">
+            <div className="mb-3 text-[13px] text-red-600">
               Generation failed: {episode.errorMessage}
             </div>
           ) : null}
           {episode.status === "PUBLISHED" ? (
             <AudioPlayer publicId={episode.publicId} />
           ) : (
-            <div className="text-sm text-zinc-500">
+            <div className="text-[13px] text-muted-foreground">
               Audio will be available once the episode is published.
             </div>
           )}
@@ -91,7 +93,7 @@ export default async function EpisodeDetailPage({
         <CardHeader>
           <CardTitle>Transcript</CardTitle>
         </CardHeader>
-        <CardContent className="whitespace-pre-wrap text-sm text-zinc-700">
+        <CardContent className="whitespace-pre-wrap text-[13px] text-foreground">
           {episode.transcriptText || "Transcript will appear after publishing."}
         </CardContent>
       </Card>
@@ -102,13 +104,15 @@ export default async function EpisodeDetailPage({
         </CardHeader>
         <CardContent>
           {chapters.length === 0 ? (
-            <div className="text-sm text-zinc-500">No chapters yet.</div>
+            <div className="text-[13px] text-muted-foreground">No chapters yet.</div>
           ) : (
-            <ul className="space-y-2 text-sm text-zinc-600">
+            <ul className="space-y-2 text-[13px] text-muted-foreground">
               {chapters.map((chapter, index) => (
                 <li key={`${chapter.title}-${index}`}>
-                  <span className="font-semibold text-zinc-800">{chapter.title}</span>
-                  <span className="ml-2 text-xs text-zinc-400">~{chapter.startApproxSec}s</span>
+                  <span className="font-semibold text-foreground">{chapter.title}</span>
+                  <span className="ml-2 text-[12px] text-muted-foreground">
+                    ~{chapter.startApproxSec}s
+                  </span>
                 </li>
               ))}
             </ul>
@@ -120,7 +124,7 @@ export default async function EpisodeDetailPage({
         <CardHeader>
           <CardTitle>Embed</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm">
+        <CardContent className="space-y-4 text-[13px]">
           <CopyField label="Hosted player URL" value={playerUrl} />
           <CopyField label="Iframe snippet" value={iframeSnippet} mono />
           <CopyField label="Widget.js snippet" value={widgetSnippet} mono />

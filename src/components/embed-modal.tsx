@@ -54,7 +54,7 @@ export function EmbedModal({
         </DialogHeader>
 
         {!publicId ? (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          <div className="rounded-lg border border-border bg-muted p-4 text-[13px] text-muted-foreground">
             Publish an episode to unlock embed snippets.
           </div>
         ) : (
@@ -65,19 +65,19 @@ export function EmbedModal({
               <TabsTrigger value="link">Link</TabsTrigger>
             </TabsList>
             <TabsContent value="iframe" className="mt-4 space-y-4">
-              <p className="text-sm text-zinc-500">
+              <p className="text-[13px] text-muted-foreground">
                 Drop this iframe into any HTML page to render the player.
               </p>
               <CopyField label="Iframe snippet" value={iframeSnippet} mono />
             </TabsContent>
             <TabsContent value="widget" className="mt-4 space-y-4">
-              <p className="text-sm text-zinc-500">
+              <p className="text-[13px] text-muted-foreground">
                 Use the widget script to auto-inject the iframe wherever the script loads.
               </p>
               <CopyField label="Widget.js snippet" value={widgetSnippet} mono />
             </TabsContent>
             <TabsContent value="link" className="mt-4 space-y-4">
-              <p className="text-sm text-zinc-500">
+              <p className="text-[13px] text-muted-foreground">
                 Share the hosted player link directly.
               </p>
               <CopyField label="Hosted player URL" value={playerUrl} />
@@ -86,8 +86,8 @@ export function EmbedModal({
         )}
 
         {publicId ? (
-          <div className="mt-4 flex items-center justify-between rounded-lg bg-zinc-50 px-4 py-3 text-sm">
-            <div className="text-zinc-600">Want to see the live embed?</div>
+          <div className="mt-4 flex items-center justify-between rounded-lg bg-muted px-4 py-3 text-[13px]">
+            <div className="text-muted-foreground">Want to see the live embed?</div>
             <Button asChild size="sm" variant="outline">
               <Link href={`/app/embed?publicId=${publicId}`}>Test embed</Link>
             </Button>

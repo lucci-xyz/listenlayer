@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
@@ -45,64 +46,66 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Analytics</h1>
-        <p className="text-sm text-zinc-500">Playback events across your latest episodes.</p>
-      </div>
-
-      <div className="rounded-xl border border-zinc-200 bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Episode</TableHead>
-              <TableHead>Workspace</TableHead>
-              <TableHead>Plays</TableHead>
-              <TableHead>25%</TableHead>
-              <TableHead>50%</TableHead>
-              <TableHead>75%</TableHead>
-              <TableHead>100%</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {episodes.length === 0 ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>Playback milestones</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-sm text-zinc-500">
-                  No analytics yet.
-                </TableCell>
+                <TableHead>Episode</TableHead>
+                <TableHead>Publication</TableHead>
+                <TableHead>Plays</TableHead>
+                <TableHead>25%</TableHead>
+                <TableHead>50%</TableHead>
+                <TableHead>75%</TableHead>
+                <TableHead>100%</TableHead>
               </TableRow>
-            ) : (
-              episodes.map((episode) => (
-                <TableRow key={episode.id}>
-                  <TableCell>
-                    <Link
-                      href={`/app/episodes/${episode.id}`}
-                      className="text-sm font-semibold text-zinc-900 underline"
-                    >
-                      {episode.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">{episode.site.name}</TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {stats[episode.id]?.plays || 0}
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {stats[episode.id]?.progress?.[25] || 0}
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {stats[episode.id]?.progress?.[50] || 0}
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {stats[episode.id]?.progress?.[75] || 0}
-                  </TableCell>
-                  <TableCell className="text-sm text-zinc-500">
-                    {stats[episode.id]?.progress?.[100] || 0}
+            </TableHeader>
+            <TableBody>
+              {episodes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-[13px] text-muted-foreground">
+                    No analytics yet.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                episodes.map((episode) => (
+                  <TableRow key={episode.id}>
+                    <TableCell>
+                      <Link
+                        href={`/app/episodes/${episode.id}`}
+                        className="text-[13px] font-semibold text-foreground underline"
+                      >
+                        {episode.title}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {episode.site.name}
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {stats[episode.id]?.plays || 0}
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {stats[episode.id]?.progress?.[25] || 0}
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {stats[episode.id]?.progress?.[50] || 0}
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {stats[episode.id]?.progress?.[75] || 0}
+                    </TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {stats[episode.id]?.progress?.[100] || 0}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

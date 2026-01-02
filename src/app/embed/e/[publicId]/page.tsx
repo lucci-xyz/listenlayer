@@ -34,14 +34,14 @@ export default async function EmbedPage({
 
   const themeClass =
     config.theme === "dark"
-      ? "bg-zinc-900 text-zinc-100 border-zinc-800"
-      : "bg-white text-zinc-900 border-zinc-200";
+      ? "bg-neutral-900 text-neutral-100 border-neutral-800"
+      : "bg-white text-neutral-900 border-neutral-200";
   const mutedClass =
     config.theme === "auto"
-      ? "embed-muted text-zinc-500"
+      ? "embed-muted text-neutral-500"
       : config.theme === "dark"
-        ? "text-zinc-400"
-        : "text-zinc-500";
+        ? "text-neutral-400"
+        : "text-neutral-500";
   const radiusClass =
     config.radius === "round"
       ? "rounded-2xl"
@@ -61,13 +61,13 @@ export default async function EmbedPage({
         <style>{`@media (prefers-color-scheme: dark){.embed-auto{background:#0b0b0b;color:#f4f4f5;border-color:#27272a}.embed-auto .embed-muted{color:#a1a1aa}}`}</style>
       ) : null}
       <div
-        className={`embed-shell embed-auto w-full max-w-xl border ${radiusClass} ${config.theme === "auto" ? "bg-white text-zinc-900 border-zinc-200" : themeClass}`}
+        className={`embed-shell embed-auto w-full max-w-xl border ${radiusClass} ${config.theme === "auto" ? "bg-white text-neutral-900 border-neutral-200" : themeClass}`}
         style={{ "--accent": config.accentColor } as CSSProperties}
       >
         <div className="px-4 py-3">
-          <div className={`text-xs uppercase tracking-widest ${mutedClass}`}>ListenLayer</div>
-          <div className="text-sm font-semibold">{episode.title}</div>
-          <div className={`text-xs ${mutedClass}`}>{episode.site.name}</div>
+          <div className={`text-[11px] uppercase tracking-[0.3em] ${mutedClass}`}>ListenLayer</div>
+          <div className="text-[13px] font-semibold">{episode.title}</div>
+          <div className={`text-[12px] ${mutedClass}`}>{episode.site.name}</div>
           <div className="mt-2">
             <AudioPlayer publicId={episode.publicId} />
           </div>

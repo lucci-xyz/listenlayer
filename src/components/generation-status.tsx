@@ -64,11 +64,13 @@ export function GenerationStatus() {
   };
 
   return (
-    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-soft">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-amber-900">Generation in progress</div>
-          <div className="text-xs text-amber-700">
+          <div className="text-[13px] font-semibold text-amber-900">
+            Generation in progress
+          </div>
+          <div className="text-[12px] text-amber-700">
             {data.activeCount} episode{data.activeCount === 1 ? "" : "s"} in the queue
           </div>
         </div>
@@ -83,7 +85,10 @@ export function GenerationStatus() {
       </div>
       <div className="mt-3 space-y-1">
         {data.activeEpisodes.map((episode) => (
-          <div key={episode.id} className="flex flex-wrap items-center gap-2 text-xs text-amber-800">
+          <div
+            key={episode.id}
+            className="flex flex-wrap items-center gap-2 text-[12px] text-amber-800"
+          >
             <Badge variant="secondary">{episode.status}</Badge>
             <span className="font-medium text-amber-900">{episode.title}</span>
             <span className="text-amber-700">• {episode.siteName}</span>

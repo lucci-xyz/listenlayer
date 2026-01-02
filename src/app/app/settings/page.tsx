@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DeleteWorkspaceDialog } from "@/components/delete-workspace-dialog";
+import { DeletePublicationDialog } from "@/components/delete-publication-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +20,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Settings</h1>
-        <p className="text-sm text-zinc-500">Account and advanced workspace details.</p>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-zinc-600">
+        <CardContent className="space-y-2 text-[13px] text-muted-foreground">
           <div>Email: {user.email}</div>
           <div>Auth bypass: {process.env.DEV_AUTH_BYPASS === "true" ? "enabled" : "disabled"}</div>
         </CardContent>
@@ -45,17 +40,17 @@ export default async function SettingsPage() {
               <AccordionItem key={site.id} value={site.id}>
                 <AccordionTrigger>{site.name}</AccordionTrigger>
                 <AccordionContent>
-                  <div className="space-y-3 text-sm text-zinc-600">
+                  <div className="space-y-3 text-[13px] text-muted-foreground">
                     <div>Domain: {site.domain || "Not set"}</div>
                     <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-rose-500">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-rose-500">
                         Danger zone
                       </div>
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs text-rose-600">
-                          Delete this workspace and all connected content.
+                        <p className="text-[12px] text-rose-600">
+                          Delete this publication and all connected content.
                         </p>
-                        <DeleteWorkspaceDialog siteId={site.id} siteName={site.name} />
+                        <DeletePublicationDialog siteId={site.id} siteName={site.name} />
                       </div>
                     </div>
                   </div>

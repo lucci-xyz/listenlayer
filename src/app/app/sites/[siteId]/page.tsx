@@ -60,16 +60,16 @@ export default async function SiteOverviewPage({
     ? `${baseUrl}/embed/e/${publishedEpisode.publicId}?${embedQuery}`
     : null;
 
-  const isNewWorkspace = site.sources.length === 0 && !latestEpisode;
+  const isNewPublication = site.sources.length === 0 && !latestEpisode;
   const styleLabel = config.size === "compact" ? "Compact" : config.size === "tall" ? "Tall" : "Standard";
   const latestStatusLabel = latestEpisode?.status === "CANCELLED" ? "Canceled" : latestEpisode?.status;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-6 shadow-soft md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-900">{site.name}</h2>
-          <p className="text-sm text-zinc-500">
+          <h2 className="text-2xl font-semibold text-foreground">{site.name}</h2>
+          <p className="text-[13px] text-muted-foreground">
             {site.sources.length} source{site.sources.length === 1 ? "" : "s"} · Auto: Off · Style: {styleLabel}
           </p>
         </div>
@@ -96,22 +96,22 @@ export default async function SiteOverviewPage({
         </div>
       </div>
 
-      {isNewWorkspace ? (
+      {isNewPublication ? (
         <Card>
           <CardHeader>
             <CardTitle>Get started in 3 steps</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-zinc-600">
+          <CardContent className="space-y-3 text-[13px] text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">1</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">1</span>
               Add a source (RSS or website).
             </div>
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">2</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">2</span>
               Choose a style preset in the Style tab.
             </div>
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs text-white">3</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">3</span>
               Copy the embed snippet and publish it.
             </div>
           </CardContent>
@@ -127,23 +127,23 @@ export default async function SiteOverviewPage({
                 {latestEpisode ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-semibold text-zinc-900">
+                      <div className="text-[13px] font-semibold text-foreground">
                         {latestEpisode.title}
                       </div>
                       <Badge variant={latestEpisode.status === "PUBLISHED" ? "default" : "secondary"}>
                         {latestStatusLabel}
                       </Badge>
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-[12px] text-muted-foreground">
                         {formatRelativeTime(latestEpisode.createdAt)}
                       </span>
                     </div>
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-[12px] text-muted-foreground">
                       Source: {getDomainFromUrl(latestEpisode.sourceUrl)}
                     </div>
                     {latestEpisode.status === "PUBLISHED" ? (
                       <AudioPlayer publicId={latestEpisode.publicId} />
                     ) : (
-                      <p className="text-sm text-zinc-500">
+                      <p className="text-[13px] text-muted-foreground">
                         Audio will appear once the episode is published.
                       </p>
                     )}
@@ -152,7 +152,7 @@ export default async function SiteOverviewPage({
                     </Button>
                   </>
                 ) : (
-                  <p className="text-sm text-zinc-500">No episodes yet.</p>
+                  <p className="text-[13px] text-muted-foreground">No episodes yet.</p>
                 )}
               </CardContent>
             </Card>
@@ -164,7 +164,7 @@ export default async function SiteOverviewPage({
               <CardContent className="space-y-4">
                 {embedUrl ? (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-zinc-200 bg-white">
+                    <div className="rounded-xl border border-border bg-white">
                       <iframe
                         title="Embed preview"
                         src={embedUrl}
@@ -178,7 +178,7 @@ export default async function SiteOverviewPage({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-[13px] text-muted-foreground">
                     Publish an episode to preview the embed.
                   </p>
                 )}
@@ -189,14 +189,14 @@ export default async function SiteOverviewPage({
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Sources</div>
-                <div className="text-2xl font-semibold text-zinc-900">{site.sources.length}</div>
-                <div className="text-sm text-zinc-500">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Sources</div>
+                <div className="text-2xl font-semibold text-foreground">{site.sources.length}</div>
+                <div className="text-[13px] text-muted-foreground">
                   {primarySource
                     ? `Primary: ${getDomainFromUrl(primarySource.url)}`
                     : "Add your first source"}
                 </div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
                   <Link href={`/app/sites/${site.id}/sources`}>View sources →</Link>
                 </Button>
               </CardContent>
@@ -204,12 +204,12 @@ export default async function SiteOverviewPage({
 
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Style</div>
-                <div className="text-2xl font-semibold text-zinc-900">{styleLabel}</div>
-                <div className="text-sm text-zinc-500">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Style</div>
+                <div className="text-2xl font-semibold text-foreground">{styleLabel}</div>
+                <div className="text-[13px] text-muted-foreground">
                   Theme: {config.theme} · Radius: {config.radius}
                 </div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
                   <Link href={`/app/sites/${site.id}/style`}>Edit style →</Link>
                 </Button>
               </CardContent>
@@ -217,10 +217,10 @@ export default async function SiteOverviewPage({
 
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Analytics</div>
-                <div className="text-2xl font-semibold text-zinc-900">{playbackPlays}</div>
-                <div className="text-sm text-zinc-500">{playbackCompletions} completions</div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-zinc-600">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Analytics</div>
+                <div className="text-2xl font-semibold text-foreground">{playbackPlays}</div>
+                <div className="text-[13px] text-muted-foreground">{playbackCompletions} completions</div>
+                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
                   <Link href="/app/analytics">View analytics →</Link>
                 </Button>
               </CardContent>

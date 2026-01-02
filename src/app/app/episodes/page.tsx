@@ -34,10 +34,6 @@ export default async function EpisodesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Episodes</h1>
-        <p className="text-sm text-zinc-500">All episodes across your workspaces.</p>
-      </div>
       <EpisodesClient episodes={items} baseUrl={baseUrl} showSite />
     </div>
   );

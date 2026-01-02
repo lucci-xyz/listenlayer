@@ -82,9 +82,16 @@ DEV_AUTH_BYPASS=true
 
 ## Generate an episode
 1. Log in and click **Add site**.
-2. Paste a website or RSS feed, choose a format, and generate your first episode.
+2. Paste a link, choose whether to keep it synced or just generate once, pick a format, and generate your first episode.
 3. Watch the Inngest dev server logs to see the job progress.
 4. Visit **Embeds** for the hosted player URL and copyable snippets.
+
+## Onboarding detection checklist
+- Pasting a valid RSS URL offers “Keep it synced” and allows continuing.
+- Pasting a blog homepage with a `<link rel=\"alternate\">` feed enables “Keep it synced”.
+- Pasting a Substack profile URL like `https://substack.com/@username` resolves to the publication and finds `/feed`.
+- Pasting a non-feed homepage without a feed disables Continue with guidance to paste a post URL.
+- Pasting a specific article URL enables the “Just this one” path.
 
 ## Embed testing
 Create a simple HTML file and paste:

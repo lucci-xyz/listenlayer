@@ -30,7 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
-// Represents a content source connected to a workspace.
+// Represents a content source connected to a publication.
 type Source = {
   id: string;
   type: "RSS" | "URL";
@@ -45,13 +45,21 @@ type Source = {
 };
 
 type DiscoveryResult = {
-  detectedType: "RSS" | "URL";
-  sourceUrl: string;
-  pageUrl: string;
-  siteName: string;
-  domain: string;
-  iconUrl?: string | null;
-  rssUrl?: string | null;
+  kind: "feed" | "article" | "website" | "unknown";
+  platformHint?: string | null;
+  feeds: {
+    url: string;
+    title?: string;
+    type: "rss" | "atom";
+    itemCount?: number;
+    latestItemTitle?: string;
+    latestItemUrl?: string;
+  }[];
+  recommendedFeedUrl?: string | null;
+  canonicalUrl: string;
+  origin: string;
+  displayName: string;
+  faviconUrl?: string | null;
 };
 
 export default function SourcesClient({
@@ -98,12 +106,17 @@ export default function SourcesClient({
       }
       const data = (await res.json()) as DiscoveryResult;
       setDiscovery(data);
-      setSourceType(data.detectedType);
-      if (data.rssUrl) {
-        setSourceUrl(data.sourceUrl);
+      if (data.kind === "feed") {
+        const feedUrl = data.recommendedFeedUrl || data.feeds?.[0]?.url || "";
+        setSourceType("RSS");
+        setSourceUrl(feedUrl);
+      } else if (data.kind === "article") {
+        setSourceType("URL");
+        setSourceUrl(data.canonicalUrl);
       } else {
+        setSourceType("URL");
         setSourceUrl("");
-        setError("No RSS feed found. Use a Single URL instead.");
+        setError("No auto-sync feed found. Use a Single URL instead.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Detection failed");
@@ -122,8 +135,8 @@ export default function SourcesClient({
               siteId,
               type: sourceType,
               url: sourceUrl,
-              displayName: discovery?.siteName,
-              faviconUrl: discovery?.iconUrl || undefined,
+              displayName: discovery?.displayName,
+              faviconUrl: discovery?.faviconUrl || undefined,
             }
           : { siteId, type: mode === "rss" ? "RSS" : "URL", url: inputUrl };
 
@@ -185,15 +198,17 @@ export default function SourcesClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-900">Sources</h2>
-          <p className="text-sm text-zinc-500">Connect feeds and URLs to generate new episodes.</p>
+          <h2 className="text-lg font-semibold text-foreground">Sources</h2>
+          <p className="text-[13px] text-muted-foreground">
+            Connect feeds and URLs to generate new episodes.
+          </p>
         </div>
         <Button onClick={() => setOpen(true)}>Add source</Button>
       </div>
 
       {sources.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-zinc-500">
+          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
             No sources yet. Add a website or RSS feed to start.
           </CardContent>
         </Card>
@@ -219,20 +234,20 @@ export default function SourcesClient({
                 <CardContent className="space-y-4 p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={favicon} alt="" className="h-6 w-6" />
                       </div>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-sm font-semibold text-zinc-900">{displayName}</div>
+                          <div className="text-[13px] font-semibold text-foreground">{displayName}</div>
                           <Badge variant="secondary">
                             {typeLabel}
                           </Badge>
                         </div>
-                        <div className="text-xs text-zinc-500">{domain}</div>
+                        <div className="text-[12px] text-muted-foreground">{domain}</div>
                         {source.type === "RSS" && source.latestItemTitle ? (
-                          <div className="text-xs text-zinc-500">
+                          <div className="text-[12px] text-muted-foreground">
                             Latest item: {source.latestItemTitle}
                           </div>
                         ) : null}
@@ -258,11 +273,11 @@ export default function SourcesClient({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="rounded-full border border-zinc-200 px-2 py-1">
+                          <span className="rounded-full border border-border px-2 py-1">
                             {source.lastFetchedAt
                               ? `Checked ${formatRelativeTime(source.lastFetchedAt)}`
                               : "Never checked"}
@@ -274,7 +289,7 @@ export default function SourcesClient({
                       </Tooltip>
                     </TooltipProvider>
                     {source.lastFetchStatus ? (
-                      <span className="rounded-full border border-zinc-200 px-2 py-1">
+                      <span className="rounded-full border border-border px-2 py-1">
                         Status: {source.lastFetchStatus}
                       </span>
                     ) : null}
@@ -285,8 +300,8 @@ export default function SourcesClient({
                       <AccordionTrigger>Details</AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs">
-                            <span className="truncate text-zinc-600">{source.url}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[12px]">
+                            <span className="truncate text-muted-foreground">{source.url}</span>
                             <Button
                               size="sm"
                               variant="outline"
@@ -296,7 +311,7 @@ export default function SourcesClient({
                             </Button>
                           </div>
                           {source.lastError ? (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
                               {source.lastError}
                             </div>
                           ) : null}
@@ -308,10 +323,10 @@ export default function SourcesClient({
                               <GenerateButton siteId={siteId} sourceId={source.id} count={10} label="Last 10" />
                             </div>
                           ) : null}
-                          <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-[12px]">
                             <div>
-                              <div className="font-semibold text-zinc-700">Auto publish</div>
-                              <div className="text-zinc-400">Coming soon</div>
+                              <div className="font-semibold text-foreground">Auto publish</div>
+                              <div className="text-muted-foreground">Coming soon</div>
                             </div>
                             <Switch checked={false} disabled />
                           </div>
@@ -333,7 +348,7 @@ export default function SourcesClient({
             <DialogDescription>Choose how you want to connect your content.</DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
             {([
               { key: "website", label: "Website (recommended)" },
               { key: "rss", label: "RSS feed" },
@@ -342,7 +357,8 @@ export default function SourcesClient({
               <Button
                 key={option.key}
                 size="sm"
-                variant={mode === option.key ? "default" : "outline"}
+                variant={mode === option.key ? "default" : "ghost"}
+                className={mode === option.key ? "text-white" : "text-muted-foreground"}
                 onClick={() => {
                   setMode(option.key);
                   setDiscovery(null);
@@ -368,7 +384,7 @@ export default function SourcesClient({
               onChange={(event) => setInputUrl(event.target.value)}
             />
             {mode === "url" ? (
-              <p className="text-xs text-zinc-500">
+              <p className="text-[12px] text-muted-foreground">
                 Paste a specific article URL. Homepages without articles will be rejected.
               </p>
             ) : null}
@@ -380,16 +396,24 @@ export default function SourcesClient({
             ) : null}
 
             {discovery ? (
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+              <div className="rounded-lg border border-border bg-muted p-3 text-[13px]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-zinc-900">{discovery.siteName}</div>
-                    <div className="text-xs text-zinc-500">{discovery.domain}</div>
+                    <div className="font-semibold text-foreground">{discovery.displayName}</div>
+                    <div className="text-[12px] text-muted-foreground">
+                      {getDomainFromUrl(discovery.origin)}
+                    </div>
                   </div>
-                  <Badge variant="secondary">{discovery.detectedType}</Badge>
+                  <Badge variant="secondary">
+                    {discovery.kind === "feed"
+                      ? "Feed found"
+                      : discovery.kind === "article"
+                        ? "Post detected"
+                        : "Website detected"}
+                  </Badge>
                 </div>
-                {!discovery.rssUrl ? (
-                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                {discovery.kind === "website" || discovery.kind === "unknown" ? (
+                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
                     No RSS feed found. Switch to Single URL to generate from a specific article.
                     <div className="mt-2">
                       <Button
@@ -397,7 +421,7 @@ export default function SourcesClient({
                         variant="outline"
                         onClick={() => {
                           setMode("url");
-                          setInputUrl(discovery.pageUrl);
+                          setInputUrl(discovery.canonicalUrl);
                           setDiscovery(null);
                           setError(null);
                         }}
@@ -407,38 +431,40 @@ export default function SourcesClient({
                     </div>
                   </div>
                 ) : null}
-                <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={sourceType === "RSS"}
-                      onChange={() => {
-                        if (discovery.rssUrl) {
-                          setSourceType("RSS");
-                          setSourceUrl(discovery.rssUrl);
-                        }
-                      }}
-                      disabled={!discovery.rssUrl}
-                    />
-                    RSS feed
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={sourceType === "URL"}
-                      onChange={() => {
-                        setSourceType("URL");
-                        setSourceUrl(discovery.pageUrl);
-                      }}
-                      disabled={!discovery.rssUrl}
-                    />
-                    Website URL
-                  </label>
-                </div>
+                {discovery.kind === "feed" ? (
+                  <div className="mt-2 flex flex-wrap gap-3 text-[12px]">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={sourceType === "RSS"}
+                        onChange={() => {
+                          const feedUrl = discovery.recommendedFeedUrl || discovery.feeds?.[0]?.url || "";
+                          if (feedUrl) {
+                            setSourceType("RSS");
+                            setSourceUrl(feedUrl);
+                          }
+                        }}
+                      />
+                      RSS feed
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={sourceType === "URL"}
+                        onChange={() => {
+                          const latestUrl = discovery.feeds?.[0]?.latestItemUrl || discovery.canonicalUrl;
+                          setSourceType("URL");
+                          setSourceUrl(latestUrl);
+                        }}
+                      />
+                      Latest post URL
+                    </label>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
-            {error ? <div className="text-sm text-red-600">{error}</div> : null}
+            {error ? <div className="text-[13px] text-red-600">{error}</div> : null}
           </div>
 
           <DialogFooter className="mt-4">

@@ -23,7 +23,7 @@ export function CopyField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
           {label}
         </div>
         <Button size="sm" variant="outline" onClick={handleCopy}>
@@ -31,7 +31,7 @@ export function CopyField({
         </Button>
       </div>
       <div
-        className={`rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700 ${
+        className={`rounded-lg border border-border bg-muted px-3 py-2 text-[12px] text-foreground ${
           mono ? "font-mono" : ""
         }`}
       >

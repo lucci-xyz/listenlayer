@@ -35,9 +35,11 @@ export default async function EmbedPreviewPage({
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <p className="text-sm text-zinc-500">Create a workspace to preview embeds.</p>
+          <p className="text-[13px] text-muted-foreground">
+            Create a publication to preview embeds.
+          </p>
           <Button asChild className="mt-4">
-            <Link href="/app/onboarding">Add workspace</Link>
+            <Link href="/app/onboarding">Add publication</Link>
           </Button>
         </CardContent>
       </Card>
@@ -67,12 +69,6 @@ export default async function EmbedPreviewPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Embed preview</h1>
-          <p className="text-sm text-zinc-500">
-            See how your player will appear inside any article layout.
-          </p>
-        </div>
         <EmbedButton
           label="Copy embed"
           publicId={episode?.publicId || null}
@@ -81,13 +77,14 @@ export default async function EmbedPreviewPage({
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
         {sites.map((site) => (
           <Button
             key={site.id}
             asChild
             size="sm"
-            variant={site.id === activeSite.id ? "default" : "outline"}
+            variant={site.id === activeSite.id ? "default" : "ghost"}
+            className={site.id === activeSite.id ? "text-white" : "text-muted-foreground"}
           >
             <Link href={`/app/embed?siteId=${site.id}`}>{site.name}</Link>
           </Button>
@@ -101,7 +98,7 @@ export default async function EmbedPreviewPage({
           </CardHeader>
           <CardContent>
             {embedUrl ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <div className="rounded-xl border border-border bg-white p-4">
                 <iframe
                   title="Embed preview"
                   src={embedUrl}
@@ -111,7 +108,9 @@ export default async function EmbedPreviewPage({
                 />
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">Publish an episode to preview the embed.</p>
+              <p className="text-[13px] text-muted-foreground">
+                Publish an episode to preview the embed.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -120,18 +119,18 @@ export default async function EmbedPreviewPage({
           <CardHeader>
             <CardTitle>Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
+          <CardContent className="space-y-4 text-[13px]">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                Workspace
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                Publication
               </div>
-              <div className="text-sm text-zinc-900">{activeSite.name}</div>
+              <div className="text-[13px] text-foreground">{activeSite.name}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                 Latest publish
               </div>
-              <div className="text-sm text-zinc-600">
+              <div className="text-[13px] text-muted-foreground">
                 {episode?.publishedAt
                   ? formatRelativeTime(episode.publishedAt)
                   : "No published episodes yet"}

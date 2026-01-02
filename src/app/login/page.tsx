@@ -46,69 +46,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 py-12">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Welcome to ListenLayer</CardTitle>
-          <p className="text-sm text-zinc-500">
-            Use the demo credentials or create your own account.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login" className="mt-4 space-y-4">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-              />
-              <Button className="w-full" onClick={handleLogin}>
-                Sign in
-              </Button>
-              <div className="text-xs text-zinc-500">
-                Demo: demo@listenlayer.local / demo1234
-              </div>
-            </TabsContent>
-            <TabsContent value="register" className="mt-4 space-y-4">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={registerEmail}
-                onChange={(e) => setRegisterEmail(e.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="Password (min 6 chars)"
-                value={registerPassword}
-                onChange={(e) => setRegisterPassword(e.target.value)}
-              />
-              <Button className="w-full" onClick={handleRegister}>
-                Create account
-              </Button>
-            </TabsContent>
-          </Tabs>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          {info ? <p className="text-sm text-emerald-600">{info}</p> : null}
-          <div className="text-xs text-zinc-500">
-            Need to bypass auth? Set DEV_AUTH_BYPASS=true and head to the
-            <Link className="ml-1 text-zinc-900 underline" href="/app">
-              dashboard
-            </Link>
-            .
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+      <div className="w-full max-w-lg">
+        <div className="mb-6 text-center">
+          <div className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
+            ListenLayer
           </div>
-        </CardContent>
-      </Card>
+          <h1 className="mt-3 text-2xl font-semibold text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            Sign in to manage your audio publications or create a new account.
+          </p>
+        </div>
+        <Card className="rounded-2xl shadow-soft-lg">
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <Tabs defaultValue="login">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="register">Register</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login" className="mt-5 space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
+                <Button
+                  className="w-full bg-neutral-900 text-white hover:bg-neutral-800"
+                  onClick={handleLogin}
+                >
+                  Sign in
+                </Button>
+                <div className="text-[12px] text-muted-foreground">
+                  Demo: demo@listenlayer.local / demo1234
+                </div>
+              </TabsContent>
+              <TabsContent value="register" className="mt-5 space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={registerEmail}
+                  onChange={(e) => setRegisterEmail(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder="Password (min 6 chars)"
+                  value={registerPassword}
+                  onChange={(e) => setRegisterPassword(e.target.value)}
+                />
+                <Button
+                  className="w-full bg-neutral-900 text-white hover:bg-neutral-800"
+                  onClick={handleRegister}
+                >
+                  Create account
+                </Button>
+              </TabsContent>
+            </Tabs>
+            {error ? <p className="text-[13px] text-red-600">{error}</p> : null}
+            {info ? <p className="text-[13px] text-emerald-600">{info}</p> : null}
+            <div className="text-[12px] text-muted-foreground">
+              Need to bypass auth? Set DEV_AUTH_BYPASS=true and head to the
+              <Link className="ml-1 text-foreground underline" href="/app">
+                dashboard
+              </Link>
+              .
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

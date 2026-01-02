@@ -105,8 +105,10 @@ export default function StyleClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-900">Style Studio</h2>
-          <p className="text-sm text-zinc-500">Design the embed player once. It updates everywhere.</p>
+          <h2 className="text-lg font-semibold text-foreground">Style Studio</h2>
+          <p className="text-[13px] text-muted-foreground">
+            Design the embed player once. It updates everywhere.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <EmbedButton
@@ -128,7 +130,7 @@ export default function StyleClient({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Presets</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Presets</div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(presets).map(([name, preset]) => (
                   <Button
@@ -144,7 +146,7 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Theme</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Theme</div>
               <div className="flex flex-wrap gap-2">
                 {themeOptions.map((option) => (
                   <Button
@@ -160,13 +162,13 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Accent</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Accent</div>
               <div className="flex flex-wrap items-center gap-2">
                 {swatches.map((swatch) => (
                   <button
                     key={swatch}
                     type="button"
-                    className={`h-8 w-8 rounded-full border ${config.accentColor === swatch ? "border-zinc-900" : "border-zinc-200"}`}
+                    className={`h-8 w-8 rounded-full border ${config.accentColor === swatch ? "border-foreground" : "border-border"}`}
                     style={{ backgroundColor: swatch }}
                     onClick={() => setConfig((prev) => ({ ...prev, accentColor: swatch }))}
                   />
@@ -196,7 +198,7 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Layout</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Layout</div>
               <div className="flex flex-wrap gap-2">
                 {radiusOptions.map((option) => (
                   <Button
@@ -224,12 +226,12 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Features</div>
-              <div className="grid gap-3 text-sm">
-                <label className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Features</div>
+              <div className="grid gap-3 text-[13px]">
+                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <span>
-                    <div className="font-medium text-zinc-700">Chapters</div>
-                    <div className="text-xs text-zinc-400">Show the chapters list.</div>
+                    <div className="font-medium text-foreground">Chapters</div>
+                    <div className="text-[12px] text-muted-foreground">Show the chapters list.</div>
                   </span>
                   <Switch
                     checked={config.showChapters}
@@ -238,10 +240,10 @@ export default function StyleClient({
                     }
                   />
                 </label>
-                <label className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <span>
-                    <div className="font-medium text-zinc-700">Transcript</div>
-                    <div className="text-xs text-zinc-400">Allow readers to open the transcript.</div>
+                    <div className="font-medium text-foreground">Transcript</div>
+                    <div className="text-[12px] text-muted-foreground">Allow readers to open the transcript.</div>
                   </span>
                   <Switch
                     checked={config.showTranscript}
@@ -250,10 +252,10 @@ export default function StyleClient({
                     }
                   />
                 </label>
-                <label className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <span>
-                    <div className="font-medium text-zinc-700">Open player</div>
-                    <div className="text-xs text-zinc-400">Show the full player link.</div>
+                    <div className="font-medium text-foreground">Open player</div>
+                    <div className="text-[12px] text-muted-foreground">Show the full player link.</div>
                   </span>
                   <Switch
                     checked={config.showOpenPlayer}
@@ -265,7 +267,7 @@ export default function StyleClient({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-[13px]">
               {saving ? <Badge variant="secondary">Saving…</Badge> : null}
               {saved ? <Badge variant="secondary">Saved</Badge> : null}
               {error ? <span className="text-red-600">{error}</span> : null}
@@ -279,8 +281,8 @@ export default function StyleClient({
           </CardHeader>
           <CardContent>
             {previewUrl ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <div className="mb-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-400">
+              <div className="rounded-xl border border-border bg-white p-4">
+                <div className="mb-3 rounded-lg border border-dashed border-border bg-muted p-3 text-[12px] text-muted-foreground">
                   Article container preview
                 </div>
                 <iframe
@@ -292,7 +294,7 @@ export default function StyleClient({
                 />
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">
+              <p className="text-[13px] text-muted-foreground">
                 Publish an episode to see the live embed preview.
               </p>
             )}
