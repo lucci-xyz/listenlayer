@@ -24,24 +24,53 @@ enum PlaybackKind {
   progress
 }
 
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String?
-  createdAt    DateTime @default(now())
-  sites        Site[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  passwordHash          String?
+  stripeCustomerId      String?             @unique
+  subscriptionId        String?             @unique
+  subscriptionStatus    SubscriptionStatus?
+  subscriptionPriceId   String?
+  subscriptionCurrentPeriodEnd DateTime?
+  episodeCredits        Int                 @default(3)
+  createdAt             DateTime            @default(now())
+  sites                 Site[]
+  usageRecords          UsageRecord[]
+}
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  episodeId String?
+  credits   Int
+  reason    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Site {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  domain    String?
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  domain      String?
+  faviconUrl  String?
   embedConfig Json?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sources   Source[]
-  episodes  Episode[]
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources     Source[]
+  episodes    Episode[]
 }
 
 model Source {

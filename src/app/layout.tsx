@@ -1,21 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
-  variable: "--font-inter",
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "ListenLayer",
-  description: "Turn blog posts and RSS into narrated audio episodes.",
+  title: "ListenLayer — Turn your blog into audio",
+  description: "Paste a URL, get an audio version. Embed the player, track what people listen to.",
+  openGraph: {
+    title: "ListenLayer — Turn your blog into audio",
+    description: "Paste a URL, get an audio version. Embed the player, track what people listen to.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -25,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className={`${inter.variable} ${instrumentSerif.variable} antialiased`}>
         {children}
         <Toaster />
       </body>
