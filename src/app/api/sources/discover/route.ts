@@ -20,21 +20,45 @@ const COMMON_FEED_PATHS = [
 
 type FeedType = "rss" | "atom";
 
-type FeedInfo = {
-  url: string;
+type FeedSampleItem = {
   title?: string;
-  type: FeedType;
-  itemCount?: number;
-  latestItemTitle?: string;
-  latestItemUrl?: string;
+  url?: string;
+  publishedAt?: string;
+};
+
+type FeedPreview = {
+  feedUrl: string;
+  title?: string;
+  description?: string;
+  sampleItems?: FeedSampleItem[];
+};
+
+type ArticlePreview = {
+  title?: string;
+  imageUrl?: string;
+  excerpt?: string;
+  author?: string;
+  publishedAt?: string;
+  readTimeMinutes?: number;
+  siteName?: string;
+};
+
+type Candidate = {
+  canonicalUrl: string;
+  articlePreview: ArticlePreview;
+  confidence: "high" | "medium" | "low";
 };
 
 type DiscoverResult = {
-  kind: "feed" | "article" | "website" | "unknown";
+  kind: "feed" | "article" | "homepage" | "unknown";
+  confidence: "high" | "medium" | "low";
+  inputUrl: string;
+  canonicalUrl?: string;
+  articlePreview?: ArticlePreview;
+  feedPreview?: FeedPreview;
+  candidates?: Candidate[];
+  // Legacy fields for backward compatibility
   platformHint?: string | null;
-  feeds: FeedInfo[];
-  recommendedFeedUrl?: string | null;
-  canonicalUrl: string;
   origin: string;
   displayName: string;
   faviconUrl?: string | null;
@@ -84,30 +108,39 @@ function detectFeedType(text: string): FeedType {
 
 const parser = new Parser();
 
-async function parseFeedFromText(text: string, url: string): Promise<FeedInfo | null> {
+type ParsedFeed = {
+  url: string;
+  title?: string;
+  description?: string;
+  type: FeedType;
+  items: FeedSampleItem[];
+};
+
+async function parseFeedFromText(text: string, url: string): Promise<ParsedFeed | null> {
   if (!looksLikeRss(text.slice(0, 2048), "")) return null;
   try {
     const feed = await parser.parseString(text);
-    const items = feed.items || [];
-    const latest = items[0];
-    const latestItemUrl =
-      (typeof latest?.link === "string" && latest.link) ||
-      (typeof latest?.guid === "string" && latest.guid) ||
-      undefined;
+    const items = (feed.items || []).slice(0, 5).map((item) => ({
+      title: item.title || undefined,
+      url:
+        (typeof item.link === "string" && item.link) ||
+        (typeof item.guid === "string" && item.guid) ||
+        undefined,
+      publishedAt: item.pubDate || item.isoDate || undefined,
+    }));
     return {
       url,
       title: feed.title || undefined,
+      description: feed.description || undefined,
       type: detectFeedType(text),
-      itemCount: items.length,
-      latestItemTitle: (latest?.title as string) || undefined,
-      latestItemUrl,
+      items,
     };
   } catch {
     return null;
   }
 }
 
-async function parseFeedFromUrl(url: string): Promise<FeedInfo | null> {
+async function parseFeedFromUrl(url: string): Promise<ParsedFeed | null> {
   try {
     const { text, contentType, finalUrl } = await fetchText(url);
     if (!looksLikeRss(text.slice(0, 2048), contentType)) return null;
@@ -164,7 +197,7 @@ function looksLikeArticleUrl(value: string) {
     if (segments.length < 2) return false;
     const last = segments[segments.length - 1] || "";
     if (last.length < 6) return false;
-    const hasYear = segments.some((segment) => /^(19|20)\\d{2}$/.test(segment));
+    const hasYear = segments.some((segment) => /^(19|20)\d{2}$/.test(segment));
     const slugLike = /[a-zA-Z]/.test(last) && /[-_]/.test(last);
     const hasLive = /live|blog|story|article|post|news/i.test(last);
     return hasYear || slugLike || hasLive;
@@ -202,11 +235,111 @@ function hasArticleMetadata(doc: Document, html: string) {
   return /LiveBlogPosting|NewsArticle|BlogPosting/i.test(html);
 }
 
+function extractArticlePreview(doc: Document, html: string, canonicalUrl: string): ArticlePreview {
+  // Title
+  const title =
+    getMetaContent(doc, 'meta[property="og:title"]') ||
+    getMetaContent(doc, 'meta[name="twitter:title"]') ||
+    doc.querySelector("h1")?.textContent?.trim() ||
+    doc.title ||
+    undefined;
+
+  // Image
+  const imageUrl =
+    getMetaContent(doc, 'meta[property="og:image"]') ||
+    getMetaContent(doc, 'meta[name="twitter:image"]') ||
+    undefined;
+
+  // Excerpt
+  const ogDescription = getMetaContent(doc, 'meta[property="og:description"]');
+  const metaDescription = getMetaContent(doc, 'meta[name="description"]');
+  const twitterDescription = getMetaContent(doc, 'meta[name="twitter:description"]');
+  const excerpt = ogDescription || metaDescription || twitterDescription || undefined;
+
+  // Author - try JSON-LD first, then meta tags
+  let author: string | undefined;
+  const scripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+  for (const script of scripts) {
+    try {
+      const json = JSON.parse(script.textContent || "");
+      const nodes = Array.isArray(json) ? json : [json];
+      for (const node of nodes) {
+        if (node?.author?.name) {
+          author = node.author.name;
+          break;
+        }
+        if (typeof node?.author === "string") {
+          author = node.author;
+          break;
+        }
+        if (Array.isArray(node?.author) && node.author[0]?.name) {
+          author = node.author[0].name;
+          break;
+        }
+      }
+      if (author) break;
+    } catch {
+      continue;
+    }
+  }
+  if (!author) {
+    author =
+      getMetaContent(doc, 'meta[name="author"]') ||
+      getMetaContent(doc, 'meta[property="article:author"]') ||
+      undefined;
+  }
+
+  // Published date - try JSON-LD first, then meta tags
+  let publishedAt: string | undefined;
+  for (const script of scripts) {
+    try {
+      const json = JSON.parse(script.textContent || "");
+      const nodes = Array.isArray(json) ? json : [json];
+      for (const node of nodes) {
+        if (node?.datePublished) {
+          publishedAt = node.datePublished;
+          break;
+        }
+      }
+      if (publishedAt) break;
+    } catch {
+      continue;
+    }
+  }
+  if (!publishedAt) {
+    publishedAt =
+      getMetaContent(doc, 'meta[property="article:published_time"]') ||
+      getMetaContent(doc, 'meta[name="date"]') ||
+      undefined;
+  }
+
+  // Site name
+  const siteName =
+    getMetaContent(doc, 'meta[property="og:site_name"]') ||
+    getMetaContent(doc, 'meta[name="application-name"]') ||
+    undefined;
+
+  // Read time - compute from word count
+  const readableText = extractReadableText(html, canonicalUrl);
+  const wordCount = readableText.split(/\s+/).filter(Boolean).length;
+  const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200)); // 200 WPM average
+
+  return {
+    title,
+    imageUrl: imageUrl ? absoluteUrl(imageUrl, canonicalUrl) : undefined,
+    excerpt,
+    author,
+    publishedAt,
+    readTimeMinutes,
+    siteName,
+  };
+}
+
 async function discoverFeedsFromDocument(
   doc: Document,
   baseUrl: string,
   origin: string
-): Promise<FeedInfo[]> {
+): Promise<ParsedFeed[]> {
   const candidates = new Set<string>();
   const alternates = Array.from(doc.querySelectorAll('link[rel~="alternate"]'));
   for (const link of alternates) {
@@ -226,7 +359,7 @@ async function discoverFeedsFromDocument(
     }
   }
 
-  const feeds: FeedInfo[] = [];
+  const feeds: ParsedFeed[] = [];
   for (const candidate of candidates) {
     const feed = await parseFeedFromUrl(candidate);
     if (feed) {
@@ -276,19 +409,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const normalized = ensureUrl(parsed.data.url.trim());
+    const inputUrl = parsed.data.url.trim();
+    const normalized = ensureUrl(inputUrl);
     const { text, contentType, finalUrl } = await fetchText(normalized);
 
+    // Direct RSS/Atom feed
     if (looksLikeRss(text.slice(0, 2048), contentType)) {
       const feed = await parseFeedFromText(text, finalUrl);
       if (feed) {
         const host = new URL(finalUrl).hostname;
         return NextResponse.json({
           kind: "feed",
-          platformHint: detectPlatform(host, new JSDOM(text).window.document, text),
-          feeds: [feed],
-          recommendedFeedUrl: feed.url,
+          confidence: "high",
+          inputUrl,
           canonicalUrl: feed.url,
+          feedPreview: {
+            feedUrl: feed.url,
+            title: feed.title,
+            description: feed.description,
+            sampleItems: feed.items.slice(0, 3),
+          },
+          platformHint: detectPlatform(host, new JSDOM(text).window.document, text),
           origin: new URL(feed.url).origin,
           displayName: feed.title || host,
           faviconUrl: `https://${host}/favicon.ico`,
@@ -316,7 +457,7 @@ export async function POST(request: Request) {
         new URL(finalUrl).hostname === "www.substack.com") &&
       (/^\/@/.test(pathname) || pathname.startsWith("/profile"));
 
-    let feeds: FeedInfo[] = [];
+    let feeds: ParsedFeed[] = [];
     let substackOrigin = getSubstackOrigin(finalUrl, doc);
     if (!substackOrigin && isSubstackProfile) {
       const guessedOrigin = guessSubstackOriginFromProfile(pathname);
@@ -356,31 +497,67 @@ export async function POST(request: Request) {
       displayName = displayName || new URL(substackOrigin).hostname;
     }
 
+    // Extract article preview for the current page
+    const articlePreview = extractArticlePreview(doc, text, canonicalUrl);
+
+    // If feeds found, return as feed with article preview as option
     if (feeds.length > 0) {
       const feedDisplayName = feeds[0]?.title || displayName;
+      const primaryFeed = feeds[0];
       return NextResponse.json({
         kind: "feed",
-        platformHint,
-        feeds,
-        recommendedFeedUrl: feeds[0]?.url || null,
+        confidence: "high",
+        inputUrl,
         canonicalUrl: substackOrigin && isSubstackProfile ? substackOrigin : canonicalUrl,
+        articlePreview: articlePreview.title ? articlePreview : undefined,
+        feedPreview: {
+          feedUrl: primaryFeed.url,
+          title: primaryFeed.title,
+          description: primaryFeed.description,
+          sampleItems: primaryFeed.items.slice(0, 3),
+        },
+        platformHint,
         origin: substackOrigin || origin,
         displayName: feedDisplayName,
         faviconUrl,
       } satisfies DiscoverResult);
     }
 
+    // No feed found - determine if article or homepage
     const readableText = extractReadableText(text, canonicalUrl);
     const wordCount = readableText.split(/\s+/).filter(Boolean).length;
     const isArticleHint = hasArticleMetadata(doc, text) || looksLikeArticleUrl(canonicalUrl);
     const isArticle = !isSubstackProfile && (wordCount >= 300 || isArticleHint);
 
+    if (isArticle) {
+      // Determine confidence based on metadata quality
+      const hasTitle = Boolean(articlePreview.title);
+      const hasImage = Boolean(articlePreview.imageUrl);
+      const hasExcerpt = Boolean(articlePreview.excerpt);
+      const metadataScore = [hasTitle, hasImage, hasExcerpt, isArticleHint].filter(Boolean).length;
+      const confidence: "high" | "medium" | "low" =
+        metadataScore >= 3 ? "high" : metadataScore >= 2 ? "medium" : "low";
+
+      return NextResponse.json({
+        kind: "article",
+        confidence,
+        inputUrl,
+        canonicalUrl,
+        articlePreview,
+        platformHint,
+        origin,
+        displayName,
+        faviconUrl,
+      } satisfies DiscoverResult);
+    }
+
+    // Homepage or unknown
     return NextResponse.json({
-      kind: isArticle ? "article" : "website",
-      platformHint,
-      feeds: [],
-      recommendedFeedUrl: null,
+      kind: "homepage",
+      confidence: "medium",
+      inputUrl,
       canonicalUrl,
+      platformHint,
       origin,
       displayName,
       faviconUrl,
