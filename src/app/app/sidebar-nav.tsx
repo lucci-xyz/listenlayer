@@ -5,10 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   AudioLines,
   LayoutGrid,
-  LineChart,
   Plus,
-  Settings,
-  SquarePlay,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,15 +13,6 @@ import { Button } from "@/components/ui/button";
 const workspaceLinks = [
   { href: "/app", label: "Overview", icon: LayoutGrid },
   { href: "/app/episodes", label: "Episodes", icon: AudioLines },
-];
-
-const insightsLinks = [
-  { href: "/app/embed", label: "Player", icon: SquarePlay },
-  { href: "/app/analytics", label: "Analytics", icon: LineChart },
-];
-
-const accountLinks = [
-  { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 export type SidebarPublication = {
@@ -77,16 +65,6 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
         </nav>
       </div>
 
-      {/* Insights section */}
-      <div>
-        <SectionLabel>Insights</SectionLabel>
-        <nav className="flex flex-col gap-0.5">
-          {insightsLinks.map((link) => (
-            <NavLink key={link.href} {...link} />
-          ))}
-        </nav>
-      </div>
-
       {/* Shows section */}
       <div>
         <div className="flex items-center justify-between px-3 py-2">
@@ -130,16 +108,6 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
             })
           )}
         </div>
-      </div>
-
-      {/* Account section */}
-      <div className="mt-auto">
-        <SectionLabel>Account</SectionLabel>
-        <nav className="flex flex-col gap-0.5">
-          {accountLinks.map((link) => (
-            <NavLink key={link.href} {...link} />
-          ))}
-        </nav>
       </div>
     </div>
   );

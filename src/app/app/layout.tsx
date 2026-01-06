@@ -28,8 +28,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        {/* Sidebar */}
-        <aside className="flex w-full flex-col border-b border-border/70 bg-card px-4 py-4 lg:w-60 lg:border-b-0 lg:border-r lg:py-5">
+        {/* Sidebar - fixed height on desktop */}
+        <aside className="flex w-full shrink-0 flex-col border-b border-border/70 bg-card px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:border-b-0 lg:border-r lg:py-5">
           {/* Logo + wordmark */}
           <Link href="/app" className="flex items-center gap-2.5 px-3">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-background text-xs font-semibold">
@@ -38,13 +38,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <span className="text-[15px] font-medium tracking-tight">ListenLayer</span>
           </Link>
           
-          {/* Navigation */}
-          <div className="mt-6 flex-1 overflow-y-auto">
+          {/* Navigation - scrollable area */}
+          <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
             <SidebarNav publications={publications} />
           </div>
           
-          {/* Bottom section */}
-          <div className="mt-4 space-y-3">
+          {/* Bottom section - always visible */}
+          <div className="mt-4 shrink-0 space-y-3">
             {/* Credits indicator - hero metric style */}
             <div className="rounded-xl border border-border/70 bg-gradient-to-br from-violet-500/5 to-transparent p-4">
               <div className="flex items-center gap-2">
@@ -67,22 +67,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               )}
             </div>
 
-            {/* User section */}
-            <div className="flex items-center gap-3 rounded-lg border border-border/70 p-3">
+            {/* User section - links to settings */}
+            <Link 
+              href="/app/settings"
+              className="group flex items-center gap-3 rounded-lg border border-border/70 p-3 transition-colors hover:bg-muted/50"
+            >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 {user.email?.slice(0, 1).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm">{user.email}</div>
+                <div className="text-xs text-muted-foreground">Settings</div>
               </div>
-            </div>
+            </Link>
             
             {process.env.DEV_AUTH_BYPASS === "true" ? null : <SignOutButton />}
           </div>
         </aside>
 
-        {/* Main content */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* Main content - scrollable */}
+        <div className="flex min-w-0 flex-1 flex-col lg:overflow-y-auto">
           <AppHeader />
           <main className="flex-1 px-6 py-6 lg:px-8">
             <GenerationStatus />
