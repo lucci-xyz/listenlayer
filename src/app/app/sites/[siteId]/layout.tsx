@@ -33,11 +33,11 @@ export default async function SiteLayout({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Link href="/app" className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-          ← All publications
+        <Link href="/app" className="text-[12px] font-medium text-muted-foreground">
+          ← All shows
         </Link>
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-lg font-semibold text-foreground">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background text-lg font-semibold text-foreground">
             {favicon ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={favicon} alt="" className="h-6 w-6" />
@@ -47,7 +47,7 @@ export default async function SiteLayout({
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">{site.name}</h1>
-            <p className="text-[13px] text-muted-foreground">Publication</p>
+            <p className="text-[13px] text-muted-foreground">Show</p>
           </div>
         </div>
       </div>

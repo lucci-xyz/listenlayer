@@ -49,22 +49,18 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
-          <div className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
-            ListenLayer
-          </div>
-          <h1 className="mt-3 text-2xl font-semibold text-foreground">
-            Welcome back
-          </h1>
+          <div className="text-[12px] font-medium text-muted-foreground">ListenLayer</div>
+          <h1 className="mt-3 text-2xl font-semibold text-foreground">Sign in</h1>
           <p className="mt-2 text-[13px] text-muted-foreground">
-            Sign in to manage your audio publications or create a new account.
+            Manage your shows and episodes.
           </p>
         </div>
-        <Card className="rounded-2xl shadow-soft-lg">
+        <Card>
           <CardContent className="flex flex-col gap-4 pt-6">
             <Tabs defaultValue="login">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger value="login">Sign in</TabsTrigger>
+                <TabsTrigger value="register">Create account</TabsTrigger>
               </TabsList>
               <TabsContent value="login" className="mt-5 space-y-4">
                 <Input
@@ -79,10 +75,7 @@ export default function LoginPage() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
-                <Button
-                  className="w-full bg-neutral-900 text-white hover:bg-neutral-800"
-                  onClick={handleLogin}
-                >
+                <Button className="w-full" onClick={handleLogin}>
                   Sign in
                 </Button>
                 <div className="text-[12px] text-muted-foreground">
@@ -102,10 +95,7 @@ export default function LoginPage() {
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
                 />
-                <Button
-                  className="w-full bg-neutral-900 text-white hover:bg-neutral-800"
-                  onClick={handleRegister}
-                >
+                <Button className="w-full" onClick={handleRegister}>
                   Create account
                 </Button>
               </TabsContent>

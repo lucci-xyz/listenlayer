@@ -105,9 +105,9 @@ export default function StyleClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Style Studio</h2>
+          <h2 className="text-lg font-semibold text-foreground">Player style</h2>
           <p className="text-[13px] text-muted-foreground">
-            Design the embed player once. It updates everywhere.
+            Set the player style once. It updates everywhere.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -130,7 +130,7 @@ export default function StyleClient({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Presets</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Presets</div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(presets).map(([name, preset]) => (
                   <Button
@@ -146,7 +146,7 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Theme</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Theme</div>
               <div className="flex flex-wrap gap-2">
                 {themeOptions.map((option) => (
                   <Button
@@ -162,13 +162,13 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Accent</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Accent</div>
               <div className="flex flex-wrap items-center gap-2">
                 {swatches.map((swatch) => (
                   <button
                     key={swatch}
                     type="button"
-                    className={`h-8 w-8 rounded-full border ${config.accentColor === swatch ? "border-foreground" : "border-border"}`}
+                    className={`h-7 w-7 rounded-md border ${config.accentColor === swatch ? "border-foreground" : "border-border/70"}`}
                     style={{ backgroundColor: swatch }}
                     onClick={() => setConfig((prev) => ({ ...prev, accentColor: swatch }))}
                   />
@@ -198,7 +198,7 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Layout</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Layout</div>
               <div className="flex flex-wrap gap-2">
                 {radiusOptions.map((option) => (
                   <Button
@@ -226,9 +226,9 @@ export default function StyleClient({
             </div>
 
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Features</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Features</div>
               <div className="grid gap-3 text-[13px]">
-                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <label className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2">
                   <span>
                     <div className="font-medium text-foreground">Chapters</div>
                     <div className="text-[12px] text-muted-foreground">Show the chapters list.</div>
@@ -240,7 +240,7 @@ export default function StyleClient({
                     }
                   />
                 </label>
-                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <label className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2">
                   <span>
                     <div className="font-medium text-foreground">Transcript</div>
                     <div className="text-[12px] text-muted-foreground">Allow readers to open the transcript.</div>
@@ -252,7 +252,7 @@ export default function StyleClient({
                     }
                   />
                 </label>
-                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <label className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2">
                   <span>
                     <div className="font-medium text-foreground">Open player</div>
                     <div className="text-[12px] text-muted-foreground">Show the full player link.</div>
@@ -281,8 +281,8 @@ export default function StyleClient({
           </CardHeader>
           <CardContent>
             {previewUrl ? (
-              <div className="rounded-xl border border-border bg-white p-4">
-                <div className="mb-3 rounded-lg border border-dashed border-border bg-muted p-3 text-[12px] text-muted-foreground">
+              <div className="rounded-lg border border-border/70 bg-background p-4">
+                <div className="mb-3 rounded-lg border border-dashed border-border/70 bg-muted/60 p-3 text-[12px] text-muted-foreground">
                   Article container preview
                 </div>
                 <iframe

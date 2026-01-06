@@ -15,16 +15,9 @@ import { Button } from "@/components/ui/button";
 const navLinks = [
   { href: "/app", label: "Overview", icon: LayoutGrid },
   { href: "/app/episodes", label: "Episodes", icon: AudioLines },
-  { href: "/app/embed", label: "Embed preview", icon: SquarePlay },
+  { href: "/app/embed", label: "Player", icon: SquarePlay },
   { href: "/app/analytics", label: "Analytics", icon: LineChart },
   { href: "/app/settings", label: "Settings", icon: SlidersHorizontal },
-];
-
-const publicationSwatches = [
-  "from-rose-500 to-orange-400",
-  "from-indigo-500 to-sky-400",
-  "from-emerald-500 to-lime-400",
-  "from-amber-500 to-rose-400",
 ];
 
 export type SidebarPublication = {
@@ -49,10 +42,10 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                "flex h-8 items-center gap-2.5 rounded-md px-3 text-[13px] font-normal transition-colors",
                 isActive
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-sidebar-accent text-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -63,40 +56,36 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
       </nav>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          <span>Publications</span>
+        <div className="flex items-center justify-between px-2 text-[12px] font-medium text-muted-foreground">
+          <span>Shows</span>
           <Button asChild size="icon-sm" variant="ghost">
-            <Link href="/app/onboarding" aria-label="Add publication">
+            <Link href="/app/onboarding" aria-label="Add show">
               +
             </Link>
           </Button>
         </div>
         <div className="space-y-1">
           {publications.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
-              No publications yet.
+            <div className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-[12px] text-muted-foreground">
+              No shows yet.
             </div>
           ) : (
-            publications.map((publication, index) => {
+            publications.map((publication) => {
               const isActive = pathname.startsWith(`/app/sites/${publication.id}`);
-              const swatch = publicationSwatches[index % publicationSwatches.length];
               return (
                 <Link
                   key={publication.id}
                   href={`/app/sites/${publication.id}`}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors",
+                    "flex h-8 items-center gap-2.5 rounded-md px-3 text-[13px] font-normal transition-colors",
                     isActive
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-sidebar-accent text-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   )}
                   >
-                    <div
-                      className={cn(
-                        "h-6 w-6 rounded-md bg-gradient-to-br",
-                        swatch
-                      )}
-                    />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border/70 bg-background text-[11px] font-medium text-foreground">
+                      {publication.name.slice(0, 1).toUpperCase()}
+                    </div>
                     <span className="truncate">{publication.name}</span>
                   </Link>
               );

@@ -8,9 +8,9 @@ export function Toaster() {
       position="top-right"
       toastOptions={{
         classNames: {
-          toast: "bg-white border border-border text-foreground shadow-soft-lg",
+          toast: "bg-card border border-border/70 text-foreground",
           description: "text-muted-foreground",
-          actionButton: "bg-neutral-900 text-white",
+          actionButton: "bg-primary text-primary-foreground",
           cancelButton: "bg-muted text-foreground",
         },
       }}

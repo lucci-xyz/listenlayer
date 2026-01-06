@@ -80,9 +80,15 @@ async function generateScriptAndChapters(
   try {
     const parsed = extractJsonObject(output);
     const script = typeof parsed.script === "string" ? parsed.script.trim() : "";
-    const rawChapters = Array.isArray(parsed.chapters) ? parsed.chapters : [];
+    type ChapterInput = { title?: unknown; startApproxSec?: unknown };
+    const rawChapters = Array.isArray(parsed.chapters)
+      ? (parsed.chapters as ChapterInput[])
+      : [];
     const chapters = rawChapters
-      .filter((chapter) => chapter && typeof chapter.title === "string")
+      .filter(
+        (chapter): chapter is ChapterInput & { title: string } =>
+          Boolean(chapter) && typeof chapter.title === "string"
+      )
       .map((chapter, index) => ({
         title: chapter.title,
         startApproxSec:
@@ -272,7 +278,7 @@ export const generateEpisode = inngest.createFunction(
             model: "gpt-4o-mini-tts",
             voice,
             input: chunk,
-            format: "mp3",
+            response_format: "mp3",
           });
           const buffer = Buffer.from(await audio.arrayBuffer());
           buffers.push(buffer);

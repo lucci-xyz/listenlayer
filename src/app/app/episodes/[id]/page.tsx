@@ -125,7 +125,7 @@ export default async function EpisodeDetailPage({
           <CardTitle>Embed</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-[13px]">
-          <CopyField label="Hosted player URL" value={playerUrl} />
+          <CopyField label="Player URL" value={playerUrl} />
           <CopyField label="Iframe snippet" value={iframeSnippet} mono />
           <CopyField label="Widget.js snippet" value={widgetSnippet} mono />
         </CardContent>

@@ -49,7 +49,7 @@ export default async function SiteEpisodesPage({
       <div>
         <h2 className="text-lg font-semibold text-foreground">Episodes</h2>
         <p className="text-[13px] text-muted-foreground">
-          Your episode library for this publication.
+          Your episode library for this show.
         </p>
       </div>
 

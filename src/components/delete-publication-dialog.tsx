@@ -33,9 +33,9 @@ export function DeletePublicationDialog({
     try {
       const res = await fetch(`/api/sites/${siteId}`, { method: "DELETE" });
       if (!res.ok) {
-        throw new Error("Failed to delete publication");
+        throw new Error("Failed to delete show");
       }
-      toast.success("Publication deleted.");
+      toast.success("Show deleted.");
       setOpen(false);
       router.refresh();
       router.push("/app");
@@ -50,13 +50,13 @@ export function DeletePublicationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
-        Delete publication
+        Delete show
       </Button>
       <DialogContent>
         <DialogHeader>
-        <DialogTitle>Delete publication</DialogTitle>
+        <DialogTitle>Delete show</DialogTitle>
           <DialogDescription>
-            This permanently deletes the publication, sources, episodes, and analytics.
+            This permanently deletes the show, sources, episodes, and analytics.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-[13px] text-muted-foreground">
@@ -66,7 +66,7 @@ export function DeletePublicationDialog({
           <Input
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
-            placeholder="Publication name"
+            placeholder="Show name"
           />
         </div>
         <DialogFooter className="mt-2">

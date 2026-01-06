@@ -23,8 +23,8 @@ const formatOptions = [
   },
   {
     id: "tldr",
-    title: "TL;DR recap",
-    description: "Punchy, fast-paced summary.",
+    title: "Quick recap",
+    description: "Short, fast summary.",
   },
 ] as const;
 
@@ -102,7 +102,7 @@ export default function OnboardingClient() {
     setError(null);
     setManualFeedError(null);
     setMode(data.kind === "feed" ? "sync" : "one-off");
-    setSiteName(data.displayName || "New publication");
+    setSiteName(data.displayName || "New show");
     try {
       const hostname = new URL(data.origin).hostname;
       setSiteDomain(hostname);
@@ -170,7 +170,7 @@ export default function OnboardingClient() {
     if (!discovery) return;
     setError(null);
     setStep(3);
-    setProgress("Creating your publication...");
+    setProgress("Creating your show...");
 
     const sourceType = mode === "sync" ? "RSS" : "URL";
     const sourceUrl = mode === "sync" ? feedUrl : oneOffUrl;
@@ -186,7 +186,7 @@ export default function OnboardingClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: siteName, domain: siteDomain }),
       });
-      if (!siteRes.ok) throw new Error("Failed to create publication");
+      if (!siteRes.ok) throw new Error("Failed to create show");
       const siteData = await siteRes.json();
       const siteId = siteData.site.id as string;
 
@@ -254,21 +254,22 @@ export default function OnboardingClient() {
   const canSync = Boolean(feedUrl);
   const canOneOff = Boolean(oneOffUrl);
   const inputChanged = inputUrl.trim() !== detectedUrl;
-  const continueDisabled = loadingDiscovery || !inputUrl.trim() || (!inputChanged && discovery && !canContinue);
+  const continueDisabled =
+    loadingDiscovery ||
+    !inputUrl.trim() ||
+    (!inputChanged && Boolean(discovery) && !canContinue);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Create audio from a link</h1>
-        <p className="text-[13px] text-muted-foreground">
-          Paste a link once. We&apos;ll handle the rest.
-        </p>
+        <h1 className="text-2xl font-semibold text-foreground">Start a new show</h1>
+        <p className="text-[13px] text-muted-foreground">Paste a link and we&apos;ll build the first episode.</p>
       </div>
 
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle>Step 1 · Paste a link</CardTitle>
+            <CardTitle>Step 1 · Link</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -283,13 +284,13 @@ export default function OnboardingClient() {
                 }}
               />
               <p className="text-[12px] text-muted-foreground">
-                Paste a post link or homepage. We&apos;ll detect whether it can stay in sync.
+                Paste a post link or homepage. We&apos;ll detect if it can stay in sync.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={handleContinue} disabled={continueDisabled}>
-                {loadingDiscovery ? "Detecting..." : "Continue"}
+                {loadingDiscovery ? "Checking..." : "Continue"}
               </Button>
               <Button variant="outline" onClick={() => router.push("/app")}>Cancel</Button>
             </div>
@@ -302,9 +303,9 @@ export default function OnboardingClient() {
             ) : null}
 
             {discovery ? (
-              <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
+              <div className="space-y-4 rounded-lg border border-border/70 bg-background p-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                     {discovery.faviconUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={discovery.faviconUrl} alt="" className="h-6 w-6" />
@@ -341,7 +342,7 @@ export default function OnboardingClient() {
                 ) : null}
 
                 {notice ? (
-                  <Alert className="border-amber-200 bg-amber-50">
+                  <Alert className="border-amber-200/70 bg-amber-50">
                   <AlertTitle>We couldn&apos;t auto-sync this link.</AlertTitle>
                   <AlertDescription>
                     {notice}
@@ -355,16 +356,16 @@ export default function OnboardingClient() {
                 {showChoice ? (
                   discovery.kind === "feed" ? (
                     <Tabs value={mode} onValueChange={(value) => setMode(value as Mode)}>
-                      <TabsList className="rounded-full border border-border bg-white p-1 shadow-soft">
+                      <TabsList>
                         <TabsTrigger value="sync" disabled={!canSync}>
-                          Keep it synced (recommended)
+                          Keep in sync
                         </TabsTrigger>
                         <TabsTrigger value="one-off" disabled={!canOneOff}>
-                          Just this one
+                          One-time episode
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="sync">
-                        <div className="rounded-lg border border-border bg-white p-3 text-[13px] text-muted-foreground">
+                        <div className="rounded-lg border border-border/70 bg-background p-3 text-[13px] text-muted-foreground">
                           We&apos;ll watch the feed and you can generate new episodes anytime.
                           {feedUrl ? (
                             <div className="mt-2 text-[12px] text-muted-foreground">
@@ -374,7 +375,7 @@ export default function OnboardingClient() {
                         </div>
                       </TabsContent>
                       <TabsContent value="one-off">
-                        <div className="rounded-lg border border-border bg-white p-3 text-[13px] text-muted-foreground">
+                        <div className="rounded-lg border border-border/70 bg-background p-3 text-[13px] text-muted-foreground">
                           We&apos;ll use the latest post right now.
                           {latestFeedItemTitle ? (
                             <div className="mt-2 text-[12px] text-muted-foreground">
@@ -385,16 +386,16 @@ export default function OnboardingClient() {
                       </TabsContent>
                     </Tabs>
                   ) : (
-                    <div className="rounded-lg border border-border bg-white p-3 text-[13px] text-muted-foreground">
+                    <div className="rounded-lg border border-border/70 bg-background p-3 text-[13px] text-muted-foreground">
                       Just this one post
                     </div>
                   )
                 ) : null}
 
                 <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                  <span>Publication details</span>
+                  <span>Show details</span>
                   <button
-                    className="text-[12px] font-semibold text-foreground"
+                    className="text-[12px] font-medium text-foreground"
                     onClick={() => setEditing((prev) => !prev)}
                     type="button"
                   >
@@ -405,7 +406,7 @@ export default function OnboardingClient() {
                 {editing ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     <Input
-                      placeholder="Publication name"
+                      placeholder="Show name"
                       value={siteName}
                       onChange={(event) => setSiteName(event.target.value)}
                     />
@@ -423,8 +424,8 @@ export default function OnboardingClient() {
                     <AccordionContent>
                       <div className="space-y-3 text-[13px]">
                         <div>
-                          <div className="text-[12px] font-semibold text-muted-foreground">
-                            RSS (advanced)
+                          <div className="text-[12px] font-medium text-muted-foreground">
+                            Feed (advanced)
                           </div>
                           {discovery.feeds?.length ? (
                             <ul className="mt-2 space-y-1 text-[12px] text-muted-foreground">
@@ -474,17 +475,17 @@ export default function OnboardingClient() {
       {step === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle>Step 2 · Choose your format</CardTitle>
+            <CardTitle>Step 2 · Format</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               {formatOptions.map((option) => (
                 <button
                   key={option.id}
-                  className={`rounded-xl border p-4 text-left transition ${
+                  className={`rounded-lg border p-4 text-left transition ${
                     format === option.id
-                      ? "border-foreground bg-white shadow-soft"
-                      : "border-border bg-muted hover:border-muted-foreground/40"
+                      ? "border-foreground/50 bg-background"
+                      : "border-border/70 bg-muted/60 hover:border-muted-foreground/40"
                   }`}
                   onClick={() => setFormat(option.id)}
                   type="button"
@@ -498,7 +499,7 @@ export default function OnboardingClient() {
               <Button variant="outline" onClick={() => setStep(1)}>
                 Back
               </Button>
-              <Button onClick={handleGenerate}>Create audio</Button>
+              <Button onClick={handleGenerate}>Create episode</Button>
             </div>
           </CardContent>
         </Card>

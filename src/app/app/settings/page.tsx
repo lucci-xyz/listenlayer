@@ -39,24 +39,24 @@ export default async function SettingsPage() {
             {sites.map((site) => (
               <AccordionItem key={site.id} value={site.id}>
                 <AccordionTrigger>{site.name}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 text-[13px] text-muted-foreground">
-                    <div>Domain: {site.domain || "Not set"}</div>
-                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-rose-500">
-                        Danger zone
+                    <AccordionContent>
+                      <div className="space-y-3 text-[13px] text-muted-foreground">
+                        <div>Domain: {site.domain || "Not set"}</div>
+                        <div className="rounded-lg border border-rose-200/70 bg-rose-50/70 px-3 py-2">
+                          <div className="text-[12px] font-medium text-rose-600">
+                            Danger zone
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-[12px] text-rose-600">
+                              Delete this show and all connected content.
+                            </p>
+                            <DeletePublicationDialog siteId={site.id} siteName={site.name} />
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[12px] text-rose-600">
-                          Delete this publication and all connected content.
-                        </p>
-                        <DeletePublicationDialog siteId={site.id} siteName={site.name} />
-                      </div>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
           </Accordion>
         </CardContent>
       </Card>

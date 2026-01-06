@@ -66,7 +66,7 @@ export default async function SiteOverviewPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-6 shadow-soft md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border border-border/70 bg-background p-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">{site.name}</h2>
           <p className="text-[13px] text-muted-foreground">
@@ -99,21 +99,12 @@ export default async function SiteOverviewPage({
       {isNewPublication ? (
         <Card>
           <CardHeader>
-            <CardTitle>Get started in 3 steps</CardTitle>
+            <CardTitle>Get started</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-[13px] text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">1</span>
-              Add a source (RSS or website).
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">2</span>
-              Choose a style preset in the Style tab.
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white">3</span>
-              Copy the embed snippet and publish it.
-            </div>
+            <div>Add a source (RSS or website).</div>
+            <div>Choose a style preset in the Style tab.</div>
+            <div>Copy the embed snippet and publish it.</div>
           </CardContent>
         </Card>
       ) : (
@@ -159,12 +150,12 @@ export default async function SiteOverviewPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Embed preview</CardTitle>
+                <CardTitle>Player preview</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {embedUrl ? (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-border bg-white">
+                    <div className="rounded-lg border border-border/70 bg-background">
                       <iframe
                         title="Embed preview"
                         src={embedUrl}
@@ -174,12 +165,12 @@ export default async function SiteOverviewPage({
                       />
                     </div>
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/app/embed?siteId=${site.id}`}>Open preview page</Link>
+                      <Link href={`/app/embed?siteId=${site.id}`}>Open player page</Link>
                     </Button>
                   </div>
                 ) : (
                   <p className="text-[13px] text-muted-foreground">
-                    Publish an episode to preview the embed.
+                    Publish an episode to preview the player.
                   </p>
                 )}
               </CardContent>
@@ -189,7 +180,7 @@ export default async function SiteOverviewPage({
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Sources</div>
+                <div className="text-[12px] font-medium text-muted-foreground">Sources</div>
                 <div className="text-2xl font-semibold text-foreground">{site.sources.length}</div>
                 <div className="text-[13px] text-muted-foreground">
                   {primarySource
@@ -204,7 +195,7 @@ export default async function SiteOverviewPage({
 
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Style</div>
+                <div className="text-[12px] font-medium text-muted-foreground">Style</div>
                 <div className="text-2xl font-semibold text-foreground">{styleLabel}</div>
                 <div className="text-[13px] text-muted-foreground">
                   Theme: {config.theme} · Radius: {config.radius}
@@ -217,7 +208,7 @@ export default async function SiteOverviewPage({
 
             <Card>
               <CardContent className="space-y-2 py-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Analytics</div>
+                <div className="text-[12px] font-medium text-muted-foreground">Analytics</div>
                 <div className="text-2xl font-semibold text-foreground">{playbackPlays}</div>
                 <div className="text-[13px] text-muted-foreground">{playbackCompletions} completions</div>
                 <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">

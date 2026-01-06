@@ -31,15 +31,15 @@ export default async function EmbedPreviewPage({
     orderBy: { createdAt: "asc" },
   });
 
-  if (sites.length === 0) {
+      if (sites.length === 0) {
     return (
       <Card>
         <CardContent className="py-10 text-center">
           <p className="text-[13px] text-muted-foreground">
-            Create a publication to preview embeds.
+            Create a show to preview the player.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/app/onboarding">Add publication</Link>
+            <Link href="/app/onboarding">New show</Link>
           </Button>
         </CardContent>
       </Card>
@@ -77,14 +77,18 @@ export default async function EmbedPreviewPage({
         />
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
+      <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-[3px]">
         {sites.map((site) => (
           <Button
             key={site.id}
             asChild
             size="sm"
-            variant={site.id === activeSite.id ? "default" : "ghost"}
-            className={site.id === activeSite.id ? "text-white" : "text-muted-foreground"}
+            variant="ghost"
+            className={
+              site.id === activeSite.id
+                ? "bg-background text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }
           >
             <Link href={`/app/embed?siteId=${site.id}`}>{site.name}</Link>
           </Button>
@@ -94,11 +98,11 @@ export default async function EmbedPreviewPage({
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Live embed</CardTitle>
+            <CardTitle>Live player</CardTitle>
           </CardHeader>
           <CardContent>
             {embedUrl ? (
-              <div className="rounded-xl border border-border bg-white p-4">
+              <div className="rounded-lg border border-border/70 bg-background p-4">
                 <iframe
                   title="Embed preview"
                   src={embedUrl}
@@ -121,15 +125,11 @@ export default async function EmbedPreviewPage({
           </CardHeader>
           <CardContent className="space-y-4 text-[13px]">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                Publication
-              </div>
+              <div className="text-[12px] font-medium text-muted-foreground">Show</div>
               <div className="text-[13px] text-foreground">{activeSite.name}</div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                Latest publish
-              </div>
+              <div className="text-[12px] font-medium text-muted-foreground">Latest episode</div>
               <div className="text-[13px] text-muted-foreground">
                 {episode?.publishedAt
                   ? formatRelativeTime(episode.publishedAt)

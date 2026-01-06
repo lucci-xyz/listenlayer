@@ -26,17 +26,15 @@ export default async function ListenPage({
   return (
     <div className="min-h-screen bg-background px-6 py-12">
       <div className="mx-auto w-full max-w-3xl space-y-6">
-        <div className="rounded-2xl border border-border bg-white p-6 shadow-soft">
-          <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-            ListenLayer
-          </div>
+        <div className="rounded-lg border border-border/70 bg-background p-6">
+          <div className="text-[12px] font-medium text-muted-foreground">ListenLayer</div>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">{episode.title}</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">{episode.site.name}</p>
           <div className="mt-4">
             <AudioPlayer publicId={episode.publicId} />
           </div>
         </div>
-        <div id="chapters" className="rounded-2xl border border-border bg-white p-6 shadow-soft">
+        <div id="chapters" className="rounded-lg border border-border/70 bg-background p-6">
           <h2 className="text-lg font-semibold">Chapters</h2>
           {chapters.length === 0 ? (
             <p className="mt-2 text-[13px] text-muted-foreground">No chapters available yet.</p>
@@ -53,7 +51,7 @@ export default async function ListenPage({
             </ul>
           )}
         </div>
-        <div id="transcript" className="rounded-2xl border border-border bg-white p-6 shadow-soft">
+        <div id="transcript" className="rounded-lg border border-border/70 bg-background p-6">
           <h2 className="text-lg font-semibold">Transcript</h2>
           <p className="mt-3 whitespace-pre-wrap text-[13px] text-muted-foreground">
             {episode.transcriptText}

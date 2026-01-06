@@ -19,7 +19,7 @@ export function SiteTabs({ siteId }: { siteId: string }) {
 
   return (
     <Tabs value={active?.key || "overview"} className="w-full">
-      <TabsList className="rounded-full border border-border bg-white p-1 shadow-soft">
+      <TabsList className="w-full justify-start">
         {tabItems.map((item) => (
           <TabsTrigger key={item.key} value={item.key} asChild>
             <Link href={`/app/sites/${siteId}${item.path ? `/${item.path}` : ""}`}>

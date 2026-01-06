@@ -200,7 +200,7 @@ export default function SourcesClient({
         <div>
           <h2 className="text-lg font-semibold text-foreground">Sources</h2>
           <p className="text-[13px] text-muted-foreground">
-            Connect feeds and URLs to generate new episodes.
+            Connect a feed or link to generate episodes.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>Add source</Button>
@@ -209,7 +209,7 @@ export default function SourcesClient({
       {sources.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
-            No sources yet. Add a website or RSS feed to start.
+            No sources yet. Add a website or feed to start.
           </CardContent>
         </Card>
       ) : (
@@ -231,19 +231,17 @@ export default function SourcesClient({
             }
             return (
               <Card key={source.id} className="overflow-hidden">
-                <CardContent className="space-y-4 p-5">
+                <CardContent className="space-y-4 p-4">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={favicon} alt="" className="h-6 w-6" />
                       </div>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-[13px] font-semibold text-foreground">{displayName}</div>
-                          <Badge variant="secondary">
-                            {typeLabel}
-                          </Badge>
+                          <Badge variant="secondary">{typeLabel}</Badge>
                         </div>
                         <div className="text-[12px] text-muted-foreground">{domain}</div>
                         {source.type === "RSS" && source.latestItemTitle ? (
@@ -277,7 +275,7 @@ export default function SourcesClient({
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="rounded-full border border-border px-2 py-1">
+                          <span className="rounded-md border border-border/70 px-2 py-1">
                             {source.lastFetchedAt
                               ? `Checked ${formatRelativeTime(source.lastFetchedAt)}`
                               : "Never checked"}
@@ -289,7 +287,7 @@ export default function SourcesClient({
                       </Tooltip>
                     </TooltipProvider>
                     {source.lastFetchStatus ? (
-                      <span className="rounded-full border border-border px-2 py-1">
+                      <span className="rounded-md border border-border/70 px-2 py-1">
                         Status: {source.lastFetchStatus}
                       </span>
                     ) : null}
@@ -300,7 +298,7 @@ export default function SourcesClient({
                       <AccordionTrigger>Details</AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[12px]">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-[12px]">
                             <span className="truncate text-muted-foreground">{source.url}</span>
                             <Button
                               size="sm"
@@ -311,7 +309,7 @@ export default function SourcesClient({
                             </Button>
                           </div>
                           {source.lastError ? (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
+                            <div className="rounded-lg border border-rose-200/70 bg-rose-50/70 px-3 py-2 text-[12px] text-rose-600">
                               {source.lastError}
                             </div>
                           ) : null}
@@ -323,7 +321,7 @@ export default function SourcesClient({
                               <GenerateButton siteId={siteId} sourceId={source.id} count={10} label="Last 10" />
                             </div>
                           ) : null}
-                          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-[12px]">
+                          <div className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2 text-[12px]">
                             <div>
                               <div className="font-semibold text-foreground">Auto publish</div>
                               <div className="text-muted-foreground">Coming soon</div>
@@ -348,17 +346,21 @@ export default function SourcesClient({
             <DialogDescription>Choose how you want to connect your content.</DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
+          <div className="mt-4 flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
             {([
               { key: "website", label: "Website (recommended)" },
-              { key: "rss", label: "RSS feed" },
+              { key: "rss", label: "Feed (RSS)" },
               { key: "url", label: "Single URL" },
             ] as const).map((option) => (
               <Button
                 key={option.key}
                 size="sm"
-                variant={mode === option.key ? "default" : "ghost"}
-                className={mode === option.key ? "text-white" : "text-muted-foreground"}
+                variant="ghost"
+                className={
+                  mode === option.key
+                    ? "bg-background text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }
                 onClick={() => {
                   setMode(option.key);
                   setDiscovery(null);
@@ -391,12 +393,12 @@ export default function SourcesClient({
 
             {mode === "website" ? (
               <Button onClick={handleDiscover} disabled={!inputUrl || loading}>
-                {loading ? "Scanning..." : "Detect"}
+                {loading ? "Checking..." : "Check link"}
               </Button>
             ) : null}
 
             {discovery ? (
-              <div className="rounded-lg border border-border bg-muted p-3 text-[13px]">
+              <div className="rounded-lg border border-border/70 bg-muted/60 p-3 text-[13px]">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-foreground">{discovery.displayName}</div>
@@ -413,7 +415,7 @@ export default function SourcesClient({
                   </Badge>
                 </div>
                 {discovery.kind === "website" || discovery.kind === "unknown" ? (
-                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
+                  <div className="mt-2 rounded-md border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-[12px] text-amber-700">
                     No RSS feed found. Switch to Single URL to generate from a specific article.
                     <div className="mt-2">
                       <Button

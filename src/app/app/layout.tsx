@@ -22,26 +22,19 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="flex w-full flex-col border-b border-border bg-card px-5 py-6 lg:w-64 lg:border-b-0 lg:border-r">
+        <aside className="flex w-full flex-col border-b border-sidebar-border bg-sidebar px-6 py-6 lg:w-60 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-[13px] font-semibold text-foreground">
               L
             </div>
-            <div>
-              <div className="text-[15px] font-semibold">ListenLayer</div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                Pilot
-              </p>
-            </div>
+            <div className="text-[15px] font-semibold text-foreground">ListenLayer</div>
           </div>
           <div className="mt-8">
             <SidebarNav publications={publications} />
           </div>
           <div className="mt-auto space-y-3">
-            <div className="rounded-xl border border-border bg-white p-3 shadow-soft">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Signed in
-              </div>
+            <div className="rounded-lg border border-border/70 bg-card p-3">
+              <div className="text-[12px] font-medium text-muted-foreground">Account</div>
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-[13px] font-semibold text-foreground">
                   {user.email?.slice(0, 1).toUpperCase()}
@@ -50,9 +43,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                   <div className="truncate text-[13px] font-medium text-foreground">
                     {user.email}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Publication owner
-                  </div>
+                  <div className="text-[11px] text-muted-foreground">Owner</div>
                 </div>
               </div>
             </div>
@@ -61,7 +52,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader />
-          <main className="flex-1 px-5 py-6 lg:px-8">
+          <main className="flex-1 px-6 py-6 lg:px-8">
             <GenerationStatus />
             {children}
           </main>

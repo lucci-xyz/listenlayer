@@ -100,7 +100,7 @@ export default function EpisodesClient({
     const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
     return (
       <Card key={episode.id}>
-        <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-[13px] font-semibold text-foreground">
@@ -115,7 +115,7 @@ export default function EpisodesClient({
             </div>
             <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
               <span>{getDomainFromUrl(episode.sourceUrl)}</span>
-              {showSite && episode.siteName ? <span>Publication: {episode.siteName}</span> : null}
+              {showSite && episode.siteName ? <span>Show: {episode.siteName}</span> : null}
             </div>
             {episode.status === "RUNNING" || episode.status === "QUEUED" ? (
               <div className="text-[12px] text-muted-foreground">Generating…</div>
@@ -164,13 +164,17 @@ export default function EpisodesClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-2 rounded-full border border-border bg-white p-1 shadow-soft">
+        <div className="flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
           {filters.map((option) => (
             <Button
               key={option}
               size="sm"
-              variant={filter === option ? "default" : "ghost"}
-              className={filter === option ? "text-white" : "text-muted-foreground"}
+              variant="ghost"
+              className={
+                filter === option
+                  ? "bg-background text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }
               onClick={() => setFilter(option)}
             >
               {option}
@@ -182,7 +186,7 @@ export default function EpisodesClient({
             placeholder="Search episodes"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="w-48"
+            className="w-52"
           />
           <Button
             size="sm"
@@ -205,7 +209,7 @@ export default function EpisodesClient({
         <div className="space-y-4">
           {inProgress.length > 0 ? (
             <div className="space-y-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+              <div className="text-[12px] font-medium text-muted-foreground">
                 In progress
               </div>
               {inProgress.map(renderEpisode)}
@@ -214,7 +218,7 @@ export default function EpisodesClient({
           {rest.length > 0 ? (
             <div className="space-y-3">
               {inProgress.length > 0 ? (
-                <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                <div className="text-[12px] font-medium text-muted-foreground">
                   Library
                 </div>
               ) : null}

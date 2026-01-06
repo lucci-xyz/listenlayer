@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma, EpisodeStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
@@ -42,11 +43,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }
 
-    const data: {
-      name?: string;
-      domain?: string | null;
-      embedConfig?: unknown;
-    } = {};
+    const data: Prisma.SiteUpdateInput = {};
 
     if (parsed.data.name) {
       data.name = parsed.data.name;
@@ -55,7 +52,7 @@ export async function PATCH(
       data.domain = parsed.data.domain ? parsed.data.domain : null;
     }
     if (parsed.data.embedConfig) {
-      data.embedConfig = parsed.data.embedConfig;
+      data.embedConfig = parsed.data.embedConfig as Prisma.InputJsonValue;
     }
 
     const updated = await prisma.site.update({
@@ -93,7 +90,7 @@ export async function DELETE(
   }
 
   await prisma.episode.updateMany({
-    where: { siteId: site.id, status: { in: ["QUEUED", "RUNNING"] } },
+    where: { siteId: site.id, status: { in: [EpisodeStatus.QUEUED, EpisodeStatus.RUNNING] } },
     data: { status: "CANCELLED", errorMessage: "Publication deleted" },
   });
 

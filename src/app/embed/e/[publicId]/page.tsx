@@ -34,8 +34,8 @@ export default async function EmbedPage({
 
   const themeClass =
     config.theme === "dark"
-      ? "bg-neutral-900 text-neutral-100 border-neutral-800"
-      : "bg-white text-neutral-900 border-neutral-200";
+      ? "bg-neutral-900 text-neutral-100 border-neutral-800/80"
+      : "bg-white text-neutral-900 border-neutral-200/70";
   const mutedClass =
     config.theme === "auto"
       ? "embed-muted text-neutral-500"
@@ -65,17 +65,17 @@ export default async function EmbedPage({
         style={{ "--accent": config.accentColor } as CSSProperties}
       >
         <div className="px-4 py-3">
-          <div className={`text-[11px] uppercase tracking-[0.3em] ${mutedClass}`}>ListenLayer</div>
+          <div className={`text-[12px] font-medium ${mutedClass}`}>ListenLayer</div>
           <div className="text-[13px] font-semibold">{episode.title}</div>
           <div className={`text-[12px] ${mutedClass}`}>{episode.site.name}</div>
           <div className="mt-2">
             <AudioPlayer publicId={episode.publicId} />
           </div>
           {(config.showChapters || config.showTranscript || config.showOpenPlayer) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
               {config.showChapters ? (
                 <a
-                  className="rounded-full border px-3 py-1"
+                  className="rounded-md border px-2.5 py-1"
                   style={{ borderColor: config.accentColor, color: config.accentColor }}
                   href={`/listen/e/${episode.publicId}?${query}#chapters`}
                   target="_blank"
@@ -86,7 +86,7 @@ export default async function EmbedPage({
               ) : null}
               {config.showTranscript ? (
                 <a
-                  className="rounded-full border px-3 py-1"
+                  className="rounded-md border px-2.5 py-1"
                   style={{ borderColor: config.accentColor, color: config.accentColor }}
                   href={`/listen/e/${episode.publicId}?${query}#transcript`}
                   target="_blank"
@@ -97,7 +97,7 @@ export default async function EmbedPage({
               ) : null}
               {config.showOpenPlayer ? (
                 <a
-                  className="rounded-full border px-3 py-1"
+                  className="rounded-md border px-2.5 py-1"
                   style={{ borderColor: config.accentColor, color: config.accentColor }}
                   href={`/listen/e/${episode.publicId}`}
                   target="_blank"

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { EpisodeStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 
@@ -11,7 +12,7 @@ export async function GET() {
   }
 
   const where = {
-    status: { in: ["QUEUED", "RUNNING"] as const },
+    status: { in: [EpisodeStatus.QUEUED, EpisodeStatus.RUNNING] },
     site: { userId: user.id },
   };
 

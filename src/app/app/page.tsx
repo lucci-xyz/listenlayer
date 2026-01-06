@@ -55,20 +55,20 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild>
-          <Link href="/app/onboarding">Add publication</Link>
+          <Link href="/app/onboarding">New show</Link>
         </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-4">
         {[
-          { label: "Publications", value: sites.length.toString(), helper: "All publications" },
+          { label: "Shows", value: sites.length.toString(), helper: "All shows" },
           { label: "Episodes", value: episodeCount.toString(), helper: "Total published" },
           { label: "Active", value: activeCount.toString(), helper: "Generating" },
           { label: "Plays", value: playCount.toString(), helper: "All time" },
         ].map((card) => (
           <Card key={card.label}>
-            <CardContent className="space-y-2 py-5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            <CardContent className="space-y-2 py-4">
+              <div className="text-[12px] font-medium text-muted-foreground">
                 {card.label}
               </div>
               <div className="text-2xl font-semibold text-foreground">{card.value}</div>
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
               recentEpisodes.map((episode) => (
                 <div
                   key={episode.id}
-                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3"
+                  className="flex items-center justify-between rounded-md border border-border/70 bg-background px-4 py-3"
                 >
                   <div className="space-y-1">
                     <div className="text-[13px] font-semibold text-foreground">
@@ -113,12 +113,12 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>By publication</CardTitle>
+            <CardTitle>By show</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {sites.length === 0 ? (
               <div className="text-[13px] text-muted-foreground">
-                Add a publication to see activity.
+                Create a show to see activity.
               </div>
             ) : (
               sites.map((site) => {
@@ -130,9 +130,9 @@ export default async function DashboardPage() {
                       <span>{site.name}</span>
                       <span>{count}</span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
+                    <div className="h-1.5 w-full rounded-full bg-muted">
                       <div
-                        className="h-2 rounded-full bg-primary"
+                        className="h-1.5 rounded-full bg-primary"
                         style={{ width: `${width}%` }}
                       />
                     </div>
@@ -147,25 +147,25 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Publications</CardTitle>
+            <CardTitle>Shows</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {sites.length === 0 ? (
               <div className="text-[13px] text-muted-foreground">
-                No publications yet. Add your first publication to get started.
+                No shows yet. Create your first show to get started.
               </div>
             ) : (
               sites.map((site) => (
                 <Link
                   key={site.id}
                   href={`/app/sites/${site.id}`}
-                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3 transition-colors hover:bg-muted"
+                  className="flex items-center justify-between rounded-md border border-border/70 bg-background px-4 py-3 transition-colors hover:bg-muted/60"
                 >
                   <div>
                     <div className="text-[13px] font-semibold text-foreground">
                       {site.name}
                     </div>
-                    <div className="text-[12px] text-muted-foreground">Publication</div>
+                    <div className="text-[12px] text-muted-foreground">Show</div>
                   </div>
                   <span className="text-[12px] text-muted-foreground">
                     {perSiteMap.get(site.id) ?? 0} episodes
@@ -186,7 +186,7 @@ export default async function DashboardPage() {
             ) : (
               recentEpisodes.slice(0, 5).map((episode) => (
                 <div key={episode.id} className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                   <div className="text-[13px] text-foreground">
                     {episode.title}
                     <span className="text-muted-foreground">
