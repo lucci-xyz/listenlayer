@@ -29,7 +29,6 @@ export default async function EpisodesPage() {
     publicId: episode.publicId,
     siteName: episode.site.name,
     siteId: episode.siteId,
-    embedConfig: episode.site.embedConfig || null,
   }));
 
   return (

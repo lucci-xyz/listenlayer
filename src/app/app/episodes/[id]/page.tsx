@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AudioPlayer } from "@/components/audio-player";
@@ -33,13 +33,11 @@ export default async function EpisodeDetailPage({
     ? episode.chaptersJson
     : []) as { title: string; startApproxSec: number }[];
   const baseUrl = getBaseUrl();
-  const config = mergeEmbedConfig(episode.site.embedConfig);
-  const embedHeightPx = embedHeight(config);
-  const embedQuery = embedConfigToQuery(config);
+  const embedHeightPx = embedHeight();
+  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}`;
+  const iframeSnippet = `<iframe src="${embedUrl}" style="width:100%;height:${embedHeightPx}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`;
+  const widgetSnippet = `<script async src="${baseUrl}/widget.js" data-episode="${episode.publicId}"></script>`;
   const playerUrl = `${baseUrl}/listen/e/${episode.publicId}`;
-  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}?${embedQuery}`;
-  const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${embedHeightPx}px;border:0\" loading=\"lazy\"></iframe>`;
-  const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${episode.publicId}\" data-theme=\"${config.theme}\" data-accent=\"${config.accentColor}\" data-radius=\"${config.radius}\" data-size=\"${config.size}\" data-chapters=\"${config.showChapters ? "1" : "0"}\" data-transcript=\"${config.showTranscript ? "1" : "0"}\" data-open=\"${config.showOpenPlayer ? "1" : "0"}\"></script>`;
   const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
 
   return (
@@ -57,11 +55,7 @@ export default async function EpisodeDetailPage({
             Source: {getDomainFromUrl(episode.sourceUrl)}
           </div>
         </div>
-        <EmbedButton
-          publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
-          baseUrl={baseUrl}
-          config={config}
-        />
+        <EmbedButton publicId={episode.status === "PUBLISHED" ? episode.publicId : null} baseUrl={baseUrl} />
       </div>
 
       <Card>

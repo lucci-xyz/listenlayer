@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { getDomainFromUrl } from "@/lib/url";
 import { formatRelativeTime } from "@/lib/time";
-import { mergeEmbedConfig } from "@/lib/embed";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +29,6 @@ export type EpisodeListItem = {
   publicId: string | null;
   siteName?: string;
   siteId: string;
-  embedConfig?: unknown;
 };
 
 const filters = ["All", "Published", "Processing", "Failed", "Canceled"] as const;
@@ -71,12 +69,8 @@ export default function EpisodesClient({
     return list;
   }, [episodes, query, filter, sort]);
 
-  const inProgress = filtered.filter((episode) =>
-    episode.status === "QUEUED" || episode.status === "RUNNING"
-  );
-  const rest = filtered.filter((episode) =>
-    episode.status !== "QUEUED" && episode.status !== "RUNNING"
-  );
+  const inProgress = filtered.filter((episode) => episode.status === "QUEUED" || episode.status === "RUNNING");
+  const rest = filtered.filter((episode) => episode.status !== "QUEUED" && episode.status !== "RUNNING");
 
   const handleCancel = async (episodeId: string) => {
     try {
@@ -96,52 +90,40 @@ export default function EpisodesClient({
   };
 
   const renderEpisode = (episode: EpisodeListItem) => {
-    const config = mergeEmbedConfig(episode.embedConfig || null);
     const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
     return (
       <Card key={episode.id}>
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-foreground">
-                {episode.title}
-              </h3>
-              <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
-                {statusLabel}
-              </Badge>
-              <span className="text-[12px] text-muted-foreground">
-                {formatRelativeTime(episode.createdAt)}
-              </span>
+              <h3 className="text-[13px] font-semibold text-foreground">{episode.title}</h3>
+              <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>{statusLabel}</Badge>
+              <span className="text-[12px] text-muted-foreground">{formatRelativeTime(episode.createdAt)}</span>
             </div>
             <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
               <span>{getDomainFromUrl(episode.sourceUrl)}</span>
               {showSite && episode.siteName ? <span>Show: {episode.siteName}</span> : null}
             </div>
-            {episode.status === "RUNNING" || episode.status === "QUEUED" ? (
+            {(episode.status === "RUNNING" || episode.status === "QUEUED") && (
               <div className="text-[12px] text-muted-foreground">Generating…</div>
-            ) : null}
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" variant="outline">
               <Link href={`/app/episodes/${episode.id}`}>Open</Link>
             </Button>
-            {episode.status === "QUEUED" || episode.status === "RUNNING" ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleCancel(episode.id)}
-              >
+            {(episode.status === "QUEUED" || episode.status === "RUNNING") && (
+              <Button size="sm" variant="outline" onClick={() => handleCancel(episode.id)}>
                 Stop
               </Button>
-            ) : null}
+            )}
             <EmbedButton
               label="Copy embed"
               size="sm"
               variant="outline"
               publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
               baseUrl={baseUrl}
-              config={config}
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -171,9 +153,7 @@ export default function EpisodesClient({
               size="sm"
               variant="ghost"
               className={
-                filter === option
-                  ? "bg-background text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                filter === option ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
               }
               onClick={() => setFilter(option)}
             >
@@ -188,11 +168,7 @@ export default function EpisodesClient({
             onChange={(event) => setQuery(event.target.value)}
             className="w-52"
           />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-          >
+          <Button size="sm" variant="outline" onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}>
             <ArrowUpDown className="mr-2 h-4 w-4" />
             {sort === "newest" ? "Newest" : "Oldest"}
           </Button>
@@ -201,27 +177,19 @@ export default function EpisodesClient({
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
-            No episodes yet.
-          </CardContent>
+          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">No episodes yet.</CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
           {inProgress.length > 0 ? (
             <div className="space-y-3">
-              <div className="text-[12px] font-medium text-muted-foreground">
-                In progress
-              </div>
+              <div className="text-[12px] font-medium text-muted-foreground">In progress</div>
               {inProgress.map(renderEpisode)}
             </div>
           ) : null}
           {rest.length > 0 ? (
             <div className="space-y-3">
-              {inProgress.length > 0 ? (
-                <div className="text-[12px] font-medium text-muted-foreground">
-                  Library
-                </div>
-              ) : null}
+              {inProgress.length > 0 ? <div className="text-[12px] font-medium text-muted-foreground">Library</div> : null}
               {rest.map(renderEpisode)}
             </div>
           ) : null}

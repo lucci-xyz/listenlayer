@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 import { formatRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,15 +53,10 @@ export default async function SiteOverviewPage({
 
   const primarySource = site.sources[0] || null;
   const baseUrl = getBaseUrl();
-  const config = mergeEmbedConfig(site.embedConfig);
-  const embedHeightPx = embedHeight(config);
-  const embedQuery = embedConfigToQuery(config);
-  const embedUrl = publishedEpisode
-    ? `${baseUrl}/embed/e/${publishedEpisode.publicId}?${embedQuery}`
-    : null;
+  const embedHeightPx = embedHeight();
+  const embedUrl = publishedEpisode ? `${baseUrl}/embed/e/${publishedEpisode.publicId}` : null;
 
   const isNewPublication = site.sources.length === 0 && !latestEpisode;
-  const styleLabel = config.size === "compact" ? "Compact" : config.size === "tall" ? "Tall" : "Standard";
   const latestStatusLabel = latestEpisode?.status === "CANCELLED" ? "Canceled" : latestEpisode?.status;
 
   return (
@@ -70,7 +65,7 @@ export default async function SiteOverviewPage({
         <div>
           <h2 className="text-2xl font-semibold text-foreground">{site.name}</h2>
           <p className="text-[13px] text-muted-foreground">
-            {site.sources.length} source{site.sources.length === 1 ? "" : "s"} · Auto: Off · Style: {styleLabel}
+            {site.sources.length} source{site.sources.length === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -91,7 +86,6 @@ export default async function SiteOverviewPage({
             size="lg"
             publicId={publishedEpisode?.publicId || null}
             baseUrl={baseUrl}
-            config={config}
           />
         </div>
       </div>
@@ -103,7 +97,6 @@ export default async function SiteOverviewPage({
           </CardHeader>
           <CardContent className="space-y-3 text-[13px] text-muted-foreground">
             <div>Add a source (RSS or website).</div>
-            <div>Choose a style preset in the Style tab.</div>
             <div>Copy the embed snippet and publish it.</div>
           </CardContent>
         </Card>
@@ -177,7 +170,7 @@ export default async function SiteOverviewPage({
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardContent className="space-y-2 py-5">
                 <div className="text-[12px] font-medium text-muted-foreground">Sources</div>
@@ -189,19 +182,6 @@ export default async function SiteOverviewPage({
                 </div>
                 <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
                   <Link href={`/app/sites/${site.id}/sources`}>View sources →</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="space-y-2 py-5">
-                <div className="text-[12px] font-medium text-muted-foreground">Style</div>
-                <div className="text-2xl font-semibold text-foreground">{styleLabel}</div>
-                <div className="text-[13px] text-muted-foreground">
-                  Theme: {config.theme} · Radius: {config.radius}
-                </div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
-                  <Link href={`/app/sites/${site.id}/style`}>Edit style →</Link>
                 </Button>
               </CardContent>
             </Card>

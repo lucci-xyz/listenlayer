@@ -7,7 +7,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const tabItems = [
   { key: "overview", label: "Overview", path: "" },
   { key: "sources", label: "Sources", path: "sources" },
-  { key: "style", label: "Style", path: "style" },
   { key: "episodes", label: "Episodes", path: "episodes" },
 ];
 

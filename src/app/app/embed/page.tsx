@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 import { formatRelativeTime } from "@/lib/time";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export default async function EmbedPreviewPage({
     orderBy: { createdAt: "asc" },
   });
 
-      if (sites.length === 0) {
+  if (sites.length === 0) {
     return (
       <Card>
         <CardContent className="py-10 text-center">
@@ -48,9 +48,7 @@ export default async function EmbedPreviewPage({
 
   const activeSite = sites.find((site) => site.id === siteParam) || sites[0];
   const baseUrl = getBaseUrl();
-  const config = mergeEmbedConfig(activeSite.embedConfig);
-  const query = embedConfigToQuery(config);
-  const height = embedHeight(config);
+  const height = embedHeight();
 
   const episode = publicIdParam
     ? await prisma.episode.findFirst({
@@ -61,9 +59,9 @@ export default async function EmbedPreviewPage({
         orderBy: { createdAt: "desc" },
       });
 
-  const embedUrl = episode ? `${baseUrl}/embed/e/${episode.publicId}?${query}` : null;
+  const embedUrl = episode ? `${baseUrl}/embed/e/${episode.publicId}` : null;
   const iframeSnippet = embedUrl
-    ? `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${height}px;border:0\" loading=\"lazy\"></iframe>`
+    ? `<iframe src="${embedUrl}" style="width:100%;height:${height}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`
     : null;
 
   return (
@@ -73,7 +71,6 @@ export default async function EmbedPreviewPage({
           label="Copy embed"
           publicId={episode?.publicId || null}
           baseUrl={baseUrl}
-          config={config}
         />
       </div>
 

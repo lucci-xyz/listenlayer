@@ -41,7 +41,6 @@ export default async function SiteEpisodesPage({
     publicId: episode.publicId,
     siteName: site.name,
     siteId: site.id,
-    embedConfig: site.embedConfig || null,
   }));
 
   return (
