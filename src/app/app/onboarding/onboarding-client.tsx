@@ -45,11 +45,14 @@ type FeedSampleItem = {
   publishedAt?: string;
 };
 
-type FeedPreview = {
-  feedUrl: string;
+type FeedSummary = {
+  url: string;
   title?: string;
   description?: string;
+  type: "rss" | "atom";
   sampleItems?: FeedSampleItem[];
+  itemCount?: number;
+  latestItemTitle?: string;
 };
 
 type ArticlePreview = {
@@ -63,12 +66,13 @@ type ArticlePreview = {
 };
 
 type DiscoveryResult = {
-  kind: "feed" | "article" | "homepage" | "unknown";
+  kind: "feed" | "article" | "website" | "unknown";
   confidence: "high" | "medium" | "low";
   inputUrl: string;
   canonicalUrl?: string;
   articlePreview?: ArticlePreview;
-  feedPreview?: FeedPreview;
+  feeds: FeedSummary[];
+  recommendedFeedUrl?: string;
   platformHint?: string | null;
   origin: string;
   displayName: string;
@@ -93,13 +97,13 @@ function formatDate(dateStr: string | undefined): string {
 
 export default function OnboardingClient() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<"input" | "review" | "format" | "progress">("input");
   const [inputUrl, setInputUrl] = useState("");
   const [detectedUrl, setDetectedUrl] = useState("");
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
   const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null);
+  const [selectedMode, setSelectedMode] = useState<"sync" | "one-off" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
   const [siteName, setSiteName] = useState("");
   const [siteDomain, setSiteDomain] = useState("");
   const [manualFeedUrl, setManualFeedUrl] = useState("");
@@ -108,9 +112,18 @@ export default function OnboardingClient() {
   const [progress, setProgress] = useState("Preparing...");
   const [episodeStatus, setEpisodeStatus] = useState<EpisodeStatus | null>(null);
 
+  const resolveDefaultMode = (data: DiscoveryResult): "sync" | "one-off" | null => {
+    if (data.kind === "feed" && (data.recommendedFeedUrl || data.feeds?.length)) {
+      return "sync";
+    }
+    if (data.kind === "article") return "one-off";
+    return null;
+  };
+
   const applyDiscovery = (data: DiscoveryResult, usedUrl: string) => {
     setDiscovery(data);
     setDetectedUrl(usedUrl);
+    setSelectedMode(resolveDefaultMode(data));
     setError(null);
     setManualFeedError(null);
     setSiteName(data.displayName || "New show");
@@ -129,6 +142,7 @@ export default function OnboardingClient() {
     setManualFeedError(null);
     setLoadingDiscovery(true);
     setDiscovery(null);
+    setSelectedMode(null);
     if (urlOverride && urlOverride !== inputUrl) {
       setInputUrl(urlOverride);
     }
@@ -143,8 +157,12 @@ export default function OnboardingClient() {
         throw new Error(data?.error || "Failed to detect source");
       }
       const data = (await res.json()) as DiscoveryResult;
-      applyDiscovery(data, urlToCheck);
-      return data;
+      const normalized = {
+        ...data,
+        feeds: data.feeds ?? [],
+      };
+      applyDiscovery(normalized, urlToCheck);
+      return normalized;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discovery failed");
       return null;
@@ -158,11 +176,11 @@ export default function OnboardingClient() {
     if (!discovery || inputUrl.trim() !== detectedUrl) {
       const result = await handleDiscovery();
       if (result) {
-        setStep(2);
+        setStep("review");
       }
       return;
     }
-    setStep(2);
+    setStep("review");
   };
 
   const handleManualFeed = async () => {
@@ -173,34 +191,30 @@ export default function OnboardingClient() {
     }
   };
 
-  const handleCreateOneEpisode = async () => {
+  const handleGenerate = async (modeOverride?: "one-off" | "sync") => {
     if (!discovery) return;
-    await handleGenerate("one-off");
-  };
-
-  const handleCreateShowAndSync = async () => {
-    if (!discovery || !discovery.feedPreview) return;
-    await handleGenerate("sync");
-  };
-
-  const handleGenerate = async (mode: "one-off" | "sync") => {
-    if (!discovery) return;
+    const primaryFeed = discovery.feeds?.[0];
+    const chosenMode = modeOverride ?? selectedMode ?? resolveDefaultMode(discovery);
+    if (!chosenMode) {
+      setError("Choose how you want to proceed first.");
+      return;
+    }
     setError(null);
-    setStep(3);
-    setProgress("Creating your show...");
+    setStep("progress");
+    setProgress(chosenMode === "sync" ? "Creating your workspace..." : "Preparing your audio...");
 
-    const sourceType = mode === "sync" ? "RSS" : "URL";
+    const sourceType = chosenMode === "sync" ? "RSS" : "URL";
     let sourceUrl: string | undefined;
 
-    if (mode === "sync") {
-      sourceUrl = discovery.feedPreview?.feedUrl;
+    if (chosenMode === "sync") {
+      sourceUrl = discovery.recommendedFeedUrl || primaryFeed?.url;
     } else {
       // For one-off, use the canonical URL if it's an article
       // Or use the first feed item URL if we have a feed
       if (discovery.kind === "article" && discovery.canonicalUrl) {
         sourceUrl = discovery.canonicalUrl;
-      } else if (discovery.feedPreview?.sampleItems?.[0]?.url) {
-        sourceUrl = discovery.feedPreview.sampleItems[0].url;
+      } else if (primaryFeed?.sampleItems?.[0]?.url) {
+        sourceUrl = primaryFeed.sampleItems[0].url;
       } else if (discovery.canonicalUrl) {
         sourceUrl = discovery.canonicalUrl;
       }
@@ -208,6 +222,7 @@ export default function OnboardingClient() {
 
     if (!sourceUrl) {
       setError("We couldn't use that link yet. Paste a specific post URL or a feed.");
+      setStep("review");
       return;
     }
 
@@ -272,21 +287,30 @@ export default function OnboardingClient() {
   };
 
   const preview = discovery?.articlePreview;
-  const feedPreview = discovery?.feedPreview;
-  const canCreateOneEpisode =
+  const primaryFeed = discovery?.feeds?.[0];
+  const hasFeed =
+    discovery?.kind === "feed" &&
+    Boolean(discovery.recommendedFeedUrl || primaryFeed?.url);
+  const canSync = Boolean(hasFeed);
+  const canOneOff =
     discovery?.kind === "article" ||
-    (discovery?.kind === "feed" && feedPreview?.sampleItems?.[0]?.url);
-  const canCreateShow = Boolean(feedPreview?.feedUrl);
-  const inputChanged = inputUrl.trim() !== detectedUrl;
+    Boolean(primaryFeed?.sampleItems?.[0]?.url);
+  const canProceed =
+    selectedMode === "sync"
+      ? canSync
+      : selectedMode === "one-off"
+        ? canOneOff
+        : false;
+  const hasSupportedPath = canSync || canOneOff;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="font-serif text-3xl font-medium text-foreground">Create audio from a link</h1>
-        <p className="mt-1 text-muted-foreground">Paste any article or blog URL to get started.</p>
+        <p className="mt-1 text-muted-foreground">Paste a link once. We&apos;ll handle the rest.</p>
       </div>
 
-      {step === 1 && (
+      {step === "input" && (
         <Card>
           <CardContent className="space-y-5 pt-6">
             <div className="space-y-2">
@@ -303,7 +327,7 @@ export default function OnboardingClient() {
                 className="h-12 text-base"
               />
               <p className="text-xs text-muted-foreground">
-                Works with any blog, Substack, Medium, WordPress, or website with an RSS feed.
+                Works with blogs, newsletters (Substack, Medium, WordPress), and most websites.
               </p>
             </div>
 
@@ -333,7 +357,7 @@ export default function OnboardingClient() {
         </Card>
       )}
 
-      {step === 2 && discovery && (
+      {step === "review" && discovery && (
         <>
           {/* Preview Card */}
           <Card className="overflow-hidden">
@@ -422,8 +446,9 @@ export default function OnboardingClient() {
                 <button
                   type="button"
                   onClick={() => {
-                    setStep(1);
+                    setStep("input");
                     setDiscovery(null);
+                    setSelectedMode(null);
                   }}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                 >
@@ -435,28 +460,45 @@ export default function OnboardingClient() {
           </Card>
 
           {/* Feed info if available */}
-          {feedPreview && feedPreview.sampleItems && feedPreview.sampleItems.length > 0 && (
+          {hasFeed && (
             <Card>
-              <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Rss className="h-4 w-4 text-orange-500" />
-                  <span className="font-medium">Feed discovered</span>
-                  <span className="text-muted-foreground">
-                    · {feedPreview.sampleItems.length}+ posts available
-                  </span>
+              <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+                    <Rss className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium text-foreground">Auto-sync feed found</div>
+                    <p className="text-xs text-muted-foreground">
+                      We can keep this updated automatically.
+                    </p>
+                    {discovery.recommendedFeedUrl && (
+                      <code className="block break-all text-[11px] text-muted-foreground">
+                        {discovery.recommendedFeedUrl}
+                      </code>
+                    )}
+                  </div>
                 </div>
+                <Badge variant="secondary" className="self-start text-[10px]">
+                  Recommended
+                </Badge>
               </CardContent>
             </Card>
           )}
 
-          {/* Action buttons */}
+          {/* Mode selection */}
           <div className="grid gap-3 sm:grid-cols-2">
-            {/* Create one episode */}
             <button
               type="button"
-              onClick={() => setStep(2.5)}
-              disabled={!canCreateOneEpisode}
-              className="group rounded-xl border border-border bg-card p-5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                if (canSync) setSelectedMode("sync");
+              }}
+              disabled={!canSync}
+              className={`group rounded-xl border p-5 text-left transition-colors ${
+                selectedMode === "sync"
+                  ? "border-foreground/30 bg-muted/50"
+                  : "border-border hover:border-foreground/20 hover:bg-muted/50"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -464,50 +506,74 @@ export default function OnboardingClient() {
                 </div>
               </div>
               <div className="mt-4">
-                <div className="font-medium text-foreground">Create one episode</div>
+                <div className="font-medium text-foreground">Keep it synced (recommended)</div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Generate audio for this post only.
+                  Auto-sync feed. New posts become episodes automatically.
                 </p>
+                {!canSync && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    We need a feed to keep this updated.
+                  </p>
+                )}
               </div>
             </button>
 
-            {/* Create show & auto-sync */}
             <button
               type="button"
-              onClick={() => setStep(2.5)}
-              disabled={!canCreateShow}
-              className="group rounded-xl border border-border bg-card p-5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                if (canOneOff) setSelectedMode("one-off");
+              }}
+              disabled={!canOneOff}
+              className={`group rounded-xl border p-5 text-left transition-colors ${
+                selectedMode === "one-off"
+                  ? "border-foreground/30 bg-muted/50"
+                  : "border-border hover:border-foreground/20 hover:bg-muted/50"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <div className="flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-                  <Rss className="h-5 w-5 text-orange-500" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
                 </div>
-                {canCreateShow && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Recommended
-                  </Badge>
-                )}
               </div>
               <div className="mt-4">
-                <div className="font-medium text-foreground">Create show & auto-sync</div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {canCreateShow
-                    ? "Watch feed & generate new episodes automatically."
-                    : "No feed found for this site."}
-                </p>
+                <div className="font-medium text-foreground">Just this one</div>
+                <p className="mt-1 text-sm text-muted-foreground">Use this website link for a single episode.</p>
+                {!canOneOff && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Paste a specific post link to continue.
+                  </p>
+                )}
               </div>
             </button>
           </div>
 
           {/* No valid action available */}
-          {!canCreateOneEpisode && !canCreateShow && (
+          {!hasSupportedPath && (
             <Alert>
-              <AlertTitle>We couldn&apos;t find usable content</AlertTitle>
+              <AlertTitle>We couldn&apos;t find an auto-sync feed for this link.</AlertTitle>
               <AlertDescription>
-                Try pasting a direct link to a specific article or blog post.
+                Paste a specific article link (for example, https://example.com/post) or paste your homepage and
+                we&apos;ll try again.
               </AlertDescription>
             </Alert>
           )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setStep("format")} disabled={!canProceed}>
+              Continue to format
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setStep("input");
+                setDiscovery(null);
+                setSelectedMode(null);
+              }}
+            >
+              ← Back
+            </Button>
+          </div>
 
           {/* Show details (editable) */}
           <Card>
@@ -550,12 +616,36 @@ export default function OnboardingClient() {
               <Accordion type="single" collapsible>
                 <AccordionItem value="advanced" className="border-none">
                   <AccordionTrigger className="py-0 text-sm">
-                    Advanced (RSS)
+                    RSS (advanced)
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-3 pt-4">
-                    {feedPreview ? (
-                      <div className="text-xs text-muted-foreground">
-                        Detected feed: <code className="break-all">{feedPreview.feedUrl}</code>
+                  <AccordionContent className="space-y-4 pt-4">
+                    {discovery.feeds?.length ? (
+                      <div className="space-y-2 text-xs text-muted-foreground">
+                        <div className="font-medium text-foreground">Detected feeds</div>
+                        <div className="space-y-2">
+                          {discovery.feeds.map((feed) => (
+                            <div key={feed.url} className="flex items-start gap-2">
+                              <Badge variant="outline" className="mt-0.5 text-[10px] uppercase">
+                                {feed.type}
+                              </Badge>
+                              <div className="flex-1 space-y-0.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <code className="break-all">{feed.url}</code>
+                                  {discovery.recommendedFeedUrl === feed.url && (
+                                    <Badge variant="secondary" className="text-[10px]">
+                                      Recommended
+                                    </Badge>
+                                  )}
+                                </div>
+                                {feed.latestItemTitle && (
+                                  <div className="line-clamp-1 text-[11px] text-muted-foreground">
+                                    Latest: {feed.latestItemTitle}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : (
                       <div className="text-xs text-muted-foreground">
@@ -582,23 +672,10 @@ export default function OnboardingClient() {
               </Accordion>
             </CardContent>
           </Card>
-
-          {/* Back button */}
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setStep(1);
-                setDiscovery(null);
-              }}
-            >
-              ← Back
-            </Button>
-          </div>
         </>
       )}
 
-      {step === 2.5 && discovery && (
+      {step === "format" && discovery && (
         <Card>
           <CardHeader>
             <CardTitle>Choose a format</CardTitle>
@@ -623,23 +700,18 @@ export default function OnboardingClient() {
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button variant="ghost" onClick={() => setStep(2)}>
+              <Button variant="ghost" onClick={() => setStep("review")}>
                 ← Back
               </Button>
-              <Button onClick={handleCreateOneEpisode} disabled={!canCreateOneEpisode}>
-                Create one episode
+              <Button onClick={() => handleGenerate()} disabled={!canProceed}>
+                {selectedMode === "sync" ? "Create & auto-sync" : "Create this episode"}
               </Button>
-              {canCreateShow && (
-                <Button variant="outline" onClick={handleCreateShowAndSync}>
-                  Create show & sync
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {step === 3 && (
+      {step === "progress" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

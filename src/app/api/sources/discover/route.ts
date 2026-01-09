@@ -26,11 +26,14 @@ type FeedSampleItem = {
   publishedAt?: string;
 };
 
-type FeedPreview = {
-  feedUrl: string;
+type FeedSummary = {
+  url: string;
   title?: string;
   description?: string;
+  type: FeedType;
   sampleItems?: FeedSampleItem[];
+  itemCount?: number;
+  latestItemTitle?: string;
 };
 
 type ArticlePreview = {
@@ -43,21 +46,16 @@ type ArticlePreview = {
   siteName?: string;
 };
 
-type Candidate = {
-  canonicalUrl: string;
-  articlePreview: ArticlePreview;
-  confidence: "high" | "medium" | "low";
-};
+type DiscoverKind = "feed" | "article" | "website" | "unknown";
 
 type DiscoverResult = {
-  kind: "feed" | "article" | "homepage" | "unknown";
+  kind: DiscoverKind;
   confidence: "high" | "medium" | "low";
   inputUrl: string;
   canonicalUrl?: string;
   articlePreview?: ArticlePreview;
-  feedPreview?: FeedPreview;
-  candidates?: Candidate[];
-  // Legacy fields for backward compatibility
+  feeds: FeedSummary[];
+  recommendedFeedUrl?: string;
   platformHint?: string | null;
   origin: string;
   displayName: string;
@@ -115,6 +113,18 @@ type ParsedFeed = {
   type: FeedType;
   items: FeedSampleItem[];
 };
+
+function toFeedSummary(feed: ParsedFeed): FeedSummary {
+  return {
+    url: feed.url,
+    title: feed.title,
+    description: feed.description,
+    type: feed.type,
+    sampleItems: feed.items.slice(0, 3),
+    itemCount: feed.items.length,
+    latestItemTitle: feed.items[0]?.title,
+  };
+}
 
 async function parseFeedFromText(text: string, url: string): Promise<ParsedFeed | null> {
   if (!looksLikeRss(text.slice(0, 2048), "")) return null;
@@ -418,17 +428,14 @@ export async function POST(request: Request) {
       const feed = await parseFeedFromText(text, finalUrl);
       if (feed) {
         const host = new URL(finalUrl).hostname;
+        const summary = toFeedSummary(feed);
         return NextResponse.json({
           kind: "feed",
           confidence: "high",
           inputUrl,
           canonicalUrl: feed.url,
-          feedPreview: {
-            feedUrl: feed.url,
-            title: feed.title,
-            description: feed.description,
-            sampleItems: feed.items.slice(0, 3),
-          },
+          feeds: [summary],
+          recommendedFeedUrl: summary.url,
           platformHint: detectPlatform(host, new JSDOM(text).window.document, text),
           origin: new URL(feed.url).origin,
           displayName: feed.title || host,
@@ -500,25 +507,23 @@ export async function POST(request: Request) {
     // Extract article preview for the current page
     const articlePreview = extractArticlePreview(doc, text, canonicalUrl);
 
+    const finalPlatformHint = substackOrigin ? "substack" : platformHint;
+
     // If feeds found, return as feed with article preview as option
     if (feeds.length > 0) {
-      const feedDisplayName = feeds[0]?.title || displayName;
-      const primaryFeed = feeds[0];
+      const feedSummaries = feeds.map(toFeedSummary);
+      const primaryFeed = feedSummaries[0];
       return NextResponse.json({
         kind: "feed",
         confidence: "high",
         inputUrl,
         canonicalUrl: substackOrigin && isSubstackProfile ? substackOrigin : canonicalUrl,
         articlePreview: articlePreview.title ? articlePreview : undefined,
-        feedPreview: {
-          feedUrl: primaryFeed.url,
-          title: primaryFeed.title,
-          description: primaryFeed.description,
-          sampleItems: primaryFeed.items.slice(0, 3),
-        },
-        platformHint,
+        feeds: feedSummaries,
+        recommendedFeedUrl: primaryFeed?.url,
+        platformHint: finalPlatformHint,
         origin: substackOrigin || origin,
-        displayName: feedDisplayName,
+        displayName: primaryFeed?.title || displayName,
         faviconUrl,
       } satisfies DiscoverResult);
     }
@@ -544,7 +549,8 @@ export async function POST(request: Request) {
         inputUrl,
         canonicalUrl,
         articlePreview,
-        platformHint,
+        feeds: [],
+        platformHint: finalPlatformHint,
         origin,
         displayName,
         faviconUrl,
@@ -553,11 +559,12 @@ export async function POST(request: Request) {
 
     // Homepage or unknown
     return NextResponse.json({
-      kind: "homepage",
+      kind: "website",
       confidence: "medium",
       inputUrl,
       canonicalUrl,
-      platformHint,
+      feeds: [],
+      platformHint: finalPlatformHint,
       origin,
       displayName,
       faviconUrl,
