@@ -89,27 +89,33 @@ export default async function SiteOverviewPage({
         <>
           {/* Latest published episode player */}
           {publishedEpisode ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium text-foreground">
-                    {publishedEpisode.title}
+            <Card>
+              <CardContent className="space-y-3 py-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">
+                      {publishedEpisode.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {getDomainFromUrl(publishedEpisode.sourceUrl)} · {formatRelativeTime(publishedEpisode.createdAt)}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {getDomainFromUrl(publishedEpisode.sourceUrl)} · {formatRelativeTime(publishedEpisode.createdAt)}
-                  </div>
+                  <Link
+                    href={`/listen/e/${publishedEpisode.publicId}`}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Open player →
+                  </Link>
                 </div>
-                <Link
-                  href={`/listen/e/${publishedEpisode.publicId}`}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Open player →
-                </Link>
-              </div>
-              <AudioPlayer publicId={publishedEpisode.publicId} />
-            </div>
+                <AudioPlayer publicId={publishedEpisode.publicId} />
+              </CardContent>
+            </Card>
           ) : (
-            <p className="text-sm text-muted-foreground">No published episodes yet.</p>
+            <Card>
+              <CardContent className="py-5">
+                <p className="text-sm text-muted-foreground">No published episodes yet.</p>
+              </CardContent>
+            </Card>
           )}
 
           {/* Summary blocks */}
