@@ -51,9 +51,9 @@ export default async function SiteOverviewPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 rounded-lg border border-border/70 bg-background p-6 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">{site.name}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{site.name}</h2>
           <p className="text-xs text-muted-foreground">
             {site.sources.length} source{site.sources.length === 1 ? "" : "s"}
           </p>
@@ -64,16 +64,14 @@ export default async function SiteOverviewPage({
               siteId={site.id}
               sourceId={primarySource.id}
               label="Generate latest"
-              size="lg"
             />
           ) : (
-            <Button asChild variant="outline" size="lg">
+            <Button asChild variant="outline">
               <Link href={`/app/sites/${site.id}/sources`}>Add a source</Link>
             </Button>
           )}
           <EmbedButton
             label="Copy embed"
-            size="lg"
             publicId={publishedEpisode?.publicId || null}
             baseUrl={baseUrl}
           />
@@ -90,32 +88,29 @@ export default async function SiteOverviewPage({
       ) : (
         <>
           {/* Latest published episode player */}
-          <Card>
-            <CardContent className="space-y-3 py-5">
-              {publishedEpisode ? (
-                <>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-medium text-foreground">
-                        {publishedEpisode.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {getDomainFromUrl(publishedEpisode.sourceUrl)} · {formatRelativeTime(publishedEpisode.createdAt)}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 text-xs">
-                      <Link href={`/listen/e/${publishedEpisode.publicId}`} className="text-muted-foreground hover:text-foreground">
-                        Open player page
-                      </Link>
-                    </div>
+          {publishedEpisode ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-medium text-foreground">
+                    {publishedEpisode.title}
                   </div>
-                  <AudioPlayer publicId={publishedEpisode.publicId} />
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No published episodes yet.</p>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="text-xs text-muted-foreground">
+                    {getDomainFromUrl(publishedEpisode.sourceUrl)} · {formatRelativeTime(publishedEpisode.createdAt)}
+                  </div>
+                </div>
+                <Link
+                  href={`/listen/e/${publishedEpisode.publicId}`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Open player →
+                </Link>
+              </div>
+              <AudioPlayer publicId={publishedEpisode.publicId} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No published episodes yet.</p>
+          )}
 
           {/* Summary blocks */}
           <div className="grid gap-4 sm:grid-cols-2">

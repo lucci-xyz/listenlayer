@@ -4,8 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProjectAvatar } from "@/components/project-avatar";
 import { formatRelativeTime } from "@/lib/time";
-import { AudioLines, BarChart3, Layers, Play, Plus, Zap, ArrowRight } from "lucide-react";
+import { AudioLines, BarChart3, Layers, Play, Plus, Zap } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +194,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Shows list — clean, no icons or add button */}
+        {/* Shows list — with project avatars */}
         <div className="rounded-2xl border border-border/70 bg-card">
           <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
             <h2 className="font-medium">Your shows</h2>
@@ -206,8 +207,9 @@ export default async function DashboardPage() {
                 <Link
                   key={site.id}
                   href={`/app/sites/${site.id}`}
-                  className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
+                  className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/30"
                 >
+                  <ProjectAvatar name={site.name} size={36} className="shrink-0 rounded-lg" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{site.name}</div>
                     <div className="text-xs text-muted-foreground">

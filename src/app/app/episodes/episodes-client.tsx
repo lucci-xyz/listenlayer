@@ -81,19 +81,20 @@ export default function EpisodesClient({
     <div className="space-y-4">
       {/* Filters + search */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
           {filters.map((opt) => (
-            <Button
+            <button
               key={opt}
-              size="sm"
-              variant="ghost"
-              className={
-                filter === opt ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-              }
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                filter === opt
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
               onClick={() => setFilter(opt)}
             >
               {opt}
-            </Button>
+            </button>
           ))}
         </div>
         <div className="ml-auto">

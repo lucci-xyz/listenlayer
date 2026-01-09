@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SiteTabs } from "@/app/app/sites/[siteId]/site-tabs";
+import { ProjectAvatar } from "@/components/project-avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -28,29 +30,25 @@ export default async function SiteLayout({
     redirect("/app");
   }
 
-  const favicon = site.domain ? `https://${site.domain}/favicon.ico` : null;
-
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Link href="/app" className="text-[12px] font-medium text-muted-foreground">
-          ← All shows
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link
+          href="/app"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background text-lg font-semibold text-foreground">
-            {favicon ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={favicon} alt="" className="h-6 w-6" />
-            ) : (
-              site.name.slice(0, 1).toUpperCase()
-            )}
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">{site.name}</h1>
-            <p className="text-[13px] text-muted-foreground">Show</p>
-          </div>
+        <ProjectAvatar name={site.name} size={44} className="rounded-xl" />
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">{site.name}</h1>
+          {site.domain && (
+            <p className="text-xs text-muted-foreground">{site.domain}</p>
+          )}
         </div>
       </div>
+
       <SiteTabs siteId={siteId} />
       {children}
     </div>

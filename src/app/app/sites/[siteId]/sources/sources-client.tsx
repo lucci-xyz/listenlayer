@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { getDomainFromUrl } from "@/lib/url";
 import { formatDateTime, formatRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { GenerateButton } from "@/components/generate-button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import { toast } from "sonner";
 
 // Represents a content source connected to a publication.
 type Source = {
@@ -81,6 +79,7 @@ export default function SourcesClient({
   const [editingSource, setEditingSource] = useState<Source | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editName, setEditName] = useState("");
+  const [expandedSource, setExpandedSource] = useState<string | null>(null);
 
   const resetModal = () => {
     setInputUrl("");
@@ -161,6 +160,7 @@ export default function SourcesClient({
 
   const handleCopy = async (value: string) => {
     await navigator.clipboard.writeText(value);
+    toast.success("Copied to clipboard");
   };
 
   const handleRemove = async (sourceId: string) => {
@@ -199,7 +199,7 @@ export default function SourcesClient({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Sources</h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Connect a feed or link to generate episodes.
           </p>
         </div>
@@ -208,16 +208,16 @@ export default function SourcesClient({
 
       {sources.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
             No sources yet. Add a website or feed to start.
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {sources.map((source) => {
             const domain = getDomainFromUrl(source.url);
             const displayName = source.displayName || domain;
-            const favicon = source.faviconUrl || `https://${domain}/favicon.ico`;
+            const isExpanded = expandedSource === source.id;
             let typeLabel = source.type === "RSS" ? "RSS" : "Website";
             if (source.type === "URL") {
               try {
@@ -230,33 +230,42 @@ export default function SourcesClient({
               }
             }
             return (
-              <Card key={source.id} className="overflow-hidden">
-                <CardContent className="space-y-4 p-4">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={favicon} alt="" className="h-6 w-6" />
+              <Card key={source.id}>
+                <CardContent className="p-4">
+                  {/* Main row */}
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{displayName}</span>
+                        <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-[13px] font-semibold text-foreground">{displayName}</div>
-                          <Badge variant="secondary">{typeLabel}</Badge>
-                        </div>
-                        <div className="text-[12px] text-muted-foreground">{domain}</div>
-                        {source.type === "RSS" && source.latestItemTitle ? (
-                          <div className="text-[12px] text-muted-foreground">
-                            Latest item: {source.latestItemTitle}
-                          </div>
-                        ) : null}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{domain}</div>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <GenerateButton siteId={siteId} sourceId={source.id} count={1} label="Generate" />
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-[10px] text-muted-foreground">
+                              {source.lastFetchedAt
+                                ? `Checked ${formatRelativeTime(source.lastFetchedAt)}`
+                                : "Never checked"}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {source.lastFetchedAt ? formatDateTime(source.lastFetchedAt) : "Not fetched yet"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSource(isExpanded ? null : source.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -265,73 +274,50 @@ export default function SourcesClient({
                           <DropdownMenuItem onClick={() => handleCopy(source.url)}>Copy URL</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleTestFetch(source.id)}>Test fetch</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleRemove(source.id)}>Remove</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRemove(source.id)} className="text-destructive">
+                            Remove
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="rounded-md border border-border/70 px-2 py-1">
-                            {source.lastFetchedAt
-                              ? `Checked ${formatRelativeTime(source.lastFetchedAt)}`
-                              : "Never checked"}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {source.lastFetchedAt ? formatDateTime(source.lastFetchedAt) : "Not fetched yet"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    {source.lastFetchStatus ? (
-                      <span className="rounded-md border border-border/70 px-2 py-1">
-                        Status: {source.lastFetchStatus}
-                      </span>
-                    ) : null}
-                  </div>
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className="mt-4 space-y-3 border-t pt-4">
+                      {/* URL display */}
+                      <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                        <code className="flex-1 truncate text-xs text-muted-foreground">{source.url}</code>
+                        <Button size="sm" variant="ghost" onClick={() => handleCopy(source.url)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
 
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value="details">
-                      <AccordionTrigger>Details</AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-[12px]">
-                            <span className="truncate text-muted-foreground">{source.url}</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCopy(source.url)}
-                            >
-                              Copy URL
-                            </Button>
-                          </div>
-                          {source.lastError ? (
-                            <div className="rounded-lg border border-rose-200/70 bg-rose-50/70 px-3 py-2 text-[12px] text-rose-600">
-                              {source.lastError}
-                            </div>
-                          ) : null}
-                          {source.type === "RSS" ? (
-                            <div className="flex flex-wrap gap-2">
-                              <GenerateButton siteId={siteId} sourceId={source.id} count={1} label="Last 1" />
-                              <GenerateButton siteId={siteId} sourceId={source.id} count={3} label="Last 3" />
-                              <GenerateButton siteId={siteId} sourceId={source.id} count={5} label="Last 5" />
-                              <GenerateButton siteId={siteId} sourceId={source.id} count={10} label="Last 10" />
-                            </div>
-                          ) : null}
-                          <div className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2 text-[12px]">
-                            <div>
-                              <div className="font-semibold text-foreground">Auto publish</div>
-                              <div className="text-muted-foreground">Coming soon</div>
-                            </div>
-                            <Switch checked={false} disabled />
-                          </div>
+                      {/* Error message */}
+                      {source.lastError && (
+                        <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                          {source.lastError}
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                      )}
+
+                      {/* Batch generate for RSS */}
+                      {source.type === "RSS" && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Generate:</span>
+                          <GenerateButton siteId={siteId} sourceId={source.id} count={1} label="Last 1" size="sm" variant="outline" />
+                          <GenerateButton siteId={siteId} sourceId={source.id} count={3} label="Last 3" size="sm" variant="outline" />
+                          <GenerateButton siteId={siteId} sourceId={source.id} count={5} label="Last 5" size="sm" variant="outline" />
+                        </div>
+                      )}
+
+                      {/* Latest item */}
+                      {source.latestItemTitle && (
+                        <div className="text-xs text-muted-foreground">
+                          Latest: <span className="text-foreground">{source.latestItemTitle}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -339,6 +325,7 @@ export default function SourcesClient({
         </div>
       )}
 
+      {/* Add Source Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -346,21 +333,20 @@ export default function SourcesClient({
             <DialogDescription>Choose how you want to connect your content.</DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
+          <div className="mt-4 flex gap-1 rounded-lg bg-muted p-1">
             {([
-              { key: "website", label: "Website (recommended)" },
-              { key: "rss", label: "Feed (RSS)" },
+              { key: "website", label: "Website" },
+              { key: "rss", label: "RSS Feed" },
               { key: "url", label: "Single URL" },
             ] as const).map((option) => (
-              <Button
+              <button
                 key={option.key}
-                size="sm"
-                variant="ghost"
-                className={
+                type="button"
+                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   mode === option.key
-                    ? "bg-background text-foreground"
+                    ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
-                }
+                }`}
                 onClick={() => {
                   setMode(option.key);
                   setDiscovery(null);
@@ -369,7 +355,7 @@ export default function SourcesClient({
                 }}
               >
                 {option.label}
-              </Button>
+              </button>
             ))}
           </div>
 
@@ -385,24 +371,24 @@ export default function SourcesClient({
               value={inputUrl}
               onChange={(event) => setInputUrl(event.target.value)}
             />
-            {mode === "url" ? (
-              <p className="text-[12px] text-muted-foreground">
-                Paste a specific article URL. Homepages without articles will be rejected.
+            {mode === "url" && (
+              <p className="text-xs text-muted-foreground">
+                Paste a specific article URL.
               </p>
-            ) : null}
+            )}
 
-            {mode === "website" ? (
+            {mode === "website" && (
               <Button onClick={handleDiscover} disabled={!inputUrl || loading}>
                 {loading ? "Checking..." : "Check link"}
               </Button>
-            ) : null}
+            )}
 
-            {discovery ? (
-              <div className="rounded-lg border border-border/70 bg-muted/60 p-3 text-[13px]">
+            {discovery && (
+              <div className="rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-foreground">{discovery.displayName}</div>
-                    <div className="text-[12px] text-muted-foreground">
+                    <div className="text-sm font-medium">{discovery.displayName}</div>
+                    <div className="text-xs text-muted-foreground">
                       {getDomainFromUrl(discovery.origin)}
                     </div>
                   </div>
@@ -415,26 +401,12 @@ export default function SourcesClient({
                   </Badge>
                 </div>
                 {discovery.kind === "website" || discovery.kind === "unknown" ? (
-                  <div className="mt-2 rounded-md border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-[12px] text-amber-700">
+                  <div className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
                     No RSS feed found. Switch to Single URL to generate from a specific article.
-                    <div className="mt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setMode("url");
-                          setInputUrl(discovery.canonicalUrl);
-                          setDiscovery(null);
-                          setError(null);
-                        }}
-                      >
-                        Use single URL
-                      </Button>
-                    </div>
                   </div>
                 ) : null}
-                {discovery.kind === "feed" ? (
-                  <div className="mt-2 flex flex-wrap gap-3 text-[12px]">
+                {discovery.kind === "feed" && (
+                  <div className="mt-2 flex gap-3 text-xs">
                     <label className="flex items-center gap-2">
                       <input
                         type="radio"
@@ -462,11 +434,11 @@ export default function SourcesClient({
                       Latest post URL
                     </label>
                   </div>
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
 
-            {error ? <div className="text-[13px] text-red-600">{error}</div> : null}
+            {error && <div className="text-sm text-destructive">{error}</div>}
           </div>
 
           <DialogFooter className="mt-4">
@@ -494,6 +466,7 @@ export default function SourcesClient({
         </DialogContent>
       </Dialog>
 
+      {/* Edit Source Dialog */}
       <Dialog open={!!editingSource} onOpenChange={(openState) => !openState && setEditingSource(null)}>
         <DialogContent>
           <DialogHeader>

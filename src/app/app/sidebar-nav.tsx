@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ProjectAvatar } from "@/components/project-avatar";
 
 const workspaceLinks = [
   { href: "/app", label: "Overview", icon: LayoutGrid },
@@ -22,9 +23,11 @@ export type SidebarPublication = {
 
 function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutGrid }) {
   const pathname = usePathname();
-  const isActive = href === "/app"
-    ? pathname === "/app" || pathname.startsWith("/app/sites")
-    : pathname.startsWith(href);
+  // For "/app", only be active on exact match (not on site pages)
+  // For other links, check if pathname starts with href
+  const isActive = href === "/app" 
+    ? pathname === "/app"
+    : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <Link
@@ -99,9 +102,7 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-semibold text-primary">
-                    {publication.name.slice(0, 1).toUpperCase()}
-                  </div>
+                  <ProjectAvatar name={publication.name} size={20} className="shrink-0 rounded" />
                   <span className="truncate">{publication.name}</span>
                 </Link>
               );

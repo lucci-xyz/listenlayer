@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
@@ -41,6 +43,15 @@ export default async function EpisodeDetailPage({
 
   return (
     <div className="space-y-6">
+      {/* Back link */}
+      <Link
+        href="/app/episodes"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to episodes
+      </Link>
+
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
@@ -49,6 +60,14 @@ export default async function EpisodeDetailPage({
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>{statusLabel}</span>
             <span>{getDomainFromUrl(episode.sourceUrl)}</span>
+            {episode.status === "PUBLISHED" && (
+              <Link
+                href={`/listen/e/${episode.publicId}`}
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                Open player <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
           </div>
         </div>
         <EmbedButton publicId={episode.status === "PUBLISHED" ? episode.publicId : null} baseUrl={baseUrl} />

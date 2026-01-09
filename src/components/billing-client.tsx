@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PLANS, type PlanKey } from "@/lib/stripe";
-import { Check, CreditCard, Loader2, Zap } from "lucide-react";
+import { Check, CreditCard, Loader2, Zap, Sparkles } from "lucide-react";
 
 interface BillingClientProps {
   user: {
@@ -32,6 +32,8 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.error) {
+        console.error("Checkout error:", data.error);
       }
     } catch (error) {
       console.error("Checkout error:", error);
@@ -78,7 +80,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold">{plan.name}</span>
                 {user.subscriptionStatus === "ACTIVE" && (
-                  <Badge variant="default" className="bg-success text-success-foreground">
+                  <Badge variant="default" className="bg-emerald-600">
                     Active
                   </Badge>
                 )}
@@ -106,7 +108,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
           <div className="flex items-center justify-between rounded-lg border border-border p-4">
             <div>
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-warning" />
+                <Zap className="h-4 w-4 text-amber-500" />
                 <span className="font-medium">Episode credits</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -131,76 +133,122 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
         </CardContent>
       </Card>
 
-      {/* Upgrade Options */}
-      {currentPlan !== "pro" && (
-        <Card>
+      {/* Upgrade Options - Always show for free plan */}
+      {currentPlan === "free" && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
           <CardHeader>
-            <CardTitle>Upgrade your plan</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Upgrade your plan
+            </CardTitle>
             <CardDescription>
-              Get more episodes and features
+              Get more episodes and unlock advanced features
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
-              {(["starter", "pro"] as const)
-                .filter((key) => key !== currentPlan)
-                .map((key) => {
-                  const planOption = PLANS[key];
-                  const priceId = planOption.priceId;
-                  const isCurrentHigherTier =
-                    currentPlan === "starter" && key === "starter";
+              {(["starter", "pro"] as const).map((key) => {
+                const planOption = PLANS[key];
+                const priceId = planOption.priceId;
 
-                  if (isCurrentHigherTier || !priceId) return null;
-
-                  return (
-                    <div
-                      key={key}
-                      className="relative rounded-lg border border-border p-4"
-                    >
-                      {key === "starter" && (
-                        <Badge
-                          className="absolute -top-2 right-4"
-                          variant="default"
-                        >
-                          Popular
-                        </Badge>
-                      )}
-                      <div className="mb-4">
-                        <h3 className="font-semibold">{planOption.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {planOption.description}
-                        </p>
-                        <div className="mt-2">
-                          <span className="text-2xl font-bold">
-                            ${planOption.price}
-                          </span>
-                          <span className="text-muted-foreground">/month</span>
-                        </div>
-                      </div>
-                      <ul className="mb-4 space-y-2">
-                        {planOption.features.slice(0, 4).map((feature) => (
-                          <li
-                            key={feature}
-                            className="flex items-start gap-2 text-sm"
-                          >
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        className="w-full"
-                        onClick={() => handleCheckout(priceId)}
-                        disabled={loading === priceId}
+                return (
+                  <div
+                    key={key}
+                    className="relative rounded-xl border border-border bg-card p-5"
+                  >
+                    {key === "starter" && (
+                      <Badge
+                        className="absolute -top-2 right-4 bg-primary"
                       >
-                        {loading === priceId ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : null}
-                        {currentPlan === "free" ? "Start free trial" : "Upgrade"}
-                      </Button>
+                        Popular
+                      </Badge>
+                    )}
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold">{planOption.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {planOption.description}
+                      </p>
+                      <div className="mt-3">
+                        <span className="text-3xl font-bold">
+                          ${planOption.price}
+                        </span>
+                        <span className="text-muted-foreground">/month</span>
+                      </div>
                     </div>
-                  );
-                })}
+                    <ul className="mb-5 space-y-2">
+                      {planOption.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full"
+                      variant={key === "starter" ? "default" : "outline"}
+                      onClick={() => priceId && handleCheckout(priceId)}
+                      disabled={loading === priceId || !priceId}
+                    >
+                      {loading === priceId ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {priceId ? "Start free trial" : "Coming soon"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Show upgrade for starter users */}
+      {currentPlan === "starter" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upgrade to Pro</CardTitle>
+            <CardDescription>
+              Get unlimited shows and more episodes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-xl border border-border p-5">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">{PLANS.pro.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {PLANS.pro.description}
+                </p>
+                <div className="mt-3">
+                  <span className="text-3xl font-bold">
+                    ${PLANS.pro.price}
+                  </span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+              </div>
+              <ul className="mb-5 space-y-2">
+                {PLANS.pro.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-start gap-2 text-sm"
+                  >
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="w-full"
+                onClick={() => PLANS.pro.priceId && handleCheckout(PLANS.pro.priceId)}
+                disabled={loading === PLANS.pro.priceId || !PLANS.pro.priceId}
+              >
+                {loading === PLANS.pro.priceId ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {PLANS.pro.priceId ? "Upgrade to Pro" : "Coming soon"}
+              </Button>
             </div>
           </CardContent>
         </Card>

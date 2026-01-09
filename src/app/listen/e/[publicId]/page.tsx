@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AudioPlayer } from "@/components/audio-player";
 
@@ -24,8 +26,17 @@ export default async function ListenPage({
     : []) as { title: string; startApproxSec: number }[];
 
   return (
-    <div className="min-h-screen bg-background px-6 py-12">
+    <div className="min-h-screen bg-background px-6 py-8">
       <div className="mx-auto w-full max-w-3xl space-y-6">
+        {/* Back button */}
+        <Link
+          href="/app"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+
         <div className="rounded-lg border border-border/70 bg-background p-6">
           <div className="text-[12px] font-medium text-muted-foreground">ListenLayer</div>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">{episode.title}</h1>
