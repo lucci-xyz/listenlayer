@@ -52,15 +52,14 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object;
+        const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const subscriptionId = session.subscription as string;
 
         if (userId && subscriptionId) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          if ("deleted" in subscription) {
-            break;
-          }
+          const subscription = (await stripe.subscriptions.retrieve(
+            subscriptionId
+          )) as Stripe.Subscription;
           const priceId = subscription.items.data[0]?.price?.id ?? null;
           const limits = getPlanLimits(priceId);
 
@@ -70,7 +69,9 @@ export async function POST(req: Request) {
               subscriptionId,
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
-              subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+              subscriptionCurrentPeriodEnd: new Date(
+                subscription.current_period_end * 1000
+              ),
               episodeCredits: limits.episodesPerMonth,
             },
           });
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       }
 
       case "customer.subscription.updated": {
-        const subscription = event.data.object;
+        const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
         const priceId = subscription.items.data[0]?.price?.id ?? null;
 
@@ -93,7 +94,9 @@ export async function POST(req: Request) {
             data: {
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
-              subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+              subscriptionCurrentPeriodEnd: new Date(
+                subscription.current_period_end * 1000
+              ),
             },
           });
         }
@@ -101,7 +104,7 @@ export async function POST(req: Request) {
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object;
+        const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
         const user = await prisma.user.findFirst({
@@ -124,7 +127,7 @@ export async function POST(req: Request) {
       }
 
       case "invoice.payment_succeeded": {
-        const invoice = event.data.object;
+        const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
         // Reset credits on successful payment (new billing cycle)
