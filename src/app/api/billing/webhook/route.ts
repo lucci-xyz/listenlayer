@@ -58,10 +58,15 @@ export async function POST(req: Request) {
 
         if (userId && subscriptionId) {
           const subscription = (await stripe.subscriptions.retrieve(
-            subscriptionId
+            subscriptionId,
+            { expand: ["items.data"] }
           )) as Stripe.Subscription;
-          const priceId = subscription.items.data[0]?.price?.id ?? null;
+          const firstItem = subscription.items.data[0];
+          const priceId = firstItem?.price?.id ?? null;
           const limits = getPlanLimits(priceId);
+          const periodEnd = firstItem?.current_period_end
+            ? new Date(firstItem.current_period_end * 1000)
+            : null;
 
           await prisma.user.update({
             where: { id: userId },
@@ -69,9 +74,7 @@ export async function POST(req: Request) {
               subscriptionId,
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
-              subscriptionCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
-              ),
+              subscriptionCurrentPeriodEnd: periodEnd,
               episodeCredits: limits.episodesPerMonth,
             },
           });
@@ -82,7 +85,11 @@ export async function POST(req: Request) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
-        const priceId = subscription.items.data[0]?.price?.id ?? null;
+        const firstItem = subscription.items.data[0];
+        const priceId = firstItem?.price?.id ?? null;
+        const periodEnd = firstItem?.current_period_end
+          ? new Date(firstItem.current_period_end * 1000)
+          : null;
 
         const user = await prisma.user.findFirst({
           where: { stripeCustomerId: customerId },
@@ -94,9 +101,7 @@ export async function POST(req: Request) {
             data: {
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
-              subscriptionCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
-              ),
+              subscriptionCurrentPeriodEnd: periodEnd,
             },
           });
         }
