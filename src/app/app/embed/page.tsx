@@ -4,8 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
 import { embedHeight } from "@/lib/embed";
-import { formatRelativeTime } from "@/lib/time";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyField } from "@/components/copy-field";
 import { EmbedButton } from "@/components/embed-button";
@@ -35,9 +34,7 @@ export default async function EmbedPreviewPage({
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <p className="text-[13px] text-muted-foreground">
-            Create a show to preview the player.
-          </p>
+          <p className="text-sm text-muted-foreground">Create a show to preview the player.</p>
           <Button asChild className="mt-4">
             <Link href="/app/onboarding">New show</Link>
           </Button>
@@ -46,7 +43,7 @@ export default async function EmbedPreviewPage({
     );
   }
 
-  const activeSite = sites.find((site) => site.id === siteParam) || sites[0];
+  const activeSite = sites.find((s) => s.id === siteParam) || sites[0];
   const baseUrl = getBaseUrl();
   const height = embedHeight();
 
@@ -67,76 +64,61 @@ export default async function EmbedPreviewPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <EmbedButton
-          label="Copy embed"
-          publicId={episode?.publicId || null}
-          baseUrl={baseUrl}
-        />
+        <h1 className="text-xl font-semibold">Embed preview</h1>
+        <EmbedButton label="Copy embed" publicId={episode?.publicId || null} baseUrl={baseUrl} />
       </div>
 
-      <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-[3px]">
-        {sites.map((site) => (
-          <Button
-            key={site.id}
-            asChild
-            size="sm"
-            variant="ghost"
-            className={
-              site.id === activeSite.id
-                ? "bg-background text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }
-          >
-            <Link href={`/app/embed?siteId=${site.id}`}>{site.name}</Link>
-          </Button>
-        ))}
-      </div>
+      {/* Site selector as simple links */}
+      {sites.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Show:</span>
+          <div className="flex gap-1 rounded-md bg-muted/60 p-1">
+            {sites.map((s) => (
+              <Link
+                key={s.id}
+                href={`/app/embed?siteId=${s.id}`}
+                className={`rounded px-2 py-1 text-sm transition ${
+                  s.id === activeSite.id
+                    ? "bg-background text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      {/* Live player preview */}
+      <Card>
+        <CardContent className="py-5">
+          {embedUrl ? (
+            <div className="rounded-lg border border-border/70 bg-background p-4">
+              <iframe
+                title="Embed preview"
+                src={embedUrl}
+                style={{ height }}
+                className="w-full"
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Publish an episode to preview the embed.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Copy snippet */}
+      {iframeSnippet && (
         <Card>
-          <CardHeader>
-            <CardTitle>Live player</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {embedUrl ? (
-              <div className="rounded-lg border border-border/70 bg-background p-4">
-                <iframe
-                  title="Embed preview"
-                  src={embedUrl}
-                  style={{ height }}
-                  className="w-full"
-                  loading="lazy"
-                />
-              </div>
-            ) : (
-              <p className="text-[13px] text-muted-foreground">
-                Publish an episode to preview the embed.
-              </p>
-            )}
+          <CardContent className="py-5">
+            <CopyField label="Iframe snippet" value={iframeSnippet} mono />
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-[13px]">
-            <div>
-              <div className="text-[12px] font-medium text-muted-foreground">Show</div>
-              <div className="text-[13px] text-foreground">{activeSite.name}</div>
-            </div>
-            <div>
-              <div className="text-[12px] font-medium text-muted-foreground">Latest episode</div>
-              <div className="text-[13px] text-muted-foreground">
-                {episode?.publishedAt
-                  ? formatRelativeTime(episode.publishedAt)
-                  : "No published episodes yet"}
-              </div>
-            </div>
-            {iframeSnippet ? <CopyField label="Iframe snippet" value={iframeSnippet} mono /> : null}
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }

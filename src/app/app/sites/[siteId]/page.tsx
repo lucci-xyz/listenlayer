@@ -3,11 +3,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
-import { embedHeight } from "@/lib/embed";
 import { formatRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { AudioPlayer } from "@/components/audio-player";
 import { GenerateButton } from "@/components/generate-button";
 import { EmbedButton } from "@/components/embed-button";
@@ -34,11 +32,6 @@ export default async function SiteOverviewPage({
     redirect("/app");
   }
 
-  const latestEpisode = await prisma.episode.findFirst({
-    where: { siteId: site.id },
-    orderBy: { createdAt: "desc" },
-  });
-
   const publishedEpisode = await prisma.episode.findFirst({
     where: { siteId: site.id, status: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
@@ -53,18 +46,15 @@ export default async function SiteOverviewPage({
 
   const primarySource = site.sources[0] || null;
   const baseUrl = getBaseUrl();
-  const embedHeightPx = embedHeight();
-  const embedUrl = publishedEpisode ? `${baseUrl}/embed/e/${publishedEpisode.publicId}` : null;
-
-  const isNewPublication = site.sources.length === 0 && !latestEpisode;
-  const latestStatusLabel = latestEpisode?.status === "CANCELLED" ? "Canceled" : latestEpisode?.status;
+  const isNewPublication = site.sources.length === 0 && !publishedEpisode;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 rounded-lg border border-border/70 bg-background p-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">{site.name}</h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {site.sources.length} source{site.sources.length === 1 ? "" : "s"}
           </p>
         </div>
@@ -92,108 +82,60 @@ export default async function SiteOverviewPage({
 
       {isNewPublication ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Get started</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-[13px] text-muted-foreground">
-            <div>Add a source (RSS or website).</div>
-            <div>Copy the embed snippet and publish it.</div>
+          <CardContent className="space-y-2 py-6 text-sm text-muted-foreground">
+            <p>Add a source (RSS or website).</p>
+            <p>Copy the embed snippet and publish it.</p>
           </CardContent>
         </Card>
       ) : (
         <>
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Latest episode</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {latestEpisode ? (
-                  <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-[13px] font-semibold text-foreground">
-                        {latestEpisode.title}
+          {/* Latest published episode player */}
+          <Card>
+            <CardContent className="space-y-3 py-5">
+              {publishedEpisode ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium text-foreground">
+                        {publishedEpisode.title}
                       </div>
-                      <Badge variant={latestEpisode.status === "PUBLISHED" ? "default" : "secondary"}>
-                        {latestStatusLabel}
-                      </Badge>
-                      <span className="text-[12px] text-muted-foreground">
-                        {formatRelativeTime(latestEpisode.createdAt)}
-                      </span>
+                      <div className="text-xs text-muted-foreground">
+                        {getDomainFromUrl(publishedEpisode.sourceUrl)} · {formatRelativeTime(publishedEpisode.createdAt)}
+                      </div>
                     </div>
-                    <div className="text-[12px] text-muted-foreground">
-                      Source: {getDomainFromUrl(latestEpisode.sourceUrl)}
+                    <div className="flex gap-2 text-xs">
+                      <Link href={`/listen/e/${publishedEpisode.publicId}`} className="text-muted-foreground hover:text-foreground">
+                        Open player page
+                      </Link>
                     </div>
-                    {latestEpisode.status === "PUBLISHED" ? (
-                      <AudioPlayer publicId={latestEpisode.publicId} />
-                    ) : (
-                      <p className="text-[13px] text-muted-foreground">
-                        Audio will appear once the episode is published.
-                      </p>
-                    )}
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/app/episodes/${latestEpisode.id}`}>Open episode</Link>
-                    </Button>
-                  </>
-                ) : (
-                  <p className="text-[13px] text-muted-foreground">No episodes yet.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Player preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {embedUrl ? (
-                  <div className="space-y-3">
-                    <div className="rounded-lg border border-border/70 bg-background">
-                      <iframe
-                        title="Embed preview"
-                        src={embedUrl}
-                        style={{ height: embedHeightPx }}
-                        className="w-full"
-                        loading="lazy"
-                      />
-                    </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/app/embed?siteId=${site.id}`}>Open player page</Link>
-                    </Button>
                   </div>
-                ) : (
-                  <p className="text-[13px] text-muted-foreground">
-                    Publish an episode to preview the player.
-                  </p>
-                )}
+                  <AudioPlayer publicId={publishedEpisode.publicId} />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No published episodes yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Summary blocks */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardContent className="space-y-1 py-5">
+                <div className="text-xs text-muted-foreground">Sources</div>
+                <div className="text-2xl font-semibold">{site.sources.length}</div>
+                <Link
+                  href={`/app/sites/${site.id}/sources`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  View sources →
+                </Link>
               </CardContent>
             </Card>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardContent className="space-y-2 py-5">
-                <div className="text-[12px] font-medium text-muted-foreground">Sources</div>
-                <div className="text-2xl font-semibold text-foreground">{site.sources.length}</div>
-                <div className="text-[13px] text-muted-foreground">
-                  {primarySource
-                    ? `Primary: ${getDomainFromUrl(primarySource.url)}`
-                    : "Add your first source"}
-                </div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
-                  <Link href={`/app/sites/${site.id}/sources`}>View sources →</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="space-y-2 py-5">
-                <div className="text-[12px] font-medium text-muted-foreground">Analytics</div>
-                <div className="text-2xl font-semibold text-foreground">{playbackPlays}</div>
-                <div className="text-[13px] text-muted-foreground">{playbackCompletions} completions</div>
-                <Button asChild variant="ghost" size="sm" className="px-0 text-muted-foreground">
-                  <Link href="/app/analytics">View analytics →</Link>
-                </Button>
+              <CardContent className="space-y-1 py-5">
+                <div className="text-xs text-muted-foreground">Analytics</div>
+                <div className="text-2xl font-semibold">{playbackPlays} <span className="text-sm font-normal text-muted-foreground">plays</span></div>
+                <div className="text-xs text-muted-foreground">{playbackCompletions} completions</div>
               </CardContent>
             </Card>
           </div>

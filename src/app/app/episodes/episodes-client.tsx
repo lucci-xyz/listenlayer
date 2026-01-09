@@ -3,21 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-import { getDomainFromUrl } from "@/lib/url";
 import { formatRelativeTime } from "@/lib/time";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { EmbedButton } from "@/components/embed-button";
 import { toast } from "sonner";
 
 export type EpisodeListItem = {
@@ -35,7 +23,6 @@ const filters = ["All", "Published", "Processing", "Failed", "Canceled"] as cons
 
 export default function EpisodesClient({
   episodes,
-  baseUrl,
   showSite,
 }: {
   episodes: EpisodeListItem[];
@@ -45,32 +32,24 @@ export default function EpisodesClient({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     let list = [...episodes];
     if (normalized) {
-      list = list.filter((episode) => episode.title.toLowerCase().includes(normalized));
+      list = list.filter((ep) => ep.title.toLowerCase().includes(normalized));
     }
     if (filter !== "All") {
-      list = list.filter((episode) => {
-        if (filter === "Published") return episode.status === "PUBLISHED";
-        if (filter === "Failed") return episode.status === "FAILED";
-        if (filter === "Canceled") return episode.status === "CANCELLED";
-        return episode.status === "QUEUED" || episode.status === "RUNNING";
+      list = list.filter((ep) => {
+        if (filter === "Published") return ep.status === "PUBLISHED";
+        if (filter === "Failed") return ep.status === "FAILED";
+        if (filter === "Canceled") return ep.status === "CANCELLED";
+        return ep.status === "QUEUED" || ep.status === "RUNNING";
       });
     }
-    list.sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return sort === "newest" ? bTime - aTime : aTime - bTime;
-    });
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
-  }, [episodes, query, filter, sort]);
-
-  const inProgress = filtered.filter((episode) => episode.status === "QUEUED" || episode.status === "RUNNING");
-  const rest = filtered.filter((episode) => episode.status !== "QUEUED" && episode.status !== "RUNNING");
+  }, [episodes, query, filter]);
 
   const handleCancel = async (episodeId: string) => {
     try {
@@ -79,9 +58,7 @@ export default function EpisodesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId }),
       });
-      if (!res.ok) {
-        throw new Error("Failed to stop generation");
-      }
+      if (!res.ok) throw new Error("Failed to stop generation");
       toast.success("Generation stopped.");
       router.refresh();
     } catch (error) {
@@ -89,110 +66,78 @@ export default function EpisodesClient({
     }
   };
 
-  const renderEpisode = (episode: EpisodeListItem) => {
-    const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
-    return (
-      <Card key={episode.id}>
-        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-foreground">{episode.title}</h3>
-              <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>{statusLabel}</Badge>
-              <span className="text-[12px] text-muted-foreground">{formatRelativeTime(episode.createdAt)}</span>
-            </div>
-            <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
-              <span>{getDomainFromUrl(episode.sourceUrl)}</span>
-              {showSite && episode.siteName ? <span>Show: {episode.siteName}</span> : null}
-            </div>
-            {(episode.status === "RUNNING" || episode.status === "QUEUED") && (
-              <div className="text-[12px] text-muted-foreground">Generating…</div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/app/episodes/${episode.id}`}>Open</Link>
-            </Button>
-            {(episode.status === "QUEUED" || episode.status === "RUNNING") && (
-              <Button size="sm" variant="outline" onClick={() => handleCancel(episode.id)}>
-                Stop
-              </Button>
-            )}
-            <EmbedButton
-              label="Copy embed"
-              size="sm"
-              variant="outline"
-              publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
-              baseUrl={baseUrl}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled>Regenerate (soon)</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>Delete (soon)</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const statusText = (status: string) => {
+    const map: Record<string, string> = {
+      PUBLISHED: "Published",
+      QUEUED: "Queued",
+      RUNNING: "Generating",
+      FAILED: "Failed",
+      CANCELLED: "Canceled",
+    };
+    return map[status] ?? status;
   };
 
   return (
     <div className="space-y-4">
+      {/* Filters + search */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
-          {filters.map((option) => (
+          {filters.map((opt) => (
             <Button
-              key={option}
+              key={opt}
               size="sm"
               variant="ghost"
               className={
-                filter === option ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                filter === opt ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
               }
-              onClick={() => setFilter(option)}
+              onClick={() => setFilter(opt)}
             >
-              {option}
+              {opt}
             </Button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="ml-auto">
           <Input
             placeholder="Search episodes"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             className="w-52"
           />
-          <Button size="sm" variant="outline" onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}>
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            {sort === "newest" ? "Newest" : "Oldest"}
-          </Button>
         </div>
       </div>
 
+      {/* List */}
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">No episodes yet.</CardContent>
-        </Card>
+        <div className="rounded-xl border border-border/70 bg-card py-10 text-center text-sm text-muted-foreground">
+          No episodes yet.
+        </div>
       ) : (
-        <div className="space-y-4">
-          {inProgress.length > 0 ? (
-            <div className="space-y-3">
-              <div className="text-[12px] font-medium text-muted-foreground">In progress</div>
-              {inProgress.map(renderEpisode)}
+        <div className="divide-y divide-border/50 rounded-xl border border-border/70 bg-card">
+          {filtered.map((ep) => (
+            <div
+              key={ep.id}
+              className="flex items-center justify-between gap-4 px-5 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{ep.title}</div>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {showSite && ep.siteName && <span>{ep.siteName}</span>}
+                  <span>{statusText(ep.status)}</span>
+                  <span>{formatRelativeTime(ep.createdAt)}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {(ep.status === "QUEUED" || ep.status === "RUNNING") && (
+                  <Button size="sm" variant="outline" onClick={() => handleCancel(ep.id)}>
+                    Stop
+                  </Button>
+                )}
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/app/episodes/${ep.id}`}>Open</Link>
+                </Button>
+              </div>
             </div>
-          ) : null}
-          {rest.length > 0 ? (
-            <div className="space-y-3">
-              {inProgress.length > 0 ? <div className="text-[12px] font-medium text-muted-foreground">Library</div> : null}
-              {rest.map(renderEpisode)}
-            </div>
-          ) : null}
+          ))}
         </div>
       )}
     </div>
