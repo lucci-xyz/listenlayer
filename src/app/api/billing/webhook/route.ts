@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { stripe, getPlanLimits } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type { SubscriptionStatus } from "@prisma/client";
+import type Stripe from "stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -57,6 +58,9 @@ export async function POST(req: Request) {
 
         if (userId && subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          if ("deleted" in subscription) {
+            break;
+          }
           const priceId = subscription.items.data[0]?.price?.id ?? null;
           const limits = getPlanLimits(priceId);
 
