@@ -116,7 +116,7 @@ export default function Home() {
               </div>
               
               {/* Floating badge */}
-              <div className="absolute -bottom-4 -left-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft-md">
+              <div className="absolute -bottom-8 -left-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft-md">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-green-500" />
                   <span className="text-sm font-medium">1,247 plays this week</span>
@@ -292,7 +292,7 @@ export default function Home() {
 
             {/* Starter — featured */}
             <div className="relative rounded-2xl border-2 border-foreground bg-card p-6 shadow-soft-lg">
-              <Badge className="absolute -top-3 left-6">Popular</Badge>
+              <Badge className="absolute top-0 left-6 -translate-y-1/2 bg-background">Popular</Badge>
               <div className="text-sm font-medium text-muted-foreground">{PLANS.starter.name}</div>
               <div className="mt-3">
                 <span className="text-3xl font-semibold">${PLANS.starter.price}</span>
