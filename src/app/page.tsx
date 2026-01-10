@@ -266,76 +266,52 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-6 lg:grid-cols-3">
-            {/* Free */}
-            <div className="rounded-2xl border border-border/70 bg-card p-6">
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.free.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">$0</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.free.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.free.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button variant="outline" className="w-full mt-6" asChild>
-                <Link href="/login">Get started</Link>
-              </Button>
-            </div>
-
-            {/* Starter — featured */}
-            <div className="relative rounded-2xl border-2 border-foreground bg-card p-6 shadow-soft-lg">
-              <Badge className="absolute top-0 left-6 -translate-y-1/2 bg-background">Popular</Badge>
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.starter.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">${PLANS.starter.price}</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.starter.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.starter.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button className="w-full mt-6" asChild>
-                <Link href="/login">Start free trial</Link>
-              </Button>
-            </div>
-
-            {/* Pro */}
-            <div className="rounded-2xl border border-border/70 bg-card p-6">
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.pro.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">${PLANS.pro.price}</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.pro.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.pro.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button variant="outline" className="w-full mt-6" asChild>
-                <Link href="/login">Start free trial</Link>
-              </Button>
-            </div>
+          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {(["free", "creator", "pro", "business"] as const).map((key) => {
+              const plan = PLANS[key];
+              const isPopular = key === "creator";
+              return (
+                <div
+                  key={key}
+                  className={`relative rounded-2xl border border-border/70 bg-card p-6 ${
+                    isPopular ? "shadow-soft-lg border-2 border-foreground" : ""
+                  }`}
+                >
+                  {isPopular && (
+                    <Badge className="absolute top-0 left-6 -translate-y-1/2 bg-background">
+                      Popular
+                    </Badge>
+                  )}
+                  <div className="text-sm font-medium text-muted-foreground">{plan.name}</div>
+                  <div className="mt-3">
+                    <span className="text-3xl font-semibold">
+                      {plan.price === 0 ? "$0" : `$${plan.price}`}
+                    </span>
+                    <span className="text-muted-foreground">/mo</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
+                  
+                  <ul className="mt-6 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5 text-sm">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button
+                    variant={key === "free" ? "outline" : isPopular ? "default" : "outline"}
+                    className="w-full mt-6"
+                    asChild
+                  >
+                    <Link href="/login">
+                      {key === "free" ? "Get started" : "Start free trial"}
+                    </Link>
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

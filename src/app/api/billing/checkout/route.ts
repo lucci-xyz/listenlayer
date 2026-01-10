@@ -21,8 +21,9 @@ export async function POST(req: Request) {
 
     // Validate price ID
     const validPriceIds = [
-      process.env.STRIPE_STARTER_PRICE_ID,
-      process.env.STRIPE_PRO_PRICE_ID,
+      process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID,
+      process.env.STRIPE_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID,
+      process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || process.env.STRIPE_BUSINESS_PRICE_ID,
     ].filter(Boolean);
 
     if (!validPriceIds.includes(priceId)) {

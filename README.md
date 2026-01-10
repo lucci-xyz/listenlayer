@@ -120,6 +120,7 @@ Optional:
 - `DEV_AUTH_BYPASS`
 - `OPENAI_TTS_VOICE` (default: `marin`)
 - `AUDIO_URL_TTL_SECONDS` (default: 21600)
+- `STRIPE_BUSINESS_PRICE_ID` (if using the Business plan)
 
 ## Deployment notes
 - Set all environment variables in your hosting provider.

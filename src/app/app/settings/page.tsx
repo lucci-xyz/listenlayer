@@ -51,7 +51,7 @@ export default async function SettingsPage() {
               <div className="text-sm text-muted-foreground">{plan.name}</div>
             </div>
             <Badge variant={currentPlan === "free" ? "secondary" : "default"}>
-              {currentPlan === "free" ? "Free" : "Pro"}
+              {plan.name}
             </Badge>
           </div>
         </CardContent>

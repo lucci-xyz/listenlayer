@@ -146,20 +146,19 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              {(["starter", "pro"] as const).map((key) => {
+            <div className="grid gap-4 md:grid-cols-3">
+              {(["creator", "pro", "business"] as PlanKey[]).map((key) => {
                 const planOption = PLANS[key];
                 const priceId = planOption.priceId;
+                const isPopular = key === "creator";
 
                 return (
                   <div
                     key={key}
                     className="relative rounded-xl border border-border bg-card p-5"
                   >
-                    {key === "starter" && (
-                      <Badge
-                        className="absolute -top-2 right-4 bg-primary"
-                      >
+                    {isPopular && (
+                      <Badge className="absolute -top-2 right-4 bg-primary">
                         Popular
                       </Badge>
                     )}
@@ -188,7 +187,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                     </ul>
                     <Button
                       className="w-full"
-                      variant={key === "starter" ? "default" : "outline"}
+                      variant={isPopular ? "default" : "outline"}
                       onClick={() => priceId && handleCheckout(priceId)}
                       disabled={loading === priceId || !priceId}
                     >
@@ -205,13 +204,13 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
         </Card>
       )}
 
-      {/* Show upgrade for starter users */}
-      {currentPlan === "starter" && (
+      {/* Show targeted upgrade when on a paid tier but not top */}
+      {currentPlan === "creator" && (
         <Card>
           <CardHeader>
             <CardTitle>Upgrade to Pro</CardTitle>
             <CardDescription>
-              Get unlimited shows and more episodes
+              Get more monthly episodes and white-label options
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -248,6 +247,54 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 {PLANS.pro.priceId ? "Upgrade to Pro" : "Coming soon"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {currentPlan === "pro" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Need more volume?</CardTitle>
+            <CardDescription>
+              Move to Business for higher limits and enterprise support
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-xl border border-border p-5">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">{PLANS.business.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {PLANS.business.description}
+                </p>
+                <div className="mt-3">
+                  <span className="text-3xl font-bold">
+                    ${PLANS.business.price}
+                  </span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+              </div>
+              <ul className="mb-5 space-y-2">
+                {PLANS.business.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-start gap-2 text-sm"
+                  >
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="w-full"
+                onClick={() => PLANS.business.priceId && handleCheckout(PLANS.business.priceId)}
+                disabled={loading === PLANS.business.priceId || !PLANS.business.priceId}
+              >
+                {loading === PLANS.business.priceId ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {PLANS.business.priceId ? "Upgrade to Business" : "Contact us"}
               </Button>
             </div>
           </CardContent>

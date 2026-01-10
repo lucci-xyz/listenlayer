@@ -1,0 +1,4 @@
+- Put up real audio for landing page
+- Add real stripe payments
+- Test integrating player
+- Test generation

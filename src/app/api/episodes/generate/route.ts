@@ -17,6 +17,8 @@ function makePublicId() {
   return randomBytes(8).toString("hex");
 }
 
+const INSUFFICIENT_CREDITS_ERROR = "INSUFFICIENT_CREDITS";
+
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
@@ -40,9 +42,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Source not found" }, { status: 404 });
     }
 
-    const count = parsed.data.count ?? 1;
+    const requestedCount = parsed.data.count ?? 1;
 
-    if (count > 1 && source.type !== "RSS") {
+    if (requestedCount > 1 && source.type !== "RSS") {
       return NextResponse.json(
         { error: "Backfill is only available for RSS sources." },
         { status: 400 }
@@ -51,31 +53,78 @@ export async function POST(request: Request) {
 
     const parser = new Parser();
     const episodeIds: string[] = [];
+    type EpisodeSeed = { title: string; canonicalUrl: string };
+    let seeds: EpisodeSeed[] = [];
 
-    if (count > 1 && source.type === "RSS") {
+    if (requestedCount > 1 && source.type === "RSS") {
       const feed = await parser.parseURL(source.url);
       const items = (feed.items || []).filter((item) => item?.link);
-      const selected = items.slice(0, count);
+      const selected = items.slice(0, requestedCount);
+      seeds = selected.map((item) => ({
+        title: item.title || feed.title || "Episode",
+        canonicalUrl: item.link as string,
+      }));
+    } else {
+      seeds = [
+        {
+          title: "Pending episode",
+          canonicalUrl: source.url,
+        },
+      ];
+    }
 
-      for (const item of selected) {
-        const title = item.title || feed.title || "Episode";
-        const link = item.link as string;
-        const episode = await prisma.episode.create({
-          data: {
-            siteId: site.id,
-            sourceId: source.id,
-            title: title || "Pending episode",
-            sourceUrl: link,
-            status: "QUEUED",
-            scriptText: "",
-            transcriptText: "",
-            chaptersJson: [],
-            errorMessage: null,
-            publicId: makePublicId(),
-          },
+    if (seeds.length === 0) {
+      return NextResponse.json(
+        { error: "No items found to generate from this source" },
+        { status: 400 }
+      );
+    }
+
+    const episodesToCreate = seeds.map((seed) => ({
+      siteId: site.id,
+      sourceId: source.id,
+      title: seed.title || "Pending episode",
+      sourceUrl: seed.canonicalUrl,
+      status: "QUEUED" as const,
+      scriptText: "",
+      transcriptText: "",
+      chaptersJson: [],
+      errorMessage: null as string | null,
+      publicId: makePublicId(),
+    }));
+
+    try {
+      const createdEpisodes = await prisma.$transaction(async (tx) => {
+        const update = await tx.user.updateMany({
+          where: { id: user.id, episodeCredits: { gte: episodesToCreate.length } },
+          data: { episodeCredits: { decrement: episodesToCreate.length } },
         });
-        episodeIds.push(episode.id);
 
+        if (update.count === 0) {
+          throw new Error(INSUFFICIENT_CREDITS_ERROR);
+        }
+
+        const created = [];
+        for (const payload of episodesToCreate) {
+          const episode = await tx.episode.create({ data: payload });
+          created.push(episode);
+        }
+
+        await tx.usageRecord.createMany({
+          data: created.map((episode) => ({
+            userId: user.id,
+            episodeId: episode.id,
+            credits: -1,
+            reason: "episode_generation",
+          })),
+        });
+
+        return created;
+      });
+
+      for (const [index, episode] of createdEpisodes.entries()) {
+        episodeIds.push(episode.id);
+        const seed = seeds[index];
         await inngest.send({
           name: "episode/generate.requested",
           data: {
@@ -83,42 +132,20 @@ export async function POST(request: Request) {
             siteId: site.id,
             sourceId: source.id,
             episodeId: episode.id,
-            canonicalUrl: link,
-            episodeTitle: title,
+            canonicalUrl: seed.canonicalUrl,
+            episodeTitle: seed.title,
             format: parsed.data.format,
           },
         });
       }
-    } else {
-      const episode = await prisma.episode.create({
-        data: {
-          siteId: site.id,
-          sourceId: source.id,
-          title: "Pending episode",
-          sourceUrl: source.url,
-          status: "QUEUED",
-          scriptText: "",
-          transcriptText: "",
-          chaptersJson: [],
-          errorMessage: null,
-          publicId: makePublicId(),
-        },
-      });
-      episodeIds.push(episode.id);
 
-      await inngest.send({
-        name: "episode/generate.requested",
-        data: {
-          userId: user.id,
-          siteId: site.id,
-          sourceId: source.id,
-          episodeId: episode.id,
-          format: parsed.data.format,
-        },
-      });
+      return NextResponse.json({ episodeId: episodeIds[0] || null, episodeIds });
+    } catch (error) {
+      if (error instanceof Error && error.message === INSUFFICIENT_CREDITS_ERROR) {
+        return NextResponse.json({ error: "Out of credits" }, { status: 402 });
+      }
+      throw error;
     }
-
-    return NextResponse.json({ episodeId: episodeIds[0] || null, episodeIds });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
