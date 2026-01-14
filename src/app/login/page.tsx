@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState("");
@@ -64,33 +64,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-12">
-      {/* Background gradient */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-muted via-background to-background" />
-      
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-12 relative">
+      {/* Back button - Top Left */}
+      <Link 
+        href="/" 
+        className="absolute top-8 left-8 inline-flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground transition-colors rounded-full px-4 py-2 hover:bg-white/40"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to home
+      </Link>
+
+      <div className="w-full max-w-[400px]">
         {/* Logo */}
-        <div className="mb-8 text-center">
+        <div className="mb-10 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-              L
-            </div>
-            <span className="text-xl font-semibold tracking-tight">ListenLayer</span>
+            <span className="font-display text-2xl font-bold tracking-tight text-foreground">ListenLayer.</span>
           </Link>
         </div>
 
         {/* Card */}
-        <Card className="border-border/60 shadow-soft-lg">
-          <CardContent className="p-6">
+        <Card className="border-white/20 shadow-xl shadow-black/5 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-8">
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="mb-6 grid w-full grid-cols-2">
-                <TabsTrigger value="login">Sign in</TabsTrigger>
-                <TabsTrigger value="register">Create account</TabsTrigger>
+              <TabsList className="mb-8 grid w-full grid-cols-2 bg-secondary/50 p-1 rounded-xl">
+                <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Sign in</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Create account</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="login" className="space-y-4">
+              <TabsContent value="login" className="space-y-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="login-email">
+                  <label className="text-sm font-medium text-foreground/80" htmlFor="login-email">
                     Email
                   </label>
                   <Input
@@ -100,10 +103,11 @@ export default function LoginPage() {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    className="bg-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="login-password">
+                  <label className="text-sm font-medium text-foreground/80" htmlFor="login-password">
                     Password
                   </label>
                   <Input
@@ -113,10 +117,11 @@ export default function LoginPage() {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    className="bg-white"
                   />
                 </div>
                 <Button 
-                  className="w-full" 
+                  className="w-full h-11 text-base shadow-sm" 
                   onClick={handleLogin}
                   disabled={loading || !loginEmail || !loginPassword}
                 >
@@ -125,9 +130,9 @@ export default function LoginPage() {
                 </Button>
               </TabsContent>
               
-              <TabsContent value="register" className="space-y-4">
+              <TabsContent value="register" className="space-y-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="register-email">
+                  <label className="text-sm font-medium text-foreground/80" htmlFor="register-email">
                     Email
                   </label>
                   <Input
@@ -136,10 +141,11 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
+                    className="bg-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="register-password">
+                  <label className="text-sm font-medium text-foreground/80" htmlFor="register-password">
                     Password
                   </label>
                   <Input
@@ -149,17 +155,18 @@ export default function LoginPage() {
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                    className="bg-white"
                   />
                 </div>
                 <Button 
-                  className="w-full" 
+                  className="w-full h-11 text-base shadow-sm" 
                   onClick={handleRegister}
                   disabled={loading || !registerEmail || registerPassword.length < 6}
                 >
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Create account
                 </Button>
-                <p className="text-center text-xs text-muted-foreground">
+                <p className="text-center text-xs text-muted-foreground mt-4">
                   By creating an account, you agree to our terms of service.
                 </p>
               </TabsContent>
@@ -167,13 +174,13 @@ export default function LoginPage() {
 
             {/* Error/Info messages */}
             {error && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              <div className="mt-6 flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {error}
               </div>
             )}
             {info && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-2 text-sm text-success">
+              <div className="mt-6 flex items-center gap-2 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 {info}
               </div>
@@ -183,20 +190,13 @@ export default function LoginPage() {
 
         {/* Demo credentials */}
         {process.env.NODE_ENV === "development" && (
-          <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3">
-            <div className="text-xs font-medium text-muted-foreground">Demo credentials</div>
-            <div className="mt-1 font-mono text-xs text-foreground">
+          <div className="mt-6 rounded-xl border border-white/20 bg-white/40 p-4 text-center backdrop-blur-sm">
+            <div className="text-xs font-medium text-foreground/60">Demo credentials</div>
+            <div className="mt-1 font-mono text-xs text-foreground/80">
               demo@listenlayer.local / demo1234
             </div>
           </div>
         )}
-
-        {/* Back to home */}
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to home
-          </Link>
-        </div>
       </div>
     </div>
   );

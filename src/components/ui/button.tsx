@@ -4,29 +4,44 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Button component following calm minimal dashboard aesthetic
+ * - Primary: subtle white surface with teal border/text OR very light teal tint
+ * - Secondary: white surface + border
+ * - Icon buttons: circular/rounded, low-contrast hover
+ * - Radius: 12-14px
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/40 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   {
     variants: {
       variant: {
+        // Primary: light teal tint background with teal text
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Destructive: muted red
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30",
+        // Outline: white surface + subtle border + teal text
         outline:
-          "border border-border/70 bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+          "border border-border bg-card text-foreground hover:bg-secondary hover:border-border",
+        // Secondary: very light surface
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        // Ghost: transparent with subtle hover
         ghost:
-          "text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-accent/40",
+          "text-muted-foreground hover:bg-secondary hover:text-foreground",
+        // Link
         link: "text-primary underline-offset-4 hover:underline",
+        // Soft teal variant - light teal background
+        soft: "bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20",
       },
       size: {
-        default: "h-9 px-3.5 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-lg px-5 has-[>svg]:px-4",
-        icon: "size-8",
-        "icon-sm": "size-7",
-        "icon-lg": "size-9",
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-lg gap-1.5 px-3.5 text-[13px]",
+        lg: "h-11 rounded-xl px-5",
+        icon: "size-10 rounded-xl",
+        "icon-sm": "size-9 rounded-lg",
+        "icon-lg": "size-11 rounded-xl",
       },
     },
     defaultVariants: {

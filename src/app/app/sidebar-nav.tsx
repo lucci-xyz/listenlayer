@@ -3,16 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Home,
   AudioLines,
-  LayoutGrid,
-  Plus,
   Rss,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
-const workspaceLinks = [
-  { href: "/app", label: "Dashboard", icon: LayoutGrid },
+const navItems = [
+  { href: "/app", label: "Overview", icon: Home },
   { href: "/app/episodes", label: "Episodes", icon: AudioLines },
   { href: "/app/feeds", label: "Feeds", icon: Rss },
 ];
@@ -22,88 +20,74 @@ export type SidebarFeed = {
   name: string;
 };
 
-function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutGrid }) {
-  const pathname = usePathname();
-  // For "/app" and "/app/feeds", only be active on exact match
-  // This prevents double-highlighting when on a specific feed page
-  const isActive = href === "/app" || href === "/app/feeds"
-    ? pathname === href
-    : pathname === href || pathname.startsWith(href + "/");
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
-        isActive
-          ? "bg-muted font-medium text-foreground sidebar-active"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      <span>{label}</span>
-    </Link>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="px-3 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-      {children}
-    </div>
-  );
-}
-
 export function SidebarNav({ feeds }: { feeds: SidebarFeed[] }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Main navigation */}
-      <div>
-        <SectionLabel>Menu</SectionLabel>
-        <nav className="flex flex-col gap-0.5">
-          {workspaceLinks.map((link) => (
-            <NavLink key={link.href} {...link} />
-          ))}
-        </nav>
-      </div>
-
-      {/* Feed subscriptions section */}
+    <nav className="space-y-1.5">
+      {navItems.map((item) => {
+        // Fix: "Feeds" should only be active on exact /app/feeds, not on /app/feeds/[id]
+        const isActive = item.href === "/app" 
+          ? pathname === "/app"
+          : item.href === "/app/feeds"
+          ? pathname === "/app/feeds"
+          : pathname.startsWith(item.href);
+        
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-[14px] transition-all duration-200 group",
+              isActive
+                ? "bg-white text-foreground font-medium shadow-sm ring-1 ring-black/5" // Active pill style
+                : "text-foreground/60 hover:text-foreground hover:bg-white/30"
+            )}
+          >
+            <item.icon 
+              className={cn(
+                "h-[18px] w-[18px] transition-colors", 
+                isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground"
+              )} 
+              strokeWidth={1.5} 
+            />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+      
+      {/* Feed subscriptions */}
       {feeds.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              Subscriptions
-            </span>
-            <Button asChild size="icon" variant="ghost" className="h-5 w-5">
-              <Link href="/app/feeds/new" aria-label="Add feed">
-                <Plus className="h-3 w-3" />
-              </Link>
-            </Button>
+        <div className="pt-6 mt-2 space-y-1.5">
+          <div className="px-4 pb-2 text-[11px] font-medium text-foreground/40 uppercase tracking-widest">
+            Your Feeds
           </div>
-          <div className="flex flex-col gap-0.5">
-            {feeds.map((feed) => {
-              const isActive = pathname.startsWith(`/app/feeds/${feed.id}`);
-              return (
-                <Link
-                  key={feed.id}
-                  href={`/app/feeds/${feed.id}`}
+          {feeds.map((feed) => {
+            const isActive = pathname.startsWith(`/app/feeds/${feed.id}`);
+            return (
+              <Link
+                key={feed.id}
+                href={`/app/feeds/${feed.id}`}
+                className={cn(
+                  "flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-[14px] transition-all duration-200 group",
+                  isActive
+                    ? "bg-white text-foreground font-medium shadow-sm ring-1 ring-black/5"
+                    : "text-foreground/60 hover:text-foreground hover:bg-white/30"
+                )}
+              >
+                <Rss 
                   className={cn(
-                    "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-muted font-medium text-foreground sidebar-active"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  )}
-                >
-                  <Rss className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{feed.name}</span>
-                </Link>
-              );
-            })}
-          </div>
+                    "h-[18px] w-[18px] transition-colors", 
+                    isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground"
+                  )} 
+                  strokeWidth={1.5} 
+                />
+                <span className="truncate">{feed.name}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
-    </div>
+    </nav>
   );
 }

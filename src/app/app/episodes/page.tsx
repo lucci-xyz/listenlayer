@@ -33,8 +33,8 @@ export default async function EpisodesPage() {
   }));
 
   return (
-    <div className="space-y-4">
-      <h1 className="font-display text-2xl tracking-tight">Episodes</h1>
+    <div className="space-y-6">
+      <h1 className="font-display text-3xl">Episodes</h1>
       <EpisodesClient episodes={items} baseUrl={baseUrl} />
     </div>
   );

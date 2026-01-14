@@ -175,10 +175,10 @@ export function FeedDetailClient({
 
   const statusBadge = (status: string | null) => {
     if (!status) return null;
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      PUBLISHED: "default",
-      QUEUED: "secondary",
-      RUNNING: "secondary",
+    const variants: Record<string, "default" | "secondary" | "destructive" | "success" | "warning" | "outline"> = {
+      PUBLISHED: "success",
+      QUEUED: "warning",
+      RUNNING: "warning",
       FAILED: "destructive",
     };
     const labels: Record<string, string> = {
@@ -188,7 +188,7 @@ export function FeedDetailClient({
       FAILED: "Failed",
     };
     return (
-      <Badge variant={variants[status] || "outline"} className="text-xs">
+      <Badge variant={variants[status] || "outline"}>
         {labels[status] || status}
       </Badge>
     );
@@ -197,21 +197,21 @@ export function FeedDetailClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link
             href="/app/feeds"
-            className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
             Back to feeds
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Rss className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
+              <Rss className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
             </div>
             <div>
-              <h1 className="font-display text-xl tracking-tight">{feed.name}</h1>
+              <h1 className="font-display text-3xl">{feed.name}</h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>{getDomainFromUrl(feed.feedUrl)}</span>
                 {feed.siteUrl && (
@@ -219,9 +219,9 @@ export function FeedDetailClient({
                     href={feed.siteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-foreground"
+                    className="hover:text-foreground transition-colors"
                   >
-                    <ExternalLink className="h-3 w-3" />
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
                   </a>
                 )}
               </div>
@@ -236,13 +236,13 @@ export function FeedDetailClient({
             onClick={handleRefresh}
             disabled={refreshing}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
             Refresh
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <MoreHorizontal className="h-4 w-4" />
+              <Button variant="outline" size="icon-sm">
+                <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -254,9 +254,9 @@ export function FeedDetailClient({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setDeleteOpen(true)}
-                className="text-red-600"
+                className="text-destructive focus:text-destructive"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="mr-2 h-4 w-4" strokeWidth={1.5} />
                 Delete feed
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -266,15 +266,15 @@ export function FeedDetailClient({
 
       {/* Error message */}
       {feed.lastError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {feed.lastError}
         </div>
       )}
 
       {/* Articles from feed */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-medium">Latest articles</h2>
+      <div className="rounded-2xl border border-border bg-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="font-semibold">Latest articles</h2>
           {feed.lastFetchedAt && (
             <span className="text-xs text-muted-foreground">
               Updated {formatRelativeTime(feed.lastFetchedAt)}
@@ -283,19 +283,19 @@ export function FeedDetailClient({
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/70 py-12 text-center">
+          <div className="py-16 text-center">
             <p className="text-sm text-muted-foreground">No articles found in feed.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-border">
             {items.map((item) => (
               <div
                 key={item.url}
-                className="group rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-muted/30"
+                className="group p-5 transition-colors hover:bg-secondary/30"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">

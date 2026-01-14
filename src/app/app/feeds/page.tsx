@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatRelativeTime } from "@/lib/time";
 import { getDomainFromUrl } from "@/lib/url";
 import { Button } from "@/components/ui/button";
-import { Plus, Rss } from "lucide-react";
+import { Plus, Rss, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +25,10 @@ export default async function FeedsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl tracking-tight">Feed Subscriptions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="font-display text-3xl">Feeds</h1>
+          <p className="mt-2 text-muted-foreground">
             Monitor blogs and publications for new content.
           </p>
         </div>
@@ -41,45 +41,51 @@ export default async function FeedsPage() {
       </div>
 
       {feeds.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/50 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
-            <Rss className="h-6 w-6 text-muted-foreground" />
+        <div className="rounded-2xl border border-dashed border-border bg-card py-16 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+            <Rss className="h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
           </div>
-          <h2 className="font-medium">No feed subscriptions</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Subscribe to a blog to see new articles and generate episodes.
+          <h2 className="font-semibold">No feed subscriptions</h2>
+          <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
+            Subscribe to a blog to see new articles and generate episodes on demand.
           </p>
-          <Button asChild className="mt-4">
+          <Button asChild className="mt-6">
             <Link href="/app/feeds/new">Add your first feed</Link>
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {feeds.map((feed) => (
             <Link
               key={feed.id}
               href={`/app/feeds/${feed.id}`}
-              className="flex items-center gap-4 rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-muted/30"
+              className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-soft-md"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Rss className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{feed.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {getDomainFromUrl(feed.feedUrl)}
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                  <Rss className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
                 </div>
-              </div>
-              <div className="text-right text-sm">
-                <div className="text-muted-foreground">
-                  {feed._count.episodes} episode{feed._count.episodes !== 1 ? "s" : ""}
-                </div>
-                {feed.lastFetchedAt && (
-                  <div className="text-xs text-muted-foreground/70">
-                    Updated {formatRelativeTime(feed.lastFetchedAt)}
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold">{feed.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {getDomainFromUrl(feed.feedUrl)}
                   </div>
-                )}
+                </div>
               </div>
+              
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                <div className="text-sm">
+                  <span className="font-display text-lg">{feed._count.episodes}</span>
+                  <span className="text-muted-foreground ml-1">episode{feed._count.episodes !== 1 ? "s" : ""}</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              </div>
+              
+              {feed.lastFetchedAt && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Updated {formatRelativeTime(feed.lastFetchedAt)}
+                </div>
+              )}
             </Link>
           ))}
         </div>
