@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl } from "@/lib/url";
+import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
 import EpisodesClient, { EpisodeListItem } from "@/app/app/episodes/episodes-client";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ export default async function EpisodesPage() {
   }
 
   const episodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
+    where: { userId: user.id },
+    include: { feed: true },
     orderBy: { createdAt: "desc" },
     take: 60,
   });
@@ -27,13 +27,15 @@ export default async function EpisodesPage() {
     createdAt: episode.createdAt.toISOString(),
     sourceUrl: episode.sourceUrl,
     publicId: episode.publicId,
-    siteName: episode.site.name,
-    siteId: episode.siteId,
+    feedName: episode.feed?.name || null,
+    feedId: episode.feedId,
+    sourceDomain: getDomainFromUrl(episode.sourceUrl),
   }));
 
   return (
     <div className="space-y-4">
-      <EpisodesClient episodes={items} baseUrl={baseUrl} showSite />
+      <h1 className="font-display text-2xl tracking-tight">Episodes</h1>
+      <EpisodesClient episodes={items} baseUrl={baseUrl} />
     </div>
   );
 }

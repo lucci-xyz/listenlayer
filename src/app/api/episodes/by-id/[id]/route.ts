@@ -11,7 +11,7 @@ export async function GET(
     const user = await requireUser();
 
     const episode = await prisma.episode.findFirst({
-      where: { id, site: { userId: user.id } },
+      where: { id, userId: user.id },
     });
 
     if (!episode) {

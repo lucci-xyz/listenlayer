@@ -13,7 +13,6 @@ export default async function EmbedPage({
   const { publicId } = await params;
   const episode = await prisma.episode.findUnique({
     where: { publicId },
-    include: { site: true },
   });
 
   if (!episode || episode.status !== "PUBLISHED") {

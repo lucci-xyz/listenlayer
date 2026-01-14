@@ -14,8 +14,8 @@ export default async function AnalyticsPage() {
   }
 
   const episodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
+    where: { userId: user.id },
+    include: { feed: true },
     orderBy: { createdAt: "desc" },
     take: 50,
   });

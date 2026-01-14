@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 
 const schema = z.object({
-  siteId: z.string().min(1).optional(),
   episodeId: z.string().min(1).optional(),
+  feedId: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -22,9 +22,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
+  // Cancel a specific episode
   if (parsed.data.episodeId) {
     const episode = await prisma.episode.findFirst({
-      where: { id: parsed.data.episodeId, site: { userId: user.id } },
+      where: { id: parsed.data.episodeId, userId: user.id },
     });
     if (!episode) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
@@ -42,26 +43,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, cancelled: 1 });
   }
 
-  if (parsed.data.siteId) {
-    const site = await prisma.site.findFirst({
-      where: { id: parsed.data.siteId, userId: user.id },
+  // Cancel all episodes for a feed
+  if (parsed.data.feedId) {
+    const feed = await prisma.feed.findFirst({
+      where: { id: parsed.data.feedId, userId: user.id },
     });
-    if (!site) {
-      return NextResponse.json({ error: "Publication not found" }, { status: 404 });
+    if (!feed) {
+      return NextResponse.json({ error: "Feed not found" }, { status: 404 });
     }
+
+    const result = await prisma.episode.updateMany({
+      where: {
+        feedId: feed.id,
+        status: { in: ["QUEUED", "RUNNING"] },
+      },
+      data: { status: "CANCELLED", errorMessage: "Cancelled by user" },
+    });
+
+    return NextResponse.json({ ok: true, cancelled: result.count });
   }
 
-  const where: { siteId?: string; site?: { userId: string }; status: { in: ("QUEUED" | "RUNNING")[] } } = {
-    status: { in: ["QUEUED", "RUNNING"] },
-  };
-  if (parsed.data.siteId) {
-    where.siteId = parsed.data.siteId;
-  } else {
-    where.site = { userId: user.id };
-  }
-
+  // Cancel all user's episodes
   const result = await prisma.episode.updateMany({
-    where,
+    where: {
+      userId: user.id,
+      status: { in: ["QUEUED", "RUNNING"] },
+    },
     data: { status: "CANCELLED", errorMessage: "Cancelled by user" },
   });
 

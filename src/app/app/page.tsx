@@ -2,11 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ProjectAvatar } from "@/components/project-avatar";
 import { formatRelativeTime } from "@/lib/time";
-import { AudioLines, BarChart3, Layers, Play, Plus, Zap } from "lucide-react";
+import { AudioLines, Play, Rss } from "lucide-react";
+import { CreateAudioCard } from "@/components/create-audio-card";
+import { getDomainFromUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -16,87 +15,32 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const sites = await prisma.site.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const [episodeCount, activeCount, playCount] = await Promise.all([
-    prisma.episode.count({ where: { site: { userId: user.id } } }),
+  const [episodeCount, activeCount, playCount, feeds] = await Promise.all([
+    prisma.episode.count({ where: { userId: user.id } }),
     prisma.episode.count({
       where: {
-        site: { userId: user.id },
+        userId: user.id,
         status: { in: ["QUEUED", "RUNNING"] },
       },
     }),
     prisma.playbackEvent.count({
-      where: { episode: { site: { userId: user.id } }, kind: "play" },
+      where: { episode: { userId: user.id }, kind: "play" },
+    }),
+    prisma.feed.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { episodes: true } },
+      },
     }),
   ]);
 
   const recentEpisodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
+    where: { userId: user.id },
+    include: { feed: true },
     orderBy: { createdAt: "desc" },
     take: 8,
   });
-
-  const perSiteCounts = await prisma.episode.groupBy({
-    by: ["siteId"],
-    _count: { _all: true },
-    where: { site: { userId: user.id } },
-  });
-
-  const perSiteMap = new Map(
-    perSiteCounts.map((row) => [row.siteId, row._count._all])
-  );
-
-  // Show onboarding if no sites yet
-  if (sites.length === 0) {
-    return (
-      <div className="mx-auto max-w-lg py-16 text-center">
-        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/10 to-violet-600/5">
-          <AudioLines className="h-7 w-7 text-violet-600" />
-        </div>
-        <h1 className="font-display text-2xl tracking-tight">Welcome to ListenLayer</h1>
-        <p className="mt-2 text-muted-foreground">
-          Create your first show to start turning written content into audio episodes.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/app/onboarding">
-            <Plus className="mr-2 h-4 w-4" />
-            Create your first show
-          </Link>
-        </Button>
-        
-        <div className="mt-16 grid gap-8 text-left sm:grid-cols-3">
-          {[
-            {
-              icon: Zap,
-              title: "Quick setup",
-              description: "Connect any website or RSS feed in seconds",
-            },
-            {
-              icon: AudioLines,
-              title: "AI narration",
-              description: "Professional audio generated automatically",
-            },
-            {
-              icon: BarChart3,
-              title: "Track engagement",
-              description: "See what content resonates with listeners",
-            },
-          ].map((feature) => (
-            <div key={feature.title}>
-              <feature.icon className="h-5 w-5 text-muted-foreground" />
-              <h3 className="mt-3 text-sm font-medium">{feature.title}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const statusText = (status: string) => {
     const map: Record<string, string> = {
@@ -109,30 +53,76 @@ export default async function DashboardPage() {
     return map[status] ?? status;
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Header row */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Overview of your audio content
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return "text-emerald-600";
+      case "RUNNING":
+      case "QUEUED":
+        return "text-amber-600";
+      case "FAILED":
+        return "text-red-600";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
+  // First time user - show welcome
+  if (episodeCount === 0 && feeds.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl py-12">
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10">
+            <AudioLines className="h-7 w-7 text-violet-600" />
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Turn any article into audio</h1>
+          <p className="mt-2 text-muted-foreground">
+            Paste a link and we'll generate a podcast episode in minutes.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/app/onboarding">
-            <Plus className="mr-2 h-4 w-4" />
-            New show
-          </Link>
-        </Button>
-      </div>
 
-      {/* Stats row — 3 compact tiles only */}
+        <CreateAudioCard />
+
+        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/60 bg-card/50 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10">
+                <AudioLines className="h-4 w-4 text-violet-600" />
+              </div>
+              <h3 className="font-medium">Single article</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Paste any article URL and generate a one-off podcast episode. Perfect for sharing individual pieces.
+            </p>
+          </div>
+          
+          <div className="rounded-xl border border-border/60 bg-card/50 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
+                <Rss className="h-4 w-4 text-emerald-600" />
+              </div>
+              <h3 className="font-medium">Feed subscription</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Subscribe to a blog or publication. We'll show you new articles and you can generate episodes on demand.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Create audio card - always at top */}
+      <CreateAudioCard />
+
+      {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Shows", value: sites.length, icon: Layers },
           { label: "Episodes", value: episodeCount, icon: AudioLines },
           { label: "Plays", value: playCount, icon: Play },
+          { label: "Feeds", value: feeds.length, icon: Rss },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border/70 bg-card p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -144,33 +134,31 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Generating indicator — simple text, no animation */}
+      {/* Generating indicator */}
       {activeCount > 0 && (
-        <div className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-amber-600">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
           {activeCount} episode{activeCount > 1 ? "s" : ""} generating…
         </div>
       )}
 
       {/* Main content grid */}
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        {/* Recent episodes — simple list */}
+        {/* Recent episodes */}
         <div className="rounded-2xl border border-border/70 bg-card">
           <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
             <h2 className="font-medium">Recent episodes</h2>
-            <Link 
-              href="/app/episodes" 
+            <Link
+              href="/app/episodes"
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               View all →
             </Link>
           </div>
-          
+
           {recentEpisodes.length === 0 ? (
-            <div className="p-8">
-              <EmptyState
-                title="No episodes yet"
-                description="Generate your first episode from a show"
-              />
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No episodes yet. Paste a link above to get started.
             </div>
           ) : (
             <div className="divide-y divide-border/50">
@@ -182,11 +170,13 @@ export default async function DashboardPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{episode.title}</div>
-                    <div className="truncate text-xs text-muted-foreground">{episode.site.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-4 text-xs text-muted-foreground">
-                    <span>{statusText(episode.status)}</span>
-                    <span>{formatRelativeTime(episode.createdAt)}</span>
+                  <div className="flex shrink-0 items-center gap-4 text-xs">
+                    <span className={statusColor(episode.status)}>{statusText(episode.status)}</span>
+                    <span className="text-muted-foreground">{formatRelativeTime(episode.createdAt)}</span>
                   </div>
                 </Link>
               ))}
@@ -194,42 +184,51 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Shows list — with project avatars */}
+        {/* Feed subscriptions */}
         <div className="rounded-2xl border border-border/70 bg-card">
           <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
-            <h2 className="font-medium">Your shows</h2>
+            <h2 className="font-medium">Feed subscriptions</h2>
+            <Link
+              href="/app/feeds"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Manage →
+            </Link>
           </div>
-          
-          <div className="divide-y divide-border/50">
-            {sites.map((site) => {
-              const count = perSiteMap.get(site.id) ?? 0;
-              return (
+
+          {feeds.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                No feed subscriptions yet.
+              </p>
+              <Link
+                href="/app/feeds/new"
+                className="text-sm text-violet-600 hover:text-violet-700"
+              >
+                Add a feed →
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {feeds.map((feed) => (
                 <Link
-                  key={site.id}
-                  href={`/app/sites/${site.id}`}
+                  key={feed.id}
+                  href={`/app/feeds/${feed.id}`}
                   className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/30"
                 >
-                  <ProjectAvatar name={site.name} size={36} className="shrink-0 rounded-lg" />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Rss className="h-4 w-4 text-muted-foreground" />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{site.name}</div>
+                    <div className="truncate font-medium">{feed.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {count} episode{count !== 1 ? "s" : ""}
+                      {feed._count.episodes} episode{feed._count.episodes !== 1 ? "s" : ""}
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">Open</span>
                 </Link>
-              );
-            })}
-            
-            {sites.length === 0 && (
-              <div className="p-8">
-                <EmptyState
-                  title="No shows yet"
-                  description="Create your first show to get started"
-                />
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

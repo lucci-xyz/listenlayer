@@ -22,8 +22,8 @@ export default async function EpisodeDetailPage({
   if (!user) redirect("/login");
 
   const episode = await prisma.episode.findFirst({
-    where: { id, site: { userId: user.id } },
-    include: { site: true, source: true },
+    where: { id, userId: user.id },
+    include: { feed: true },
   });
 
   if (!episode) {
@@ -55,11 +55,27 @@ export default async function EpisodeDetailPage({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <div className="text-xs text-muted-foreground">{episode.site.name}</div>
+          {episode.feed ? (
+            <Link
+              href={`/app/feeds/${episode.feed.id}`}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              {episode.feed.name}
+            </Link>
+          ) : (
+            <div className="text-xs text-muted-foreground">Standalone episode</div>
+          )}
           <h1 className="text-xl font-semibold">{episode.title}</h1>
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>{statusLabel}</span>
-            <span>{getDomainFromUrl(episode.sourceUrl)}</span>
+            <a
+              href={episode.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
+              {getDomainFromUrl(episode.sourceUrl)}
+            </a>
             {episode.status === "PUBLISHED" && (
               <Link
                 href={`/listen/e/${episode.publicId}`}
@@ -84,6 +100,11 @@ export default async function EpisodeDetailPage({
           )}
           {episode.status === "PUBLISHED" ? (
             <AudioPlayer publicId={episode.publicId} />
+          ) : episode.status === "QUEUED" || episode.status === "RUNNING" ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              Generating audio...
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">Audio will be available once the episode is published.</p>
           )}
@@ -120,15 +141,17 @@ export default async function EpisodeDetailPage({
       )}
 
       {/* Embed */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Embed</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <CopyField label="Player URL" value={playerUrl} />
-          <CopyField label="Iframe snippet" value={iframeSnippet} mono />
-        </CardContent>
-      </Card>
+      {episode.status === "PUBLISHED" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Embed</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <CopyField label="Player URL" value={playerUrl} />
+            <CopyField label="Iframe snippet" value={iframeSnippet} mono />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

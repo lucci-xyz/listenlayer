@@ -16,9 +16,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login");
   }
 
-  const publications = await prisma.site.findMany({
+  const feeds = await prisma.feed.findMany({
     where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
 
@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           
           {/* Navigation - scrollable area */}
           <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
-            <SidebarNav publications={publications} />
+            <SidebarNav feeds={feeds} />
           </div>
           
           {/* Bottom section - always visible */}

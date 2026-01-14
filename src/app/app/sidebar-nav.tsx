@@ -6,27 +6,28 @@ import {
   AudioLines,
   LayoutGrid,
   Plus,
+  Rss,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ProjectAvatar } from "@/components/project-avatar";
 
 const workspaceLinks = [
-  { href: "/app", label: "Overview", icon: LayoutGrid },
+  { href: "/app", label: "Dashboard", icon: LayoutGrid },
   { href: "/app/episodes", label: "Episodes", icon: AudioLines },
+  { href: "/app/feeds", label: "Feeds", icon: Rss },
 ];
 
-export type SidebarPublication = {
+export type SidebarFeed = {
   id: string;
   name: string;
 };
 
 function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutGrid }) {
   const pathname = usePathname();
-  // For "/app", only be active on exact match (not on site pages)
-  // For other links, check if pathname starts with href
-  const isActive = href === "/app" 
-    ? pathname === "/app"
+  // For "/app" and "/app/feeds", only be active on exact match
+  // This prevents double-highlighting when on a specific feed page
+  const isActive = href === "/app" || href === "/app/feeds"
+    ? pathname === href
     : pathname === href || pathname.startsWith(href + "/");
 
   return (
@@ -53,14 +54,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SidebarNav({ publications }: { publications: SidebarPublication[] }) {
+export function SidebarNav({ feeds }: { feeds: SidebarFeed[] }) {
   const pathname = usePathname();
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Workspace section */}
+      {/* Main navigation */}
       <div>
-        <SectionLabel>Workspace</SectionLabel>
+        <SectionLabel>Menu</SectionLabel>
         <nav className="flex flex-col gap-0.5">
           {workspaceLinks.map((link) => (
             <NavLink key={link.href} {...link} />
@@ -68,33 +69,26 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
         </nav>
       </div>
 
-      {/* Shows section */}
-      <div>
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-            Shows
-          </span>
-          <Button asChild size="icon" variant="ghost" className="h-5 w-5">
-            <Link href="/app/onboarding" aria-label="Add show">
-              <Plus className="h-3 w-3" />
-            </Link>
-          </Button>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          {publications.length === 0 ? (
-            <div className="mx-3 rounded-lg border border-dashed border-border/70 px-3 py-4 text-center">
-              <p className="text-xs text-muted-foreground">No shows yet</p>
-              <Button asChild variant="link" size="sm" className="mt-1 h-auto p-0 text-xs">
-                <Link href="/app/onboarding">Create your first →</Link>
-              </Button>
-            </div>
-          ) : (
-            publications.map((publication) => {
-              const isActive = pathname.startsWith(`/app/sites/${publication.id}`);
+      {/* Feed subscriptions section */}
+      {feeds.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Subscriptions
+            </span>
+            <Button asChild size="icon" variant="ghost" className="h-5 w-5">
+              <Link href="/app/feeds/new" aria-label="Add feed">
+                <Plus className="h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {feeds.map((feed) => {
+              const isActive = pathname.startsWith(`/app/feeds/${feed.id}`);
               return (
                 <Link
-                  key={publication.id}
-                  href={`/app/sites/${publication.id}`}
+                  key={feed.id}
+                  href={`/app/feeds/${feed.id}`}
                   className={cn(
                     "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     isActive
@@ -102,14 +96,14 @@ export function SidebarNav({ publications }: { publications: SidebarPublication[
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  <ProjectAvatar name={publication.name} size={20} className="shrink-0 rounded" />
-                  <span className="truncate">{publication.name}</span>
+                  <Rss className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{feed.name}</span>
                 </Link>
               );
-            })
-          )}
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

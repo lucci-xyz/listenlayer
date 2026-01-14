@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { DeletePublicationDialog } from "@/components/delete-publication-dialog";
+import { DeleteFeedDialog } from "@/components/delete-feed-dialog";
 import { getPlanFromPriceId, PLANS } from "@/lib/stripe";
 import { BillingClient } from "@/components/billing-client";
 import { User, AlertTriangle } from "lucide-react";
@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  const sites = await prisma.site.findMany({
+  const feeds = await prisma.feed.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "asc" },
   });
@@ -69,8 +69,8 @@ export default async function SettingsPage() {
         currentPlan={currentPlan}
       />
 
-      {/* Shows / Danger Zone */}
-      {sites.length > 0 && (
+      {/* Feeds / Danger Zone */}
+      {feeds.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -78,27 +78,27 @@ export default async function SettingsPage() {
               Danger zone
             </CardTitle>
             <CardDescription>
-              Irreversible actions for your shows
+              Irreversible actions for your feed subscriptions
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Accordion type="single" collapsible>
-              {sites.map((site) => (
-                <AccordionItem key={site.id} value={site.id}>
+              {feeds.map((feed) => (
+                <AccordionItem key={feed.id} value={feed.id}>
                   <AccordionTrigger className="text-sm">
-                    {site.name}
+                    {feed.name}
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-3 text-sm">
                       <div className="text-muted-foreground">
-                        Domain: {site.domain || "Not set"}
+                        Feed URL: {feed.feedUrl}
                       </div>
                       <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <p className="text-sm text-destructive">
-                            Delete this show and all connected content.
+                            Delete this feed subscription.
                           </p>
-                          <DeletePublicationDialog siteId={site.id} siteName={site.name} />
+                          <DeleteFeedDialog feedId={feed.id} feedName={feed.name} />
                         </div>
                       </div>
                     </div>

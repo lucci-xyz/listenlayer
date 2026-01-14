@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AudioPlayer } from "@/components/audio-player";
+import { getDomainFromUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function ListenPage({
   const { publicId } = await params;
   const episode = await prisma.episode.findUnique({
     where: { publicId },
-    include: { site: true },
+    include: { feed: true },
   });
 
   if (!episode || episode.status !== "PUBLISHED") {
@@ -40,7 +41,9 @@ export default async function ListenPage({
         <div className="rounded-lg border border-border/70 bg-background p-6">
           <div className="text-[12px] font-medium text-muted-foreground">ListenLayer</div>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">{episode.title}</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">{episode.site.name}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}
+          </p>
           <div className="mt-4">
             <AudioPlayer publicId={episode.publicId} />
           </div>

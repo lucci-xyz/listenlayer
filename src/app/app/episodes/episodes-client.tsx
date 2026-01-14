@@ -15,19 +15,18 @@ export type EpisodeListItem = {
   createdAt: string;
   sourceUrl: string;
   publicId: string | null;
-  siteName?: string;
-  siteId: string;
+  feedName?: string | null;
+  feedId?: string | null;
+  sourceDomain: string;
 };
 
 const filters = ["All", "Published", "Processing", "Failed", "Canceled"] as const;
 
 export default function EpisodesClient({
   episodes,
-  showSite,
 }: {
   episodes: EpisodeListItem[];
   baseUrl: string;
-  showSite?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -77,6 +76,20 @@ export default function EpisodesClient({
     return map[status] ?? status;
   };
 
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return "text-emerald-600";
+      case "RUNNING":
+      case "QUEUED":
+        return "text-amber-600";
+      case "FAILED":
+        return "text-red-600";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters + search */}
@@ -110,7 +123,7 @@ export default function EpisodesClient({
       {/* List */}
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-border/70 bg-card py-10 text-center text-sm text-muted-foreground">
-          No episodes yet.
+          No episodes found.
         </div>
       ) : (
         <div className="divide-y divide-border/50 rounded-xl border border-border/70 bg-card">
@@ -122,8 +135,8 @@ export default function EpisodesClient({
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium">{ep.title}</div>
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  {showSite && ep.siteName && <span>{ep.siteName}</span>}
-                  <span>{statusText(ep.status)}</span>
+                  <span>{ep.feedName || ep.sourceDomain}</span>
+                  <span className={statusColor(ep.status)}>{statusText(ep.status)}</span>
                   <span>{formatRelativeTime(ep.createdAt)}</span>
                 </div>
               </div>

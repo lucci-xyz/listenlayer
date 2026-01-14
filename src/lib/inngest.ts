@@ -183,17 +183,17 @@ function deriveTitleFromHtml(html: string, url: string, fallback: string) {
   }
 }
 
+// New simplified episode generation - works with or without a feed
 export const generateEpisode = inngest.createFunction(
   { id: "episode-generate" },
   { event: "episode/generate.requested" },
   async ({ event, step }) => {
-    const { userId, siteId, sourceId, episodeId, canonicalUrl, episodeTitle, format } =
+    const { userId, episodeId, feedId, canonicalUrl, episodeTitle, format } =
       event.data as {
         userId: string;
-        siteId: string;
-        sourceId: string;
         episodeId: string;
-        canonicalUrl?: string;
+        feedId?: string | null;
+        canonicalUrl: string;
         episodeTitle?: string;
         format?: string;
       };
@@ -223,29 +223,13 @@ export const generateEpisode = inngest.createFunction(
         });
       });
 
-      const source = await step.run("load-source", async () => {
-        const record = await prisma.source.findFirst({
-          where: { id: sourceId, siteId },
-          select: { id: true, type: true, url: true, displayName: true },
-        });
-        if (!record) {
-          throw new Error("Source not found");
-        }
-        return record;
-      });
-
+      // Resolve the source URL - either from feed or directly from canonicalUrl
       const resolved = await step.run("resolve-source", async () => {
-        if (canonicalUrl) {
-          return {
-            canonicalUrl,
-            episodeTitle: episodeTitle || "Latest Episode",
-            latestItemTitle: episodeTitle || "Latest Episode",
-            latestItemUrl: canonicalUrl,
-            feedTitle: null,
-          };
-        }
-        if (source.type === "RSS") {
-          const latest = await fetchLatestFromRss(source.url);
+        // If we have a feedId and no canonicalUrl, fetch latest from feed
+        if (feedId && !canonicalUrl) {
+          const feed = await prisma.feed.findUnique({ where: { id: feedId } });
+          if (!feed) throw new Error("Feed not found");
+          const latest = await fetchLatestFromRss(feed.feedUrl);
           return {
             canonicalUrl: latest.link,
             episodeTitle: latest.title,
@@ -254,28 +238,30 @@ export const generateEpisode = inngest.createFunction(
             feedTitle: latest.feedTitle,
           };
         }
+        // Otherwise use the provided URL
         return {
-          canonicalUrl: source.url,
-          episodeTitle: "Latest Episode",
-          latestItemTitle: null,
-          latestItemUrl: null,
+          canonicalUrl: canonicalUrl,
+          episodeTitle: episodeTitle || "Episode",
+          latestItemTitle: episodeTitle || null,
+          latestItemUrl: canonicalUrl,
           feedTitle: null,
         };
       });
 
-      await step.run("update-source-meta", async () => {
-        await prisma.source.update({
-          where: { id: source.id },
-          data: {
-            latestItemTitle: resolved.latestItemTitle,
-            latestItemUrl: resolved.latestItemUrl,
-            displayName: resolved.feedTitle || source.displayName || undefined,
-            lastFetchStatus: "success",
-            lastError: null,
-            lastFetchedAt: new Date(),
-          },
+      // Update feed metadata if this came from a feed
+      if (feedId) {
+        await step.run("update-feed-meta", async () => {
+          await prisma.feed.update({
+            where: { id: feedId },
+            data: {
+              latestItemTitle: resolved.latestItemTitle,
+              latestItemUrl: resolved.latestItemUrl,
+              lastFetchedAt: new Date(),
+              lastError: null,
+            },
+          });
         });
-      });
+      }
 
       const cancelBeforeScript = await step.run("check-cancel-before-script", async () => {
         const episode = await prisma.episode.findUnique({
@@ -320,6 +306,7 @@ export const generateEpisode = inngest.createFunction(
             scriptText: cleanScript,
             transcriptText: cleanScript,
             chaptersJson: chapters,
+            format: format || null,
           },
         });
         return { length: script.length };
@@ -470,13 +457,15 @@ export const generateEpisode = inngest.createFunction(
           },
         });
 
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            lastFetchStatus: "fail",
-            lastError: error instanceof Error ? error.message : "Unknown error",
-          },
-        });
+        // Update feed error if applicable
+        if (feedId) {
+          await prisma.feed.update({
+            where: { id: feedId },
+            data: {
+              lastError: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        }
         return true;
       });
 
