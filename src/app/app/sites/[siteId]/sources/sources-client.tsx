@@ -80,6 +80,7 @@ export default function SourcesClient({
   const [editUrl, setEditUrl] = useState("");
   const [editName, setEditName] = useState("");
   const [expandedSource, setExpandedSource] = useState<string | null>(null);
+  const [testingSourceId, setTestingSourceId] = useState<string | null>(null);
 
   const resetModal = () => {
     setInputUrl("");
@@ -169,12 +170,24 @@ export default function SourcesClient({
   };
 
   const handleTestFetch = async (sourceId: string) => {
-    await fetch("/api/sources/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceId }),
-    });
-    router.refresh();
+    setTestingSourceId(sourceId);
+    try {
+      const res = await fetch("/api/sources/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string })?.error || "Test fetch failed");
+      }
+      toast.success("Source fetched successfully.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Test fetch failed");
+    } finally {
+      setTestingSourceId(null);
+      router.refresh();
+    }
   };
 
   const openEditModal = (source: Source) => {
@@ -272,7 +285,12 @@ export default function SourcesClient({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEditModal(source)}>Edit</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleCopy(source.url)}>Copy URL</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleTestFetch(source.id)}>Test fetch</DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={testingSourceId === source.id}
+                            onClick={() => handleTestFetch(source.id)}
+                          >
+                            {testingSourceId === source.id ? "Testing..." : "Test fetch"}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleRemove(source.id)} className="text-destructive">
                             Remove
