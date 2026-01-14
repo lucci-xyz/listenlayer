@@ -59,7 +59,7 @@ type EpisodeStatus = "QUEUED" | "RUNNING" | "PUBLISHED" | "FAILED" | "CANCELLED"
 
 export default function OnboardingClient() {
   const router = useRouter();
-  const [step, setStep] = useState<"input" | "review" | "progress">("input");
+  const [step, setStep] = useState<"input" | "review" | "details" | "progress">("input");
   const [inputUrl, setInputUrl] = useState("");
   const [detectedUrl, setDetectedUrl] = useState("");
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
@@ -68,6 +68,7 @@ export default function OnboardingClient() {
   const [error, setError] = useState<string | null>(null);
   const [siteName, setSiteName] = useState("");
   const [siteDomain, setSiteDomain] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [manualFeedUrl, setManualFeedUrl] = useState("");
   const [manualFeedError, setManualFeedError] = useState<string | null>(null);
@@ -90,6 +91,7 @@ export default function OnboardingClient() {
     setError(null);
     setManualFeedError(null);
     setSiteName(data.displayName || "New show");
+    setImageUrl(data.articlePreview?.imageUrl || data.faviconUrl || "");
     try {
       const hostname = new URL(data.origin).hostname;
       setSiteDomain(hostname);
@@ -201,7 +203,7 @@ export default function OnboardingClient() {
           type: sourceType,
           url: sourceUrl,
           displayName: discovery.displayName,
-          faviconUrl: discovery.faviconUrl || undefined,
+          faviconUrl: imageUrl || discovery.faviconUrl || undefined,
         }),
       });
       if (!sourceRes.ok) throw new Error("Failed to add source");
@@ -253,7 +255,7 @@ export default function OnboardingClient() {
   // Guidance copy based on detection
   const guidanceCopy = () => {
     if (hasFeed) return "Auto-sync this feed (default) or just this link.";
-    if (discovery?.kind === "article") return "We'll generate audio for this post.";
+    if (discovery?.kind === "article") return null;
     if (discovery && !hasSupportedPath) return "Paste a specific post link to continue.";
     return null;
   };
@@ -284,7 +286,10 @@ export default function OnboardingClient() {
             <p className="text-xs text-muted-foreground">
               Works with blogs, newsletters (Substack, Medium, WordPress), and most websites.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-4">
+              <Button variant="ghost" onClick={() => router.push("/app")}>
+                Cancel
+              </Button>
               <Button onClick={handleContinue} disabled={loadingDiscovery || !inputUrl.trim()}>
                 {loadingDiscovery ? (
                   <>
@@ -294,9 +299,6 @@ export default function OnboardingClient() {
                 ) : (
                   "Continue"
                 )}
-              </Button>
-              <Button variant="ghost" onClick={() => router.push("/app")}>
-                Cancel
               </Button>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -368,10 +370,8 @@ export default function OnboardingClient() {
                         : "border-border hover:border-foreground/20"
                     }`}
                   >
-                    <div className="text-sm font-medium">Just this link</div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Generate a single episode.
-                    </p>
+                    <div className="text-sm font-medium">Single episode</div>
+                    <p className="mt-1 text-xs text-muted-foreground">One-time generate.</p>
                   </button>
                 )}
               </div>
@@ -400,10 +400,7 @@ export default function OnboardingClient() {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={handleGenerate} disabled={!canProceed}>
-                {selectedMode === "sync" ? "Create & auto-sync" : "Create episode"}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <Button
                 variant="ghost"
                 onClick={() => {
@@ -413,6 +410,9 @@ export default function OnboardingClient() {
                 }}
               >
                 ← Back
+              </Button>
+              <Button onClick={() => setStep("details")} disabled={!canProceed}>
+                Next
               </Button>
             </div>
 
@@ -430,14 +430,6 @@ export default function OnboardingClient() {
               </button>
               {showAdvanced && (
                 <div className="mt-3 space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Show name</label>
-                    <Input
-                      placeholder="Show name"
-                      value={siteName}
-                      onChange={(e) => setSiteName(e.target.value)}
-                    />
-                  </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">Paste RSS URL manually</label>
                     <div className="flex gap-2">
@@ -468,6 +460,51 @@ export default function OnboardingClient() {
       )}
 
       {/* Step 3: Progress */}
+      {step === "details" && discovery && (
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div className="space-y-1">
+              <div className="text-sm font-medium text-foreground">Name your show</div>
+              <Input
+                placeholder="Show name"
+                value={siteName}
+                onChange={(e) => setSiteName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">Cover image URL (optional)</div>
+              <Input
+                placeholder="https://example.com/image.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+              {imageUrl && (
+                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                  <img
+                    src={imageUrl}
+                    alt="Cover preview"
+                    className="h-12 w-12 rounded-md object-cover"
+                    onError={() => setImageUrl("")}
+                  />
+                  <span className="text-xs text-muted-foreground">Preview</span>
+                </div>
+              )}
+              {!imageUrl && discovery.faviconUrl && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Using detected image from the site. You can replace it above.
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <Button variant="ghost" onClick={() => setStep("review")}>← Back</Button>
+              <Button onClick={handleGenerate}>Generate</Button>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 4: Progress */}
       {step === "progress" && (
         <Card>
           <CardHeader>

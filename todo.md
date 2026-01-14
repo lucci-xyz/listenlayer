@@ -2,3 +2,4 @@
 - Add real stripe payments
 - Test integrating player
 - Test generation
+- Ability to rename shows 
