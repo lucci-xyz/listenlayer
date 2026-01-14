@@ -7,7 +7,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { SidebarNav } from "@/app/app/sidebar-nav";
 import { GenerationStatus } from "@/components/generation-status";
 import { getPlanFromPriceId, PLANS } from "@/lib/stripe";
-import { ChevronDown } from "lucide-react";
+import { User } from "lucide-react";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -42,20 +42,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
           
           {/* User section at bottom */}
-          <div className="mt-auto pt-6 px-1">
+          <div className="mt-auto pt-6 px-1 border-t border-black/5">
             <Link 
               href="/app/settings"
-              className="group flex items-center gap-3 rounded-xl p-2 hover:bg-white/20 transition-all duration-200"
+              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/40 transition-colors group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-foreground text-xs font-medium shadow-sm ring-2 ring-white/50 group-hover:scale-105 transition-transform">
-                {user.email?.slice(0, 1).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="truncate text-sm font-medium opacity-90 group-hover:opacity-100">{user.name || user.email?.split('@')[0]}</div>
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-40 group-hover:opacity-80 transition-opacity" />
+              <User className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+              <div className="text-sm font-medium opacity-90 group-hover:opacity-100">Account</div>
             </Link>
-            {process.env.DEV_AUTH_BYPASS === "true" ? null : <div className="mt-2"><SignOutButton /></div>}
+            {process.env.DEV_AUTH_BYPASS === "true" ? null : <div className="mt-2 px-2"><SignOutButton /></div>}
           </div>
         </aside>
 

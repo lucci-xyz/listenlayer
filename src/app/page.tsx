@@ -70,16 +70,16 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Right: mock player visual - Removed rotation as requested */}
+            {/* Right: mock player visual */}
             <div className="relative hidden lg:block">
               <div className="relative z-10 rounded-[2rem] bg-white p-8 shadow-xl shadow-black/5 ring-1 ring-black/5 transition-transform duration-500 ease-out">
                 {/* Mock player header */}
                 <div className="flex items-start gap-5">
-                  <div className="h-20 w-20 rounded-2xl bg-accent/20 flex items-center justify-center shrink-0 text-accent-foreground">
-                    <Play className="h-8 w-8 fill-current" />
+                  <div className="h-16 w-16 rounded-2xl bg-accent/20 flex items-center justify-center shrink-0 text-accent-foreground">
+                    <Play className="h-6 w-6 fill-current" />
                   </div>
                   <div className="min-w-0 flex-1 pt-1">
-                    <div className="font-display text-xl text-foreground mb-1">
+                    <div className="font-display text-2xl text-foreground mb-1 leading-tight">
                       How We Redesigned Our Checkout Flow
                     </div>
                     <div className="text-sm font-medium text-foreground/50">
@@ -109,7 +109,7 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Decorative elements behind - simplified/leveled */}
+              {/* Decorative elements behind */}
               <div className="absolute -inset-4 bg-primary/5 rounded-[2.5rem] -z-10 scale-95" />
               <div className="absolute -inset-8 bg-white/20 rounded-[3rem] -z-20 scale-90" />
             </div>
@@ -274,7 +274,7 @@ export default function Home() {
                   key={key}
                   className={`relative flex flex-col p-8 rounded-[2rem] transition-all duration-300 ${
                     isPopular 
-                      ? "bg-primary text-primary-foreground shadow-2xl scale-105 z-10" // Changed background to primary (teal)
+                      ? "bg-primary text-primary-foreground shadow-2xl scale-105 z-10" 
                       : "bg-secondary/50 hover:bg-secondary border border-border"
                   }`}
                 >

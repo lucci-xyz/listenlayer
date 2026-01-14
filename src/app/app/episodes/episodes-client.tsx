@@ -7,6 +7,7 @@ import { formatRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { ArrowRight, Search } from "lucide-react";
 
 export type EpisodeListItem = {
   id: string;
@@ -79,30 +80,30 @@ export default function EpisodesClient({
   const statusColor = (status: string) => {
     switch (status) {
       case "PUBLISHED":
-        return "text-emerald-600";
+        return "bg-emerald-100 text-emerald-700";
       case "RUNNING":
       case "QUEUED":
-        return "text-amber-600";
+        return "bg-amber-100 text-amber-700";
       case "FAILED":
-        return "text-red-600";
+        return "bg-red-100 text-red-700";
       default:
-        return "text-muted-foreground";
+        return "bg-secondary text-muted-foreground";
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters + search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
           {filters.map((opt) => (
             <button
               key={opt}
               type="button"
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
                 filter === opt
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background shadow-md"
+                  : "bg-white border border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
               }`}
               onClick={() => setFilter(opt)}
             >
@@ -110,50 +111,62 @@ export default function EpisodesClient({
             </button>
           ))}
         </div>
-        <div className="ml-auto">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search episodes"
+            placeholder="Search episodes..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-52"
+            className="pl-9 bg-white border-border/60 rounded-xl"
           />
         </div>
       </div>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="rounded-xl border border-border/70 bg-card py-10 text-center text-sm text-muted-foreground">
-          No episodes found.
-        </div>
-      ) : (
-        <div className="divide-y divide-border/50 rounded-xl border border-border/70 bg-card">
-          {filtered.map((ep) => (
-            <div
-              key={ep.id}
-              className="flex items-center justify-between gap-4 px-5 py-3"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{ep.title}</div>
-                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  <span>{ep.feedName || ep.sourceDomain}</span>
-                  <span className={statusColor(ep.status)}>{statusText(ep.status)}</span>
-                  <span>{formatRelativeTime(ep.createdAt)}</span>
+      {/* List Card */}
+      <div className="rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground">
+            No episodes found matching your filters.
+          </div>
+        ) : (
+          <div className="divide-y divide-border/40 p-2">
+            {filtered.map((ep) => (
+              <div
+                key={ep.id}
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-secondary/50 rounded-xl transition-colors"
+              >
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${ep.status === 'PUBLISHED' ? 'bg-emerald-400' : ep.status === 'FAILED' ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="font-medium text-foreground truncate text-base">{ep.title}</div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      <span>{ep.feedName || ep.sourceDomain}</span>
+                      <span className="hidden sm:inline text-border">•</span>
+                      <span>{formatRelativeTime(ep.createdAt)}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide ${statusColor(ep.status)}`}>
+                        {statusText(ep.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 pl-6 sm:pl-0">
+                  {(ep.status === "QUEUED" || ep.status === "RUNNING") && (
+                    <Button size="sm" variant="outline" onClick={() => handleCancel(ep.id)} className="text-xs h-8 rounded-lg">
+                      Stop
+                    </Button>
+                  )}
+                  <Button asChild size="sm" variant="outline" className="text-xs h-8 rounded-lg gap-1">
+                    <Link href={`/app/episodes/${ep.id}`}>
+                      Open <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {(ep.status === "QUEUED" || ep.status === "RUNNING") && (
-                  <Button size="sm" variant="outline" onClick={() => handleCancel(ep.id)}>
-                    Stop
-                  </Button>
-                )}
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/app/episodes/${ep.id}`}>Open</Link>
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

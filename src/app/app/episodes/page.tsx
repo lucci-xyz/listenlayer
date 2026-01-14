@@ -23,7 +23,7 @@ export default async function EpisodesPage() {
   const items: EpisodeListItem[] = episodes.map((episode) => ({
     id: episode.id,
     title: episode.title,
-    status: episode.status,
+    status: episode.status as any,
     createdAt: episode.createdAt.toISOString(),
     sourceUrl: episode.sourceUrl,
     publicId: episode.publicId,
@@ -33,8 +33,10 @@ export default async function EpisodesPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <h1 className="font-display text-3xl">Episodes</h1>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex items-end justify-between border-b border-border pb-6">
+        <h1 className="font-display text-4xl text-foreground">Episodes</h1>
+      </div>
       <EpisodesClient episodes={items} baseUrl={baseUrl} />
     </div>
   );

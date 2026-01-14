@@ -6,13 +6,14 @@ import {
   Home,
   AudioLines,
   Rss,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: Home },
   { href: "/app/episodes", label: "Episodes", icon: AudioLines },
-  { href: "/app/feeds", label: "Feeds", icon: Rss },
+  { href: "/app/feeds", label: "Feeds", icon: Radio }, // Changed from Rss to Radio
 ];
 
 export type SidebarFeed = {

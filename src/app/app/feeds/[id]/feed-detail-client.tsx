@@ -10,7 +10,6 @@ import {
   Mic,
   MoreHorizontal,
   RefreshCw,
-  Rss,
   Sparkles,
   Trash2,
   Users,
@@ -37,6 +36,7 @@ import { formatRelativeTime } from "@/lib/time";
 import { getDomainFromUrl } from "@/lib/url";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FeedIcon } from "@/components/feed-icon";
 
 type FormatOption = "solo" | "two-hosts" | "tldr";
 
@@ -175,11 +175,11 @@ export function FeedDetailClient({
 
   const statusBadge = (status: string | null) => {
     if (!status) return null;
-    const variants: Record<string, "default" | "secondary" | "destructive" | "success" | "warning" | "outline"> = {
-      PUBLISHED: "success",
-      QUEUED: "warning",
-      RUNNING: "warning",
-      FAILED: "destructive",
+    const colors: Record<string, string> = {
+      PUBLISHED: "bg-emerald-100 text-emerald-700",
+      QUEUED: "bg-amber-100 text-amber-700",
+      RUNNING: "bg-amber-100 text-amber-700",
+      FAILED: "bg-red-100 text-red-700",
     };
     const labels: Record<string, string> = {
       PUBLISHED: "Generated",
@@ -188,298 +188,280 @@ export function FeedDetailClient({
       FAILED: "Failed",
     };
     return (
-      <Badge variant={variants[status] || "outline"}>
+      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide", colors[status] || "bg-secondary text-muted-foreground")}>
         {labels[status] || status}
-      </Badge>
+      </span>
     );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link
-            href="/app/feeds"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-            Back to feeds
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
-              <Rss className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
-            </div>
-            <div>
-              <h1 className="font-display text-3xl">{feed.name}</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{getDomainFromUrl(feed.feedUrl)}</span>
-                {feed.siteUrl && (
+      <div>
+        <Link
+          href="/app/feeds"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to feeds
+        </Link>
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="font-display text-3xl md:text-4xl text-foreground">{feed.name}</h1>
+            <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground/80">{getDomainFromUrl(feed.feedUrl)}</span>
+              {feed.siteUrl && (
+                <>
+                  <span className="text-border">•</span>
                   <a
                     href={feed.siteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-primary transition-colors"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    Visit site <ExternalLink className="h-3 w-3" />
                   </a>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
-            Refresh
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon-sm">
-                <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => window.open(feed.feedUrl, "_blank")}
-              >
-                View feed URL
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteOpen(true)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Delete feed
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-3 self-end md:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="rounded-full h-10 px-4 bg-white shadow-sm hover:bg-secondary/50"
+            >
+              <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
+              Refresh
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm hover:bg-secondary/50">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem onClick={() => window.open(feed.feedUrl, "_blank")}>
+                  View feed URL
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete feed
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
-      {/* Error message */}
-      {feed.lastError && (
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {feed.lastError}
-        </div>
-      )}
-
-      {/* Articles from feed */}
-      <div className="rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-semibold">Latest articles</h2>
-          {feed.lastFetchedAt && (
-            <span className="text-xs text-muted-foreground">
-              Updated {formatRelativeTime(feed.lastFetchedAt)}
-            </span>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      {/* Main Content Area */}
+      <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
+        {/* Latest Articles */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-display text-foreground">Latest Articles</h2>
+            {feed.lastFetchedAt && (
+              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2.5 py-1 rounded-full">
+                Updated {formatRelativeTime(feed.lastFetchedAt)}
+              </span>
+            )}
           </div>
-        ) : items.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-sm text-muted-foreground">No articles found in feed.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {items.map((item) => (
-              <div
-                key={item.url}
-                className="group p-5 transition-colors hover:bg-secondary/30"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium hover:underline"
-                    >
-                      {item.title}
-                    </a>
-                    {item.description && (
-                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                      {item.pubDate && <span>{formatRelativeTime(item.pubDate)}</span>}
-                      {statusBadge(item.status)}
+
+          <div className="rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/30" />
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-20 text-center text-muted-foreground">
+                No articles found in feed.
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {items.map((item) => (
+                  <div key={item.url} className="group p-6 hover:bg-secondary/30 transition-colors">
+                    <div className="flex flex-col gap-4">
+                      <div className="space-y-2">
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-semibold text-foreground hover:text-primary transition-colors leading-tight block"
+                        >
+                          {item.title}
+                        </a>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.pubDate && <span className="font-medium">{formatRelativeTime(item.pubDate)}</span>}
+                          {item.status && (
+                            <>
+                              <span className="text-border">•</span>
+                              {statusBadge(item.status)}
+                            </>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end pt-2">
+                        <Button
+                          size="sm"
+                          variant={item.status ? "outline" : "default"}
+                          onClick={() => openFormatDialog(item)}
+                          disabled={generating === item.url || item.status === "QUEUED" || item.status === "RUNNING"}
+                          className={cn(
+                            "rounded-full h-9 px-5 text-xs font-medium transition-all",
+                            !item.status && "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md"
+                          )}
+                        >
+                          {generating === item.url ? (
+                            <>
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              Creating...
+                            </>
+                          ) : item.status === "PUBLISHED" ? (
+                            "Regenerate"
+                          ) : item.status === "QUEUED" || item.status === "RUNNING" ? (
+                            "Generating..."
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-3.5 w-3.5" />
+                              Create Audio
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-
-                  <Button
-                    size="sm"
-                    variant={item.status ? "outline" : "default"}
-                    onClick={() => openFormatDialog(item)}
-                    disabled={generating === item.url || item.status === "QUEUED" || item.status === "RUNNING"}
-                    className="shrink-0"
-                  >
-                    {generating === item.url ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : item.status === "PUBLISHED" ? (
-                      "Regenerate"
-                    ) : item.status === "QUEUED" || item.status === "RUNNING" ? (
-                      "Generating..."
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Create audio
-                      </>
-                    )}
-                  </Button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Generated episodes from this feed */}
-      {episodes.length > 0 && (
-        <div>
-          <h2 className="mb-4 font-medium">Generated episodes</h2>
-          <div className="divide-y divide-border/50 rounded-xl border border-border/70 bg-card">
-            {episodes.map((ep) => (
-              <Link
-                key={ep.id}
-                href={`/app/episodes/${ep.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/30"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{ep.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatRelativeTime(ep.createdAt)}
-                  </div>
-                </div>
-                {statusBadge(ep.status)}
-              </Link>
-            ))}
+            )}
           </div>
         </div>
-      )}
 
-      {/* Format selection dialog */}
+        {/* Sidebar: Generated Episodes */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-display text-foreground">Generated Episodes</h2>
+          
+          {episodes.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-white/50">
+              <p className="text-sm text-muted-foreground">
+                No episodes generated yet. Pick an article to start.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white border border-border/50 shadow-sm overflow-hidden">
+              <div className="divide-y divide-border/40">
+                {episodes.map((ep) => (
+                  <Link
+                    key={ep.id}
+                    href={`/app/episodes/${ep.id}`}
+                    className="flex items-start gap-3 p-4 hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+                        {ep.title}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatRelativeTime(ep.createdAt)}</span>
+                        {statusBadge(ep.status)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Dialogs */}
       <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Choose audio format</DialogTitle>
-            <DialogDescription>
-              {selectedItem?.title && (
-                <span className="line-clamp-1">{selectedItem.title}</span>
-              )}
+            <DialogTitle className="font-display text-2xl">Choose Format</DialogTitle>
+            <DialogDescription className="text-base">
+              Select how you want this article to be narrated.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-3 py-4">
-            <button
-              type="button"
-              onClick={() => setSelectedFormat("solo")}
-              className={cn(
-                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
-                selectedFormat === "solo"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              )}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Mic className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="font-medium">Solo narration</div>
-                <div className="text-sm text-muted-foreground">
-                  Clean, professional reading of the article
+            {[
+              { id: "solo", label: "Solo Narration", desc: "Professional single-voice reading", icon: Mic },
+              { id: "two-hosts", label: "Two Hosts", desc: "Conversational discussion style", icon: Users },
+              { id: "tldr", label: "TL;DR Summary", desc: "Concise 2-minute overview", icon: Zap },
+            ].map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setSelectedFormat(option.id as FormatOption)}
+                className={cn(
+                  "flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all hover:border-primary/30 hover:bg-secondary/50",
+                  selectedFormat === option.id
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border"
+                )}
+              >
+                <div className={cn(
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
+                  selectedFormat === option.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                )}>
+                  <option.icon className="h-6 w-6" strokeWidth={1.5} />
                 </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedFormat("two-hosts")}
-              className={cn(
-                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
-                selectedFormat === "two-hosts"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              )}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Users className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="font-medium">Two hosts</div>
-                <div className="text-sm text-muted-foreground">
-                  Conversational discussion between two voices
+                <div>
+                  <div className={cn("font-semibold", selectedFormat === option.id ? "text-primary" : "text-foreground")}>
+                    {option.label}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {option.desc}
+                  </div>
                 </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedFormat("tldr")}
-              className={cn(
-                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
-                selectedFormat === "tldr"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              )}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Zap className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="font-medium">TL;DR</div>
-                <div className="text-sm text-muted-foreground">
-                  Quick 1-2 minute summary of key points
-                </div>
-              </div>
-            </button>
+              </button>
+            ))}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFormatDialogOpen(false)}>
+          <DialogFooter className="sm:justify-between gap-4">
+            <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-full">
               Cancel
             </Button>
-            <Button onClick={handleGenerate}>
+            <Button onClick={handleGenerate} className="rounded-full px-8 bg-primary hover:bg-primary/90">
               <Sparkles className="mr-2 h-4 w-4" />
-              Create audio
+              Generate Audio
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle>Delete feed subscription?</DialogTitle>
             <DialogDescription>
-              This will remove the feed subscription. Episodes generated from this feed will be kept.
+              This will remove <strong>{feed.name}</strong> from your dashboard. Generated episodes will be preserved.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-full">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
+              className="rounded-full"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? "Deleting..." : "Delete Feed"}
             </Button>
           </DialogFooter>
         </DialogContent>

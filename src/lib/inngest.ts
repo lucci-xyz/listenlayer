@@ -58,7 +58,7 @@ async function generateScriptAndChapters(
     format === "two-host"
       ? "Write as a two-host conversation. Prefix each spoken line with H1: or H2: (no other labels) so we can split voices. Avoid narration or stage directions. Plain text only."
       : format === "tldr"
-        ? "Write as a tight TL;DR recap with punchy narration, still 500-900 words. Plain text only."
+        ? "Write as a tight TLDR recap with punchy narration, still 500-900 words. Plain text only."
         : "Write as a single-host narration. Plain text only.";
   const response = await openai.responses.create({
     model: "gpt-4o-mini",
