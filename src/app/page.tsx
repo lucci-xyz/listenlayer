@@ -280,7 +280,7 @@ export default function Home() {
                 >
                   {isPopular && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-accent text-accent-foreground px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
-                      Most Popular
+                      Popular
                     </div>
                   )}
                   
