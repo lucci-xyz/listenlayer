@@ -2,4 +2,4 @@
 - Add real stripe payments
 - Test integrating player
 - Test generation
-- Ability to rename shows 
+- Fix this entire app to be adjustable to all screen sizes, computers and mobile devices
