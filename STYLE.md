@@ -1,125 +1,135 @@
-# Pilot Design Style Guide
+You are a UI design + front-end styling agent. Your job is to restyle this existing website to match the *visual design system* of the provided reference image. Do NOT copy any layout or content from the reference—only the style language (colors, typography, spacing, surfaces, borders, icon treatment, components, states).
 
-## Product Tone
-- Modern, calm, and minimal with warm accents.
-- Light surfaces, subtle borders, and soft elevation (Apple/ElevenLabs-like).
-- Clear hierarchy: compact labels, medium-weight body, bold numeric emphasis.
-- Copy tone: concise, calm, and utilitarian; avoid hype.
+## Style goal (high level)
 
-## Typography
-**Fonts**
-- Sans: Inter (`--font-inter`, `font-sans`)
-- Mono: JetBrains Mono (`--font-mono`, `font-mono`) for IDs, addresses, and technical strings.
+“Calm, soft, minimal dashboard” aesthetic:
 
-**Type scale (from UI usage)**
-- `text-[11px]`: Eyebrow/labels, uppercase with tracking (e.g. section headers)
-- `text-[12px]`: Helper text, input labels
-- `text-[13px]`: Default body copy, form text
-- `text-[15px]`: Page titles in app header
-- `text-lg`: Section headings
-- `text-xl`: Auth page headings
-- `text-2xl`: Key metrics (KPI numbers)
+* Cool off-white / sage-gray surfaces, subtle borders, very low-contrast dividers
+* Rounded cards, generous padding, almost no heavy shadows
+* Desaturated teal as primary accent + warm peach as secondary accent
+* Clean sans UI font + elegant serif for page titles / hero numbers
+* Outline icons only, consistent stroke weight, muted color
 
-**Weights**
-- Regular/medium for body; semibold for numbers and section titles.
+## Color system (tokens)
 
-## Color System
-All colors are defined in `src/app/globals.css` and exposed as CSS variables used by Tailwind.
+Use muted, desaturated colors only. No pure black, no saturated blues, no neon.
 
-**Light theme**
-- Background: `#fafafa`
-- Foreground: `#171717`
-- Card/Popover: `#ffffff`
-- Primary (accent coral): `#d97757`
-- Secondary/Muted: `#f5f5f5`
-- Border/Input: `#e5e5e5`
-- Ring: `#d97757`
+Neutrals / surfaces:
 
-**Dark theme**
-- Background: `#0a0a0a`
-- Foreground: `#fafafa`
-- Card/Popover: `#171717`
-- Primary: `#e8937a`
-- Secondary/Muted: `#262626`
-- Border/Input: `#262626`
-- Ring: `#e8937a`
+* --bg: #CAD7D4  (sage-tinted app backdrop)
+* --sidebar: #ECF1F1  (cool off-white)
+* --surface: #FFFFFF  (main cards)
+* --surface-2: #F3F5F5 (secondary surface fill)
+* --border: #E3E8E7 (hairline dividers)
+* --text: #141414 (primary text, not pure black)
+* --text-muted: #6B7573 (secondary text)
+* --icon: #6B7573 (icons match muted text)
 
-**Status colors**
-- Success: `#10b981` (emerald)
-- Warning: `#f59e0b` (amber)
-- Error/Destructive: `#ef4444` (red)
-- Inactive/Needs setup: neutral grays
+Accents:
 
-**Charts palette**
-- `--chart-1`: `#d97757`
-- `--chart-2`: `#6366f1`
-- `--chart-3`: `#10b981`
-- `--chart-4`: `#f59e0b`
-- `--chart-5`: `#ec4899`
+* --primary: #4E746B (muted teal)
+* --primary-2: #73918A (lighter teal)
+* --accent: #DD9469 (warm peach)
+* --accent-2: #F6E1D8 (peach tint background)
 
-Use Tailwind color tokens (`bg-background`, `text-foreground`, `border-border`, etc.) instead of hard-coded hex values.
+States:
 
-## Layout & Spacing
-- Use generous whitespace and compact component density.
-- Spacing scale (preferred): 2, 3, 4, 5, 6, 8, 10 (Tailwind `space-*`, `gap-*`, `p-*`, `m-*`).
-- Common padding: `p-5` for cards, `p-8` for auth containers, `px-4/px-6` for headers.
-- Section spacing: `space-y-6` for page groups, `space-y-4` for forms.
+* --focus: use a subtle outline/ring in --primary-2 at low opacity
+* --hover: darken surface slightly or increase border contrast slightly (never change hue)
+* --active: use soft pill highlight (surface) rather than saturated fills
 
-## Radius
-- Base radius: `0.75rem` (`--radius`).
-- Cards: `rounded-xl` or `rounded-2xl` in auth.
-- Inputs and buttons: `rounded-md` or `rounded-lg`.
+## Typography rules
 
-## Elevation & Surfaces
-Use custom soft shadows defined in `globals.css`:
-- `shadow-soft`: subtle card lift
-- `shadow-soft-md`: medium emphasis
-- `shadow-soft-lg`: modal/auth emphasis
+* UI font: Inter / SF Pro / system sans (use what’s available). Weight range 400–600.
+* Editorial font (titles / big metric numbers): a classy serif (e.g., “Instrument Serif”, “Fraunces”, “Source Serif”, or similar). Use sparingly.
+* Hierarchy should be subtle: rely on size + weight + spacing, not loud color.
 
-## Components
-**Buttons** (`components/ui/button.tsx`)
-- Default: primary coral background.
-- Secondary/outline/ghost follow shadcn variants.
-- Auth flows use neutral black CTA (`bg-neutral-900`) to avoid competing with the coral accent.
-- Primary CTA rule: use coral for core in-app actions (e.g. "Fund wallet", "Create agent"). Use neutral/outline for secondary actions. Use destructive only for irreversible actions.
+Type scale guidance:
 
-**Inputs** (`components/ui/input.tsx`)
-- Height `h-10`, neutral borders, `text-[13px]`.
-- Focus ring uses primary.
+* Page title: serif, 28–34px, 500–600
+* Card title: sans, 14–16px, 600
+* Body: sans, 14–15px, 400–500
+* Muted labels: sans, 12–13px, 500, color --text-muted
+* Big metric: serif, 28–40px, 500–600
 
-**Cards**
-- `border-neutral-100 bg-white shadow-soft rounded-xl`.
-- KPI cards use uppercase label + large numeric value.
+Line height: 1.35–1.5. No tight leading.
 
-**Header**
-- Sticky, light blur, thin border: `bg-white/80 border-neutral-100 backdrop-blur-sm`.
+## Layout + spacing system
 
-**Status badges**
-- Green (active), amber (paused), red (error), neutral (needs setup).
+* Use an 8px spacing grid.
+* Cards have generous padding: 16–24px.
+* Gutters between cards: 16–24px.
+* Sidebar padding: 16–20px.
+* Use whitespace to separate sections; minimize heavy separators.
 
-**Recipes (quick patterns)**
-- KPI card: `text-[11px]` uppercase label + `text-2xl` value + optional `text-[12px]` helper.
-- Form section: label `text-[12px] font-medium`, inputs `h-10`, helper `text-[12px]` neutral.
-- Sidebar item: `text-[13px]`, subtle hover, active uses neutral background.
+## Surfaces, borders, radii, shadows
 
-## Iconography
-- Use Lucide icons.
-- Typical sizes: `h-3.5` to `h-5`, stroke width `1.5`.
+* Border: 1px solid var(--border), low contrast.
+* Radius:
 
-## Motion
-- Keep motion subtle: `transition-colors` for hover, `transition-all` for progress.
-- Avoid heavy animations; prefer instant, crisp feedback.
+  * Cards: 14–16px
+  * Inputs/buttons: 12–14px
+  * Pills/chips: 999px
+* Shadows: extremely soft or none. Prefer borders over shadows.
 
-## Data Display
-- Currency formatting: `Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })`.
-- Use mono font for IDs, keys, and addresses.
+  * If needed: a subtle ambient shadow with low opacity and large blur (no harsh drop shadows).
 
-## Theme Usage
-- Default: light theme. Dark theme is supported but not the primary visual target.
-- If designing new pages, match light theme tokens unless explicitly asked for dark variants.
+## Components (visual rules)
 
-## Do / Don't
-- Do keep backgrounds light and neutral with warm coral accents.
-- Do use CSS variables and Tailwind tokens.
-- Don't introduce saturated backgrounds or hard shadows.
-- Don't mix new fonts unless approved.
+### Sidebar / nav
+
+* Sidebar uses --sidebar background.
+* Nav items are simple rows with outline icons on the left.
+* Active nav item is a “pill” (white surface) with subtle border, not a colored bar.
+* Icon size 18–20px, stroke 1.5–1.75, color --icon.
+
+### Cards
+
+* White background, subtle border.
+* Card header: title left, small action (icon button) right.
+* Content uses muted labels and clear spacing.
+
+### Buttons
+
+* Primary: subtle—either white surface with teal border/text OR very light teal tint background. No saturated teal fills.
+* Secondary: white surface + border.
+* Icon buttons: circular/rounded, low-contrast hover.
+
+### Inputs
+
+* White surface, subtle border, 12–14px radius.
+* Focus ring is soft teal at low opacity.
+* Placeholder text uses --text-muted.
+
+### Badges / pills
+
+* Very light tinted background (primary-2 or accent-2) + muted text.
+* No hard outlines unless needed.
+
+### Charts / indicators
+
+* Flat, minimal. No strong gridlines.
+* Use muted teal for positive/primary and warm peach for secondary/negative.
+* Legends are tiny with small colored squares/dots.
+
+## Interaction + accessibility
+
+* Maintain readable contrast for text (don’t go too faint).
+* Hover states should be gentle: slight background tint or border contrast.
+* Focus states must be visible but soft.
+
+## Don’ts
+
+* Don’t use bright blues, neon, or heavy gradients.
+* Don’t use thick borders, sharp corners, or heavy shadows.
+* Don’t use filled icon sets; outline only.
+* Don’t add visual clutter (too many colors, too many lines).
+
+## Deliverable
+
+Apply these tokens + rules consistently across the site:
+
+1. Define CSS variables / theme tokens
+2. Restyle: background, sidebar, nav, cards, typography, buttons, inputs, tables, badges
+3. Ensure spacing + radii + borders match the reference’s calm minimal vibe
+4. Use an outline icon set (Lucide-style) with consistent stroke and muted color

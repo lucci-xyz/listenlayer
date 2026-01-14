@@ -7,11 +7,14 @@ import {
   ArrowLeft,
   ExternalLink,
   Loader2,
+  Mic,
   MoreHorizontal,
   RefreshCw,
   Rss,
   Sparkles,
   Trash2,
+  Users,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +36,9 @@ import {
 import { formatRelativeTime } from "@/lib/time";
 import { getDomainFromUrl } from "@/lib/url";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type FormatOption = "solo" | "two-hosts" | "tldr";
 
 type Feed = {
   id: string;
@@ -75,6 +81,11 @@ export function FeedDetailClient({
   const [generating, setGenerating] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  
+  // Format selection dialog state
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<FormatOption>("solo");
 
   const fetchItems = async () => {
     try {
@@ -101,16 +112,29 @@ export function FeedDetailClient({
     fetchItems();
   };
 
-  const handleGenerate = async (item: FeedItem) => {
-    setGenerating(item.url);
+  // Open format selection dialog
+  const openFormatDialog = (item: FeedItem) => {
+    setSelectedItem(item);
+    setSelectedFormat("solo");
+    setFormatDialogOpen(true);
+  };
+
+  // Actually generate after format is selected
+  const handleGenerate = async () => {
+    if (!selectedItem) return;
+    
+    setFormatDialogOpen(false);
+    setGenerating(selectedItem.url);
+    
     try {
       const res = await fetch("/api/episodes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: item.url,
+          url: selectedItem.url,
           feedId: feed.id,
-          title: item.title,
+          title: selectedItem.title,
+          format: selectedFormat,
         }),
       });
 
@@ -130,6 +154,7 @@ export function FeedDetailClient({
       toast.error(err instanceof Error ? err.message : "Failed to generate");
     } finally {
       setGenerating(null);
+      setSelectedItem(null);
     }
   };
 
@@ -296,8 +321,8 @@ export function FeedDetailClient({
                   <Button
                     size="sm"
                     variant={item.status ? "outline" : "default"}
-                    onClick={() => handleGenerate(item)}
-                    disabled={!!generating || item.status === "QUEUED" || item.status === "RUNNING"}
+                    onClick={() => openFormatDialog(item)}
+                    disabled={generating === item.url || item.status === "QUEUED" || item.status === "RUNNING"}
                     className="shrink-0"
                   >
                     {generating === item.url ? (
@@ -346,6 +371,95 @@ export function FeedDetailClient({
           </div>
         </div>
       )}
+
+      {/* Format selection dialog */}
+      <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose audio format</DialogTitle>
+            <DialogDescription>
+              {selectedItem?.title && (
+                <span className="line-clamp-1">{selectedItem.title}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-3 py-4">
+            <button
+              type="button"
+              onClick={() => setSelectedFormat("solo")}
+              className={cn(
+                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
+                selectedFormat === "solo"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+              )}
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Mic className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <div className="font-medium">Solo narration</div>
+                <div className="text-sm text-muted-foreground">
+                  Clean, professional reading of the article
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedFormat("two-hosts")}
+              className={cn(
+                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
+                selectedFormat === "two-hosts"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+              )}
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <div className="font-medium">Two hosts</div>
+                <div className="text-sm text-muted-foreground">
+                  Conversational discussion between two voices
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedFormat("tldr")}
+              className={cn(
+                "flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-colors",
+                selectedFormat === "tldr"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+              )}
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Zap className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <div className="font-medium">TL;DR</div>
+                <div className="text-sm text-muted-foreground">
+                  Quick 1-2 minute summary of key points
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormatDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleGenerate}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Create audio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
