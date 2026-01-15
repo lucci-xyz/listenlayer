@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatRelativeTime } from "@/lib/time";
+import { getPlanFromPriceId } from "@/lib/stripe";
 import { AudioLines, ArrowRight, Rss, Play, BarChart3, Radio } from "lucide-react";
 import { CreateAudioCard } from "@/components/create-audio-card";
 import { EpisodePlaysChart } from "@/components/episode-plays-chart";
+import { UpgradeModalTrigger } from "@/components/upgrade-modal-trigger";
 import { getDomainFromUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,8 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const currentPlan = getPlanFromPriceId(user.subscriptionPriceId ?? null);
 
   // Fetch data in parallel
   const [episodeStats, recentEpisodes, feeds] = await Promise.all([
@@ -64,21 +68,26 @@ export default async function DashboardPage() {
   // First time user - show simple welcome
   if (episodeCount === 0 && feeds.length === 0) {
     return (
-      <div className="max-w-xl mx-auto pt-16">
-        <h1 className="font-display text-3xl mb-3 text-foreground">Welcome</h1>
-        <p className="text-muted-foreground mb-8 text-lg">
-          Paste an article URL to create your first audio episode.
-        </p>
-        <CreateAudioCard />
-      </div>
+      <>
+        <UpgradeModalTrigger currentPlan={currentPlan} />
+        <div className="max-w-xl mx-auto pt-16">
+          <h1 className="font-display text-3xl mb-3 text-foreground">Welcome</h1>
+          <p className="text-muted-foreground mb-8 text-lg">
+            Paste an article URL to create your first audio episode.
+          </p>
+          <CreateAudioCard />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-10 max-w-6xl">
-      <div className="flex items-end justify-between border-b border-border pb-6">
-        <h1 className="font-display text-4xl text-foreground">Overview</h1>
-      </div>
+    <>
+      <UpgradeModalTrigger currentPlan={currentPlan} />
+      <div className="space-y-10 max-w-6xl">
+        <div className="flex items-end justify-between border-b border-border pb-6">
+          <h1 className="font-display text-4xl text-foreground">Overview</h1>
+        </div>
 
       {/* Stats & Chart Section */}
       <div className="grid gap-6 md:grid-cols-[300px_1fr]">
@@ -210,6 +219,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -320,7 +320,7 @@ export default function Home() {
                     }`}
                     asChild
                   >
-                    <Link href="/login">
+                    <Link href={key === "free" ? "/login" : `/login?plan=${key}`}>
                       {key === "free" ? "Get started" : "Start trial"}
                     </Link>
                   </Button>

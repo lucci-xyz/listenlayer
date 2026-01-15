@@ -3,3 +3,5 @@
 - Test integrating player
 - Test generation
 - Fix this entire app to be adjustable to all screen sizes, computers and mobile devices
+- add logout functionality
+- add legal notice

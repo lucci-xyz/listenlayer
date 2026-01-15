@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, PLANS } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -19,15 +19,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Price ID required" }, { status: 400 });
     }
 
-    // Validate price ID
-    const validPriceIds = [
-      process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID,
-      process.env.STRIPE_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID,
-      process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || process.env.STRIPE_BUSINESS_PRICE_ID,
-    ].filter(Boolean);
+    // Validate price ID against configured plans (handles test mode)
+    const validPriceIds = Object.values(PLANS)
+      .map((plan) => plan.priceId)
+      .filter(Boolean);
+
+    console.log("Checkout debug:", {
+      receivedPriceId: priceId,
+      validPriceIds,
+      isTestMode: process.env.TEST_STRIPE_PAYMENTS,
+    });
 
     if (!validPriceIds.includes(priceId)) {
-      return NextResponse.json({ error: "Invalid price ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid price ID", received: priceId, valid: validPriceIds },
+        { status: 400 }
+      );
     }
 
     // Get or create Stripe customer
@@ -47,25 +54,30 @@ export async function POST(req: Request) {
       });
     }
 
-    // Create checkout session
+    // Create checkout session with embedded mode
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      payment_method_types: ["card"],
+      ui_mode: "embedded",
+      payment_method_types: ["card", "us_bank_account"],
+      payment_method_options: {
+        card: {
+          request_three_d_secure: "automatic",
+        },
+      },
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXTAUTH_URL}/app/settings?session_id={CHECKOUT_SESSION_ID}&success=true`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/app/settings?canceled=true`,
+      return_url: `${process.env.NEXTAUTH_URL}/app?checkout_success=true&session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId: user.id,
       },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error("Checkout error:", error);
     return NextResponse.json(

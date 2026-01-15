@@ -1,19 +1,51 @@
 import Stripe from "stripe";
 
+// Check if we're in test mode (works on both server and client)
+const isTestMode =
+  process.env.TEST_STRIPE_PAYMENTS === "true" ||
+  process.env.NEXT_PUBLIC_TEST_STRIPE_PAYMENTS === "true";
+
+// Debug: Log env vars on server (only logs once at module load)
+if (typeof window === "undefined") {
+  console.log("Stripe config debug (server):", {
+    isTestMode,
+    TEST_STRIPE_PAYMENTS: process.env.TEST_STRIPE_PAYMENTS,
+    CREATOR_TEST: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST,
+    CREATOR_PROD: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID,
+  });
+}
+
+// Get the appropriate secret key based on test mode
+const secretKey = isTestMode
+  ? process.env.STRIPE_SECRET_KEY_TEST
+  : process.env.STRIPE_SECRET_KEY;
+
 // Stripe client - will be null if not configured
-export const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+export const stripe = secretKey
+  ? new Stripe(secretKey, {
       apiVersion: "2025-12-15.clover",
       typescript: true,
     })
   : null;
 
-// Support both the older starter/pro env names and the newer creator/pro aliases.
-const CREATOR_PRICE_ID =
-  process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID;
-const PRO_PRICE_ID = process.env.STRIPE_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID;
-const BUSINESS_PRICE_ID =
-  process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || process.env.STRIPE_BUSINESS_PRICE_ID;
+// Get price IDs based on test mode
+// Note: These need NEXT_PUBLIC_ prefix to be available in client components
+const CREATOR_PRICE_ID = isTestMode
+  ? process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST
+  : process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID;
+
+const PRO_PRICE_ID = isTestMode
+  ? process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID_TEST
+  : process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
+
+const BUSINESS_PRICE_ID = isTestMode
+  ? process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID_TEST
+  : process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID;
+
+// Export publishable key for client-side Stripe initialization
+export const stripePublishableKey = isTestMode
+  ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST
+  : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
 // Plan configurations
 export const PLANS = {

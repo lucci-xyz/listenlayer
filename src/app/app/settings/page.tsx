@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeleteFeedDialog } from "@/components/delete-feed-dialog";
 import { getPlanFromPriceId, PLANS } from "@/lib/stripe";
+import { SettingsUpgradeSection } from "@/components/settings-upgrade-section";
+import { SignOutButton } from "@/components/sign-out-button";
 import { User, CreditCard, Rss, Mail, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,6 +25,7 @@ export default async function SettingsPage() {
 
   const currentPlan = getPlanFromPriceId(user.subscriptionPriceId ?? null);
   const plan = PLANS[currentPlan];
+  const isFreePlan = currentPlan === "free";
 
   return (
     <div className="space-y-10 max-w-4xl mx-auto">
@@ -57,11 +59,14 @@ export default async function SettingsPage() {
                 <div className="flex items-center gap-2 text-foreground font-medium">
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
                   {plan.name}
-                  <Badge variant={currentPlan === "free" ? "secondary" : "default"} className="ml-2 rounded-full">
-                    {currentPlan === "free" ? "Free" : "Active"}
+                  <Badge variant={isFreePlan ? "secondary" : "default"} className="ml-2 rounded-full">
+                    {isFreePlan ? "Free" : "Active"}
                   </Badge>
                 </div>
               </div>
+            </div>
+              <div className="mt-6 border-t border-border/40 pt-6">
+              <SignOutButton />
             </div>
           </div>
         </div>
@@ -98,12 +103,18 @@ export default async function SettingsPage() {
                   </div>
                 </div>
               </div>
-              {currentPlan === "free" && (
-                <Button asChild className="rounded-full">
-                  <Link href="/#pricing">Upgrade</Link>
+              {!isFreePlan && (
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href="/app/settings/billing">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Manage Billing
+                  </Link>
                 </Button>
               )}
             </div>
+
+            {/* Upgrade CTA for free users - now opens modal */}
+            <SettingsUpgradeSection currentPlan={currentPlan} />
           </div>
         </div>
 

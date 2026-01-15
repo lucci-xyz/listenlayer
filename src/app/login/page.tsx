@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan");
+  
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -18,6 +22,14 @@ export default function LoginPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Build callback URL with plan param if present
+  const getCallbackUrl = () => {
+    if (planParam) {
+      return `/app?upgrade=${planParam}`;
+    }
+    return "/app";
+  };
+
   const handleLogin = async () => {
     setError(null);
     setLoading(true);
@@ -25,7 +37,7 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email: loginEmail,
         password: loginPassword,
-        callbackUrl: "/app",
+        callbackUrl: getCallbackUrl(),
         redirect: true,
       });
       if (result?.error) {
@@ -53,9 +65,15 @@ export default function LoginPage() {
         setError(data.error || "Unable to register");
         return;
       }
-      setInfo("Account created! You can sign in now.");
-      setRegisterEmail("");
-      setRegisterPassword("");
+      
+      // Auto sign-in after registration and redirect to dashboard
+      // The upgrade param will trigger the checkout modal
+      await signIn("credentials", {
+        email: registerEmail,
+        password: registerPassword,
+        callbackUrl: getCallbackUrl(),
+        redirect: true,
+      });
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -80,12 +98,18 @@ export default function LoginPage() {
           <Link href="/" className="inline-flex items-center gap-2">
             <span className="font-display text-2xl font-bold tracking-tight text-foreground">ListenLayer.</span>
           </Link>
+          {planParam && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Sign in or create an account to continue with the{" "}
+              <span className="font-medium text-foreground capitalize">{planParam}</span> plan
+            </p>
+          )}
         </div>
 
         {/* Card */}
         <Card className="border-white/20 shadow-xl shadow-black/5 bg-white/80 backdrop-blur-sm">
           <CardContent className="p-8">
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue={planParam ? "register" : "login"} className="w-full">
               <TabsList className="mb-8 grid w-full grid-cols-2 bg-secondary/50 p-1 rounded-xl">
                 <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Sign in</TabsTrigger>
                 <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Create account</TabsTrigger>

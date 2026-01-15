@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CheckoutModal } from "@/components/checkout-modal";
 import { PLANS, type PlanKey } from "@/lib/stripe";
 import { Check, CreditCard, Loader2, Zap, Sparkles } from "lucide-react";
 
@@ -19,27 +22,30 @@ interface BillingClientProps {
 }
 
 export function BillingClient({ user, currentPlan }: BillingClientProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const handleCheckout = async (priceId: string) => {
-    setLoading(priceId);
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (data.error) {
-        console.error("Checkout error:", data.error);
-      }
-    } catch (error) {
-      console.error("Checkout error:", error);
-    } finally {
-      setLoading(null);
+  const handleSelectPlan = (planKey: PlanKey) => {
+    setSelectedPlan(planKey);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      setSelectedPlan(null);
     }
+  };
+
+  const handleCheckoutSuccess = () => {
+    setModalOpen(false);
+    setSelectedPlan(null);
+    toast.success("You're all set!", {
+      description: "Your subscription is now active.",
+    });
+    router.refresh();
   };
 
   const handlePortal = async () => {
@@ -149,7 +155,6 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
             <div className="grid gap-4 md:grid-cols-3">
               {(["creator", "pro", "business"] as PlanKey[]).map((key) => {
                 const planOption = PLANS[key];
-                const priceId = planOption.priceId;
                 const isPopular = key === "creator";
 
                 return (
@@ -188,13 +193,10 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                     <Button
                       className="w-full"
                       variant={isPopular ? "default" : "outline"}
-                      onClick={() => priceId && handleCheckout(priceId)}
-                      disabled={loading === priceId || !priceId}
+                      onClick={() => handleSelectPlan(key)}
+                      disabled={!planOption.priceId}
                     >
-                      {loading === priceId ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      {priceId ? "Start free trial" : "Coming soon"}
+                      {planOption.priceId ? "Start free trial" : "Coming soon"}
                     </Button>
                   </div>
                 );
@@ -240,12 +242,9 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
               </ul>
               <Button
                 className="w-full"
-                onClick={() => PLANS.pro.priceId && handleCheckout(PLANS.pro.priceId)}
-                disabled={loading === PLANS.pro.priceId || !PLANS.pro.priceId}
+                onClick={() => handleSelectPlan("pro")}
+                disabled={!PLANS.pro.priceId}
               >
-                {loading === PLANS.pro.priceId ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
                 {PLANS.pro.priceId ? "Upgrade to Pro" : "Coming soon"}
               </Button>
             </div>
@@ -288,17 +287,24 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
               </ul>
               <Button
                 className="w-full"
-                onClick={() => PLANS.business.priceId && handleCheckout(PLANS.business.priceId)}
-                disabled={loading === PLANS.business.priceId || !PLANS.business.priceId}
+                onClick={() => handleSelectPlan("business")}
+                disabled={!PLANS.business.priceId}
               >
-                {loading === PLANS.business.priceId ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
                 {PLANS.business.priceId ? "Upgrade to Business" : "Contact us"}
               </Button>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Checkout Modal */}
+      {selectedPlan && (
+        <CheckoutModal
+          open={modalOpen}
+          onOpenChange={handleCloseModal}
+          planKey={selectedPlan}
+          onSuccess={handleCheckoutSuccess}
+        />
       )}
     </div>
   );
