@@ -99,7 +99,12 @@ export default async function EpisodeDetailPage({
             <p className="mb-3 text-sm text-destructive">Generation failed: {episode.errorMessage}</p>
           )}
           {episode.status === "PUBLISHED" ? (
-            <AudioPlayer publicId={episode.publicId} />
+            <AudioPlayer
+              publicId={episode.publicId}
+              title={episode.title}
+              subtitle={episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}
+              useGlobal
+            />
           ) : episode.status === "QUEUED" || episode.status === "RUNNING" ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-warning" />

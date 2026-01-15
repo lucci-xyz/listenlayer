@@ -3,5 +3,7 @@
 - Test integrating player
 - Test generation
 - Fix this entire app to be adjustable to all screen sizes, computers and mobile devices
-- add logout functionality
 - add legal notice
+- fix popular text on stripe payments
+- fix login/ create ccount pill
+- sidebar fixed length 
