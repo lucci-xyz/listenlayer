@@ -54,7 +54,7 @@ export function GenerateButton({
       <Button size={size} variant={variant} onClick={handleClick} disabled={loading}>
         {loading ? "Queueing..." : label || `Generate ${count > 1 ? `${count} episodes` : "latest"}`}
       </Button>
-      {error ? <div className="text-xs text-red-600">{error}</div> : null}
+      {error ? <div className="text-xs text-destructive">{error}</div> : null}
     </div>
   );
 }

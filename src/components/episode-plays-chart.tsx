@@ -42,7 +42,7 @@ export function EpisodePlaysChart({ episodes }: { episodes: ChartEpisode[] }) {
                 className="w-full h-full flex items-end"
               >
                 <div 
-                  className="w-full rounded-full bg-secondary" 
+                  className="w-full rounded-full bg-muted/60" 
                   style={{ height: "4px" }} 
                 />
               </div>
@@ -57,11 +57,11 @@ export function EpisodePlaysChart({ episodes }: { episodes: ChartEpisode[] }) {
               <TooltipTrigger asChild>
                 <div className="w-full h-full flex items-end group cursor-pointer relative">
                   {/* Background track for hover effect */}
-                  <div className="absolute bottom-0 w-full h-full rounded-full bg-secondary opacity-0 group-hover:opacity-100 transition-opacity duration-200 -z-10" />
+                  <div className="absolute bottom-0 w-full h-full rounded-full bg-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 -z-10" />
                   
                   {/* The actual bar */}
                   <div
-                    className="w-full rounded-full bg-primary/30 transition-all duration-300 group-hover:bg-primary group-hover:scale-y-105 origin-bottom"
+                    className="w-full rounded-full bg-primary/25 transition-all duration-300 group-hover:bg-primary/70 group-hover:scale-y-105 origin-bottom"
                     style={{ height: `${heightPercentage}%` }}
                   >
                     <span className="sr-only">

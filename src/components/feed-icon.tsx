@@ -21,11 +21,11 @@ export function FeedIcon({
   }, [url]);
 
   if (!url || error) {
-    return <Rss className={cn("h-6 w-6 text-orange-600", fallbackClassName)} strokeWidth={1.5} />;
+    return <Rss className={cn("h-6 w-6 text-primary", fallbackClassName)} strokeWidth={1.5} />;
   }
 
   return (
-    <div className={cn("relative flex items-center justify-center bg-white rounded-md shadow-sm overflow-hidden p-1", className)}>
+    <div className={cn("relative flex items-center justify-center bg-card rounded-md border border-border/60 overflow-hidden p-1", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}

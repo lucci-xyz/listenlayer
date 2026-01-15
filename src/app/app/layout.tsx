@@ -25,10 +25,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const plan = PLANS[currentPlan];
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="flex h-screen">
-        {/* Sidebar - Transparent on sage background */}
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col py-8 px-6">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="flex min-h-screen">
+        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-sidebar px-6 py-8">
           {/* Logo */}
           <div className="mb-10 px-3">
             <Link href="/app" className="flex items-center gap-2">
@@ -42,10 +41,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
           
           {/* User section at bottom */}
-          <div className="mt-auto pt-6 px-1 border-t border-black/5">
+          <div className="mt-auto pt-6 px-1 border-t border-border/60">
             <Link 
               href="/app/settings"
-              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/40 transition-colors group"
+              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-background/70 transition-colors group"
             >
               <User className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
               <div className="text-sm font-medium opacity-90 group-hover:opacity-100">Account</div>
@@ -54,11 +53,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* Main content - White sheet layout with rounded corners on left only */}
-        <div className="flex-1 flex flex-col min-w-0 h-screen">
-          <div className="flex-1 bg-card rounded-l-[2.5rem] shadow-sm overflow-hidden flex flex-col relative">
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 bg-background overflow-hidden flex flex-col relative">
             <GenerationStatus />
-            <main className="flex-1 overflow-y-auto p-8 lg:px-14 lg:py-10 scroll-smooth">
+            <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-12 lg:py-10 scroll-smooth">
               {children}
             </main>
           </div>

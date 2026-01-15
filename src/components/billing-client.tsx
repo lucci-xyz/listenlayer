@@ -81,12 +81,12 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/40 p-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold">{plan.name}</span>
                 {user.subscriptionStatus === "ACTIVE" && (
-                  <Badge variant="default" className="bg-emerald-600">
+                  <Badge variant="success">
                     Active
                   </Badge>
                 )}
@@ -111,10 +111,10 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
           </div>
 
           {/* Credits */}
-          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background p-4">
             <div>
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+                <Zap className="h-4 w-4 text-primary" />
                 <span className="font-medium">Episode credits</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -141,7 +141,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
 
       {/* Upgrade Options - Always show for free plan */}
       {currentPlan === "free" && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <Card className="border-border/60 bg-gradient-to-br from-primary/5 to-transparent shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -160,10 +160,10 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                 return (
                   <div
                     key={key}
-                    className="relative rounded-xl border border-border bg-card p-5"
+                    className="relative rounded-xl border border-border/60 bg-card p-5 shadow-sm"
                   >
                     {isPopular && (
-                      <Badge className="absolute -top-2 right-4 bg-primary">
+                      <Badge className="absolute -top-2 right-4 bg-primary text-primary-foreground border-primary/20">
                         Popular
                       </Badge>
                     )}
@@ -185,7 +185,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                           key={feature}
                           className="flex items-start gap-2 text-sm"
                         >
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                           <span>{feature}</span>
                         </li>
                       ))}
@@ -216,7 +216,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-xl border border-border p-5">
+            <div className="rounded-xl border border-border/60 bg-background p-5">
               <div className="mb-4">
                 <h3 className="text-lg font-semibold">{PLANS.pro.name}</h3>
                 <p className="text-sm text-muted-foreground">
@@ -235,7 +235,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                     key={feature}
                     className="flex items-start gap-2 text-sm"
                   >
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -261,7 +261,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-xl border border-border p-5">
+            <div className="rounded-xl border border-border/60 bg-background p-5">
               <div className="mb-4">
                 <h3 className="text-lg font-semibold">{PLANS.business.name}</h3>
                 <p className="text-sm text-muted-foreground">
@@ -280,7 +280,7 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
                     key={feature}
                     className="flex items-start gap-2 text-sm"
                   >
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                     <span>{feature}</span>
                   </li>
                 ))}

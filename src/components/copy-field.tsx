@@ -29,7 +29,7 @@ export function CopyField({
         </Button>
       </div>
       <div
-        className={`rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-[12px] text-foreground ${
+        className={`rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-[12px] text-foreground ${
           mono ? "font-mono" : ""
         }`}
       >

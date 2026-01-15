@@ -22,11 +22,11 @@ export default async function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-border/60 bg-background/90 backdrop-blur-sm sticky top-0 z-10">
         <div className="mx-auto max-w-[1200px] px-6 py-4">
           <Link
             href="/app"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to dashboard
@@ -47,20 +47,20 @@ export default async function PricingPage() {
               ? "Manage your subscription"
               : "Choose your plan"}
           </h1>
-          <p className="text-lg text-foreground/60">
+          <p className="text-lg text-muted-foreground">
             {hasActiveSubscription
               ? "Upgrade or change your plan anytime. All plans include our core features."
               : "Start free and upgrade when you need more. All plans include our embed player and analytics."}
           </p>
 
           {hasActiveSubscription && (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 shadow-sm border border-border">
-              <span className="text-sm text-foreground/60">Current plan:</span>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2 shadow-soft border border-border/60">
+              <span className="text-sm text-muted-foreground">Current plan:</span>
               <Badge variant="default" className="rounded-full">
                 {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
               </Badge>
               {user.subscriptionCurrentPeriodEnd && (
-                <span className="text-sm text-foreground/60">
+                <span className="text-sm text-muted-foreground">
                   · Renews{" "}
                   {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString()}
                 </span>
@@ -74,14 +74,14 @@ export default async function PricingPage() {
 
         {/* FAQ or additional info */}
         <div className="mt-20 text-center">
-          <p className="text-sm text-foreground/50">
+          <p className="text-sm text-muted-foreground">
             Questions about billing?{" "}
             <a href="mailto:support@listenlayer.com" className="text-primary hover:underline">
               Contact support
             </a>
           </p>
           {hasActiveSubscription && (
-            <p className="text-sm text-foreground/50 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Need to cancel or update payment method?{" "}
               <Link href="/app/settings/billing" className="text-primary hover:underline">
                 Manage billing

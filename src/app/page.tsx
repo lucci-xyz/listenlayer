@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/10">
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
         <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
@@ -40,13 +40,13 @@ export default function Home() {
           <div className="grid gap-16 lg:grid-cols-2 lg:gap-24 items-center">
             {/* Left: copy */}
             <div className="max-w-xl">
-              <div className="inline-flex items-center rounded-full bg-white/40 px-3 py-1 text-xs font-medium text-foreground/80 mb-8 backdrop-blur-sm">
+              <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
                 Audio for blogs & newsletters
               </div>
               <h1 className="font-display text-5xl leading-[1.1] tracking-tight md:text-6xl lg:text-[4rem] text-foreground mb-8">
                 Turn any article into an audio episode
               </h1>
-              <p className="text-lg md:text-xl text-foreground/70 leading-relaxed mb-10 max-w-md">
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-md">
                 Paste a URL. We extract the text, generate narration, and give you 
                 a player to embed. Your readers can listen while they commute, cook, 
                 or pretend to work out.
@@ -58,24 +58,24 @@ export default function Home() {
                     Start free <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="rounded-full px-8 h-12 text-base bg-white/50 border-white/40 hover:bg-white/80" asChild>
+                <Button size="lg" variant="outline" className="rounded-full px-8 h-12 text-base bg-background/80 border-border/60 hover:bg-muted/50" asChild>
                   <Link href="#demo">
                     <Play className="mr-2 h-4 w-4 fill-current" /> Listen to sample
                   </Link>
                 </Button>
               </div>
               
-              <p className="mt-6 text-sm text-foreground/50 font-medium">
+              <p className="mt-6 text-sm text-muted-foreground font-medium">
                 3 free episodes · No card required
               </p>
             </div>
 
             {/* Right: mock player visual */}
             <div className="relative hidden lg:block">
-              <div className="relative z-10 rounded-[2rem] bg-white p-8 shadow-xl shadow-black/5 ring-1 ring-black/5 transition-transform duration-500 ease-out">
+              <div className="relative z-10 rounded-[2rem] bg-card p-8 shadow-soft-lg ring-1 ring-border/60 transition-transform duration-500 ease-out">
                 {/* Mock player header */}
                 <div className="flex items-start gap-5">
-                  <div className="h-16 w-16 rounded-2xl bg-accent/20 flex items-center justify-center shrink-0 text-accent-foreground">
+                  <div className="h-16 w-16 rounded-2xl bg-accent/60 flex items-center justify-center shrink-0 text-accent-foreground">
                     <Play className="h-6 w-6 fill-current" />
                   </div>
                   <div className="min-w-0 flex-1 pt-1">
@@ -103,7 +103,7 @@ export default function Home() {
                 </div>
                 
                 {/* Mock controls */}
-                <div className="mt-6 flex items-center justify-between text-xs font-medium text-foreground/40 font-mono tracking-wider">
+                <div className="mt-6 flex items-center justify-between text-xs font-medium text-muted-foreground font-mono tracking-wider">
                   <span>02:34</span>
                   <span>08:12</span>
                 </div>
@@ -111,20 +111,20 @@ export default function Home() {
               
               {/* Decorative elements behind */}
               <div className="absolute -inset-4 bg-primary/5 rounded-[2.5rem] -z-10 scale-95" />
-              <div className="absolute -inset-8 bg-white/20 rounded-[3rem] -z-20 scale-90" />
+              <div className="absolute -inset-8 bg-muted/40 rounded-[3rem] -z-20 scale-90" />
             </div>
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="py-24 md:py-32 bg-white rounded-[2.5rem] mx-4 md:mx-6 shadow-sm mb-6">
+      <section className="py-24 md:py-32 bg-card rounded-2xl mx-4 md:mx-6 shadow-soft border border-border/60 mb-6">
         <div className="mx-auto max-w-[1200px] px-6">
           <div className="max-w-2xl mx-auto text-center mb-20">
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Three steps to audio content
             </h2>
-            <p className="text-lg text-foreground/60">
+            <p className="text-lg text-muted-foreground">
               Transforming your written content into high-quality audio has never been easier.
             </p>
           </div>
@@ -151,11 +151,11 @@ export default function Home() {
               }
             ].map((item, i) => (
               <div key={i} className="relative flex flex-col items-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary border border-border font-mono text-lg font-medium text-foreground/60 mb-6 relative z-10">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/60 border border-border/60 font-mono text-lg font-medium text-muted-foreground mb-6 relative z-10">
                   {item.step}
                 </div>
                 <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-                <p className="text-foreground/60 leading-relaxed max-w-xs">
+                <p className="text-muted-foreground leading-relaxed max-w-xs">
                   {item.desc}
                 </p>
               </div>
@@ -169,13 +169,13 @@ export default function Home() {
         <div className="mx-auto max-w-[1200px] px-6">
           <div className="grid gap-16 lg:grid-cols-2 items-center">
             <div>
-              <div className="inline-flex items-center rounded-full bg-white/40 px-3 py-1 text-xs font-medium text-foreground/80 mb-8">
+              <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
                 Features
               </div>
               <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
                 Your writing, now with an audio option
               </h2>
-              <p className="text-lg text-foreground/70 leading-relaxed mb-12">
+              <p className="text-lg text-muted-foreground leading-relaxed mb-12">
                 Not everyone has time to read. Give them the choice to listen 
                 without recording anything yourself. Perfect for newsletters and blogs.
               </p>
@@ -214,13 +214,13 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="relative lg:h-[600px] rounded-[2.5rem] bg-white p-8 md:p-12 shadow-xl shadow-black/5 ring-1 ring-black/5 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/50 via-transparent to-transparent" />
+            <div className="relative lg:h-[600px] rounded-[2.5rem] bg-card p-8 md:p-12 shadow-soft-lg ring-1 ring-border/60 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-muted/60 via-transparent to-transparent" />
               <div className="relative z-10 flex flex-col h-full justify-between">
                 <div>
-                  <div className="text-sm font-medium text-foreground/40 uppercase tracking-widest mb-2">Now Playing</div>
+                  <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-2">Now Playing</div>
                   <div className="font-display text-3xl mb-2">The Future of Digital Media</div>
-                  <div className="text-foreground/60">Tech Daily · Episode 42</div>
+                  <div className="text-muted-foreground">Tech Daily · Episode 42</div>
                 </div>
                 
                 <div className="space-y-6">
@@ -228,20 +228,20 @@ export default function Home() {
                     {[...Array(50)].map((_, i) => (
                       <div 
                         key={i} 
-                        className="flex-1 bg-foreground/10 rounded-full"
+                        className="flex-1 bg-muted/60 rounded-full"
                         style={{ height: `${20 + Math.random() * 80}%` }}
                       />
                     ))}
                   </div>
                   <div className="flex justify-center gap-8">
                     {/* Mock controls */}
-                    <div className="h-12 w-12 rounded-full border border-foreground/10 flex items-center justify-center hover:bg-secondary cursor-pointer transition-colors">
+                    <div className="h-12 w-12 rounded-full border border-border/60 flex items-center justify-center hover:bg-muted/60 cursor-pointer transition-colors">
                       <div className="w-4 h-4 border-l-2 border-b-2 border-foreground rotate-45 ml-1" />
                     </div>
-                    <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 transition-transform cursor-pointer">
+                    <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:scale-105 transition-transform cursor-pointer">
                       <div className="w-3 h-3 bg-current rounded-sm" />
                     </div>
-                    <div className="h-12 w-12 rounded-full border border-foreground/10 flex items-center justify-center hover:bg-secondary cursor-pointer transition-colors">
+                    <div className="h-12 w-12 rounded-full border border-border/60 flex items-center justify-center hover:bg-muted/60 cursor-pointer transition-colors">
                       <div className="w-4 h-4 border-r-2 border-b-2 border-foreground -rotate-45 mr-1" />
                     </div>
                   </div>
@@ -253,13 +253,13 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 md:py-32 bg-white mx-4 md:mx-6 rounded-[2.5rem] shadow-sm mb-6">
+      <section id="pricing" className="py-24 md:py-32 bg-card mx-4 md:mx-6 rounded-2xl shadow-soft border border-border/60 mb-6">
         <div className="mx-auto max-w-[1200px] px-6">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Start free, scale as you grow
             </h2>
-            <p className="text-lg text-foreground/60">
+            <p className="text-lg text-muted-foreground">
               All plans include the embed player and basic analytics. 
               Upgrade for more episodes and features.
             </p>
@@ -272,23 +272,23 @@ export default function Home() {
               return (
                 <div
                   key={key}
-                  className={`relative flex flex-col p-8 rounded-[2rem] transition-all duration-300 ${
+                  className={`relative flex flex-col p-8 rounded-2xl border transition-all duration-300 ${
                     isPopular 
-                      ? "bg-primary text-primary-foreground shadow-2xl scale-105 z-10" 
-                      : "bg-secondary/50 hover:bg-secondary border border-border"
+                      ? "bg-primary/5 border-primary/30 shadow-soft-md" 
+                      : "bg-card border-border/60 hover:border-border"
                   }`}
                 >
                   {isPopular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-accent text-accent-foreground px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary/10 text-primary border border-primary/20 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
                       Popular
                     </div>
                   )}
                   
                   <div className="mb-4">
-                    <h3 className={`font-semibold text-lg ${isPopular ? "text-primary-foreground" : "text-foreground"}`}>
+                    <h3 className="font-semibold text-lg text-foreground">
                       {plan.name}
                     </h3>
-                    <p className={`text-sm mt-1 ${isPopular ? "text-primary-foreground/70" : "text-foreground/60"}`}>
+                    <p className="text-sm mt-1 text-muted-foreground">
                       {plan.description}
                     </p>
                   </div>
@@ -297,14 +297,14 @@ export default function Home() {
                     <span className="font-display text-4xl">
                       {plan.price === 0 ? "$0" : `$${plan.price}`}
                     </span>
-                    <span className={`text-sm ${isPopular ? "text-primary-foreground/70" : "text-foreground/60"}`}>/mo</span>
+                    <span className="text-sm text-muted-foreground">/mo</span>
                   </div>
                   
                   <ul className="space-y-4 mb-8 flex-1">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-3 text-sm">
-                        <Check className={`h-4 w-4 shrink-0 mt-0.5 ${isPopular ? "text-accent" : "text-primary"}`} strokeWidth={2} />
-                        <span className={isPopular ? "text-primary-foreground/90" : "text-foreground/80"}>
+                        <Check className="h-4 w-4 shrink-0 mt-0.5 text-primary" strokeWidth={2} />
+                        <span className="text-foreground/80">
                           {feature}
                         </span>
                       </li>
@@ -312,12 +312,8 @@ export default function Home() {
                   </ul>
                   
                   <Button
-                    variant={isPopular ? "secondary" : "outline"}
-                    className={`w-full rounded-full h-12 ${
-                      isPopular 
-                        ? "bg-white text-primary hover:bg-white/90 border-transparent" 
-                        : "bg-white border-border hover:bg-white/50"
-                    }`}
+                    variant={isPopular ? "default" : "outline"}
+                    className="w-full rounded-full h-12"
                     asChild
                   >
                     <Link href={key === "free" ? "/login" : `/login?plan=${key}`}>
@@ -332,13 +328,13 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-black/5">
+      <footer className="py-12 border-t border-border/60">
         <div className="mx-auto max-w-[1200px] px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
             </div>
-            <div className="flex items-center gap-8 text-sm font-medium text-foreground/60">
+            <div className="flex items-center gap-8 text-sm font-medium text-muted-foreground">
               <Link href="#pricing" className="hover:text-foreground transition-colors">
                 Pricing
               </Link>

@@ -147,7 +147,7 @@ export function CheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full p-4 sm:p-6 bg-card shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-3xl border border-border/60">
+      <DialogContent className="max-w-4xl w-full p-4 sm:p-6 bg-card shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl border border-border/70">
         {/* Visually hidden title for accessibility */}
         <DialogTitle className="sr-only">Checkout</DialogTitle>
         <DialogDescription className="sr-only">
@@ -155,7 +155,7 @@ export function CheckoutModal({
         </DialogDescription>
         <div
           ref={checkoutContainerRef}
-          className="relative w-full min-h-[620px] bg-white rounded-2xl border border-border/60"
+          className="relative w-full min-h-[620px] bg-background rounded-2xl border border-border/60"
         >
           {!isCheckoutReady && (
             <div className="absolute inset-0 flex items-center justify-center">

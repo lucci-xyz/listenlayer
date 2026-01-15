@@ -4,12 +4,12 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border border-border/70 bg-card p-4 text-foreground",
+  "relative w-full rounded-lg border border-border/60 bg-card p-4 text-foreground",
   {
     variants: {
       variant: {
         default: "bg-card text-foreground",
-        destructive: "border-rose-200/70 bg-rose-50 text-rose-700",
+        destructive: "border-destructive/20 bg-destructive/10 text-destructive",
       },
     },
     defaultVariants: {

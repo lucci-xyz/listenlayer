@@ -55,16 +55,16 @@ export function PricingPageClient({ currentPlan }: PricingPageClientProps) {
           return (
             <div
               key={key}
-              className={`relative flex flex-col p-8 rounded-[2rem] transition-all duration-300 ${
+              className={`relative flex flex-col p-8 rounded-2xl border transition-all duration-300 ${
                 isPopular
-                  ? "bg-primary text-primary-foreground shadow-2xl scale-105 z-10"
+                  ? "bg-primary/5 border-primary/30 shadow-soft-md"
                   : isCurrent
-                  ? "bg-white ring-2 ring-primary/20 shadow-lg"
-                  : "bg-secondary/50 hover:bg-secondary border border-border"
+                  ? "bg-card border-primary/30 ring-1 ring-primary/20 shadow-soft"
+                  : "bg-card border-border/60 hover:border-border"
               }`}
             >
               {isPopular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-accent text-accent-foreground px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary/10 text-primary border border-primary/20 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3" />
                   Popular
                 </div>
@@ -77,18 +77,10 @@ export function PricingPageClient({ currentPlan }: PricingPageClientProps) {
               )}
 
               <div className="mb-4">
-                <h3
-                  className={`font-semibold text-lg ${
-                    isPopular ? "text-primary-foreground" : "text-foreground"
-                  }`}
-                >
+                <h3 className="font-semibold text-lg text-foreground">
                   {plan.name}
                 </h3>
-                <p
-                  className={`text-sm mt-1 ${
-                    isPopular ? "text-primary-foreground/70" : "text-foreground/60"
-                  }`}
-                >
+                <p className="text-sm mt-1 text-muted-foreground">
                   {plan.description}
                 </p>
               </div>
@@ -97,11 +89,7 @@ export function PricingPageClient({ currentPlan }: PricingPageClientProps) {
                 <span className="font-display text-4xl">
                   {plan.price === 0 ? "$0" : `$${plan.price}`}
                 </span>
-                <span
-                  className={`text-sm ${
-                    isPopular ? "text-primary-foreground/70" : "text-foreground/60"
-                  }`}
-                >
+                <span className="text-sm text-muted-foreground">
                   /mo
                 </span>
               </div>
@@ -110,16 +98,10 @@ export function PricingPageClient({ currentPlan }: PricingPageClientProps) {
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3 text-sm">
                     <Check
-                      className={`h-4 w-4 shrink-0 mt-0.5 ${
-                        isPopular ? "text-accent" : "text-primary"
-                      }`}
+                      className="h-4 w-4 shrink-0 mt-0.5 text-primary"
                       strokeWidth={2}
                     />
-                    <span
-                      className={
-                        isPopular ? "text-primary-foreground/90" : "text-foreground/80"
-                      }
-                    >
+                    <span className="text-foreground/80">
                       {feature}
                     </span>
                   </li>
@@ -127,14 +109,8 @@ export function PricingPageClient({ currentPlan }: PricingPageClientProps) {
               </ul>
 
               <Button
-                variant={isPopular ? "secondary" : "outline"}
-                className={`w-full rounded-full h-12 ${
-                  isPopular
-                    ? "bg-white text-primary hover:bg-white/90 border-transparent"
-                    : isCurrent
-                    ? "bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
-                    : "bg-white border-border hover:bg-white/50"
-                }`}
+                variant={isPopular ? "default" : "outline"}
+                className={`w-full rounded-full h-12 ${isCurrent ? "border-primary/30 text-primary bg-primary/5 hover:bg-primary/10" : ""}`}
                 onClick={() => handleSelectPlan(key)}
                 disabled={isCurrent || key === "free"}
               >

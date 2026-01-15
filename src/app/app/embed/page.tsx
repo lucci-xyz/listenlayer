@@ -50,7 +50,7 @@ export default async function EmbedPreviewPage({
   if (!episode) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-semibold">Embed preview</h1>
+        <h1 className="font-display text-3xl text-foreground">Embed preview</h1>
         <Card>
           <CardContent className="py-10 text-center">
             <p className="text-sm text-muted-foreground">
@@ -72,7 +72,7 @@ export default async function EmbedPreviewPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Embed preview</h1>
+          <h1 className="font-display text-3xl text-foreground">Embed preview</h1>
           <p className="text-sm text-muted-foreground">{episode.title}</p>
         </div>
         <EmbedButton label="Copy embed" publicId={episode.publicId} baseUrl={baseUrl} />
@@ -81,7 +81,7 @@ export default async function EmbedPreviewPage({
       {/* Live player preview */}
       <Card>
         <CardContent className="py-5">
-          <div className="rounded-lg border border-border/70 bg-background p-4">
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
             <iframe
               title="Embed preview"
               src={embedUrl}

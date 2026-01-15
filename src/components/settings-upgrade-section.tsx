@@ -61,8 +61,8 @@ export function SettingsUpgradeSection({ currentPlan }: SettingsUpgradeSectionPr
 
   return (
     <>
-      <div className="pt-6 border-t border-border/40">
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
+      <div className="pt-6 border-t border-border/60">
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/5 to-transparent border border-border/60 shadow-none">
           <div className="flex items-center gap-3 mb-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Sparkles className="h-5 w-5" />
@@ -83,14 +83,14 @@ export function SettingsUpgradeSection({ currentPlan }: SettingsUpgradeSectionPr
               return (
                 <div
                   key={key}
-                  className={`relative flex flex-col p-5 rounded-xl border transition-all ${
+                  className={`relative flex flex-col p-5 rounded-xl border transition-colors ${
                     isPopular
-                      ? "bg-white border-primary/30 shadow-sm"
-                      : "bg-white/60 border-border/50 hover:border-border"
+                      ? "bg-card border-primary/30 shadow-sm"
+                      : "bg-card border-border/60 hover:border-border"
                   }`}
                 >
                   {isPopular && (
-                    <div className="absolute -top-2.5 left-4 bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    <div className="absolute -top-2.5 left-4 bg-primary text-primary-foreground border border-primary/20 px-2.5 py-0.5 rounded-full text-xs font-medium">
                       Popular
                     </div>
                   )}

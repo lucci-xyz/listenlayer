@@ -12,12 +12,12 @@ function hashString(str: string): number {
 }
 
 const PALETTES = [
-  { bg: "#ff005b", accent1: "#ff7d10", accent2: "#ffb238" },
-  { bg: "#49007e", accent1: "#ff005b", accent2: "#ff7d10" },
-  { bg: "#ff7d10", accent1: "#ffb238", accent2: "#0a0310" },
-  { bg: "#0ea5e9", accent1: "#06b6d4", accent2: "#22d3ee" },
-  { bg: "#8b5cf6", accent1: "#a78bfa", accent2: "#c4b5fd" },
-  { bg: "#10b981", accent1: "#34d399", accent2: "#6ee7b7" },
+  { bg: "#1F3A5F", accent1: "#7FA6D1", accent2: "#DCE5EF" },
+  { bg: "#2F3E46", accent1: "#84A98C", accent2: "#CAD2C5" },
+  { bg: "#334155", accent1: "#94A3B8", accent2: "#E2E8F0" },
+  { bg: "#3A4A5A", accent1: "#8FB7B2", accent2: "#D9E7E5" },
+  { bg: "#3B4252", accent1: "#7B8FA1", accent2: "#D8DEE9" },
+  { bg: "#3F3D56", accent1: "#A6A9C8", accent2: "#E6E8F5" },
 ];
 
 interface ProjectAvatarProps {

@@ -86,7 +86,7 @@ export default function LoginPage() {
       {/* Back button - Top Left */}
       <Link 
         href="/" 
-        className="absolute top-8 left-8 inline-flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground transition-colors rounded-full px-4 py-2 hover:bg-white/40"
+        className="absolute top-8 left-8 inline-flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground transition-colors rounded-full px-4 py-2 hover:bg-muted/60"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to home
@@ -107,12 +107,12 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <Card className="border-white/20 shadow-xl shadow-black/5 bg-white/80 backdrop-blur-sm">
+        <Card className="border-border/60 shadow-soft-lg bg-card">
           <CardContent className="p-8">
             <Tabs defaultValue={planParam ? "register" : "login"} className="w-full">
-              <TabsList className="mb-8 grid w-full grid-cols-2 bg-secondary/50 p-1 rounded-xl">
-                <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Sign in</TabsTrigger>
-                <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Create account</TabsTrigger>
+              <TabsList className="mb-8 grid w-full grid-cols-2 bg-muted/60 border border-border/60 p-1 rounded-full">
+                <TabsTrigger value="login" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign in</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Create account</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login" className="space-y-5">
@@ -127,7 +127,6 @@ export default function LoginPage() {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="bg-white"
                   />
                 </div>
                 <div className="space-y-2">
@@ -141,7 +140,6 @@ export default function LoginPage() {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="bg-white"
                   />
                 </div>
                 <Button 
@@ -165,7 +163,6 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
-                    className="bg-white"
                   />
                 </div>
                 <div className="space-y-2">
@@ -179,7 +176,6 @@ export default function LoginPage() {
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleRegister()}
-                    className="bg-white"
                   />
                 </div>
                 <Button 
@@ -214,7 +210,7 @@ export default function LoginPage() {
 
         {/* Demo credentials */}
         {process.env.NODE_ENV === "development" && (
-          <div className="mt-6 rounded-xl border border-white/20 bg-white/40 p-4 text-center backdrop-blur-sm">
+          <div className="mt-6 rounded-xl border border-border/60 bg-muted/40 p-4 text-center">
             <div className="text-xs font-medium text-foreground/60">Demo credentials</div>
             <div className="mt-1 font-mono text-xs text-foreground/80">
               demo@listenlayer.local / demo1234

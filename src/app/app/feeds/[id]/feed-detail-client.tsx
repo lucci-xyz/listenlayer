@@ -176,10 +176,10 @@ export function FeedDetailClient({
   const statusBadge = (status: string | null) => {
     if (!status) return null;
     const colors: Record<string, string> = {
-      PUBLISHED: "bg-emerald-100 text-emerald-700",
-      QUEUED: "bg-amber-100 text-amber-700",
-      RUNNING: "bg-amber-100 text-amber-700",
-      FAILED: "bg-red-100 text-red-700",
+      PUBLISHED: "bg-success/10 text-success",
+      QUEUED: "bg-warning/15 text-warning-foreground",
+      RUNNING: "bg-warning/15 text-warning-foreground",
+      FAILED: "bg-destructive/10 text-destructive",
     };
     const labels: Record<string, string> = {
       PUBLISHED: "Generated",
@@ -188,7 +188,7 @@ export function FeedDetailClient({
       FAILED: "Failed",
     };
     return (
-      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide", colors[status] || "bg-secondary text-muted-foreground")}>
+      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide", colors[status] || "bg-muted/60 text-muted-foreground")}>
         {labels[status] || status}
       </span>
     );
@@ -232,14 +232,14 @@ export function FeedDetailClient({
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-full h-10 px-4 bg-white shadow-sm hover:bg-secondary/50"
+              className="h-10 px-4"
             >
               <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
               Refresh
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm hover:bg-secondary/50">
+                <Button variant="outline" size="icon" className="h-10 w-10">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -268,13 +268,13 @@ export function FeedDetailClient({
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-display text-foreground">Latest Articles</h2>
             {feed.lastFetchedAt && (
-              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2.5 py-1 rounded-full">
+              <span className="text-xs font-medium text-muted-foreground bg-muted/60 border border-border/60 px-2.5 py-1 rounded-full">
                 Updated {formatRelativeTime(feed.lastFetchedAt)}
               </span>
             )}
           </div>
 
-          <div className="rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/30" />
@@ -286,7 +286,7 @@ export function FeedDetailClient({
             ) : (
               <div className="divide-y divide-border/40">
                 {items.map((item) => (
-                  <div key={item.url} className="group p-6 hover:bg-secondary/30 transition-colors">
+                  <div key={item.url} className="group p-6 hover:bg-muted/40 transition-colors">
                     <div className="flex flex-col gap-4">
                       <div className="space-y-2">
                         <a
@@ -320,8 +320,8 @@ export function FeedDetailClient({
                           onClick={() => openFormatDialog(item)}
                           disabled={generating === item.url || item.status === "QUEUED" || item.status === "RUNNING"}
                           className={cn(
-                            "rounded-full h-9 px-5 text-xs font-medium transition-all",
-                            !item.status && "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md"
+                            "rounded-lg h-9 px-5 text-xs font-medium transition-colors",
+                            !item.status && "shadow-sm"
                           )}
                         >
                           {generating === item.url ? (
@@ -354,19 +354,19 @@ export function FeedDetailClient({
           <h2 className="text-xl font-display text-foreground">Generated Episodes</h2>
           
           {episodes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-white/50">
+            <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center bg-muted/30">
               <p className="text-sm text-muted-foreground">
                 No episodes generated yet. Pick an article to start.
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl bg-white border border-border/50 shadow-sm overflow-hidden">
+            <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
               <div className="divide-y divide-border/40">
                 {episodes.map((ep) => (
                   <Link
                     key={ep.id}
                     href={`/app/episodes/${ep.id}`}
-                    className="flex items-start gap-3 p-4 hover:bg-secondary/50 transition-colors"
+                    className="flex items-start gap-3 p-4 hover:bg-muted/40 transition-colors"
                   >
                     <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
                     <div className="min-w-0 flex-1 space-y-1">
@@ -407,15 +407,15 @@ export function FeedDetailClient({
                 type="button"
                 onClick={() => setSelectedFormat(option.id as FormatOption)}
                 className={cn(
-                  "flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all hover:border-primary/30 hover:bg-secondary/50",
+                  "flex items-center gap-4 rounded-xl border border-border/60 p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
                   selectedFormat === option.id
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                    : "border-border"
+                    ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border/60"
                 )}
               >
                 <div className={cn(
                   "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-                  selectedFormat === option.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                  selectedFormat === option.id ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
                 )}>
                   <option.icon className="h-6 w-6" strokeWidth={1.5} />
                 </div>
@@ -432,10 +432,10 @@ export function FeedDetailClient({
           </div>
 
           <DialogFooter className="sm:justify-between gap-4">
-            <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-full">
+            <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={handleGenerate} className="rounded-full px-8 bg-primary hover:bg-primary/90">
+            <Button onClick={handleGenerate} className="rounded-lg px-8">
               <Sparkles className="mr-2 h-4 w-4" />
               Generate Audio
             </Button>
@@ -452,14 +452,14 @@ export function FeedDetailClient({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-full">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-lg">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-full"
+              className="rounded-lg"
             >
               {deleting ? "Deleting..." : "Delete Feed"}
             </Button>

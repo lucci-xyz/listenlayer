@@ -85,8 +85,8 @@ export default function NewFeedPage() {
 
       <Card>
         <CardHeader>
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-            <Rss className="h-5 w-5 text-emerald-600" />
+          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Rss className="h-5 w-5 text-primary" />
           </div>
           <CardTitle>Add a feed subscription</CardTitle>
           <CardDescription>
@@ -109,7 +109,7 @@ export default function NewFeedPage() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+              <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}

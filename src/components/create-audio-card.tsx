@@ -71,8 +71,8 @@ export function CreateAudioCard() {
   return (
     <div 
       className={cn(
-        "relative flex items-center w-full rounded-2xl bg-white border-2 p-1.5 shadow-sm transition-all duration-300",
-        isFocused ? "border-primary/30 ring-4 ring-primary/5 scale-[1.01]" : "border-transparent ring-1 ring-border"
+        "relative flex items-center w-full rounded-2xl bg-card border p-1.5 shadow-soft transition-colors",
+        isFocused ? "border-primary/30 ring-2 ring-primary/10" : "border-border/70"
       )}
     >
       {/* URL Input */}
@@ -85,7 +85,7 @@ export function CreateAudioCard() {
         onBlur={() => setIsFocused(false)}
         onKeyDown={(e) => e.key === "Enter" && !loading && url.trim() && handleGenerate()}
         disabled={loading}
-        className="flex-1 bg-transparent px-4 py-3 text-lg outline-none placeholder:text-muted-foreground/60 disabled:opacity-50"
+        className="flex-1 bg-transparent px-4 py-3 text-base outline-none placeholder:text-muted-foreground/70 disabled:opacity-50"
       />
 
       {/* Controls Group */}
@@ -95,7 +95,7 @@ export function CreateAudioCard() {
           <DropdownMenuTrigger asChild>
             <button 
               disabled={loading}
-              className="flex items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/60 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50"
             >
               <FormatIcon className="h-4 w-4 text-primary" strokeWidth={2} />
               <span>{selectedFormat.label}</span>
@@ -121,7 +121,7 @@ export function CreateAudioCard() {
           onClick={handleGenerate} 
           disabled={loading || !url.trim()} 
           size="lg"
-          className="h-12 rounded-xl px-6 text-base font-medium shadow-md transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100"
+          className="h-12 rounded-xl px-6 text-base font-medium shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:translate-y-0"
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" />

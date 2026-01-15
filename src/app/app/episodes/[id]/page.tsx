@@ -65,7 +65,7 @@ export default async function EpisodeDetailPage({
           ) : (
             <div className="text-xs text-muted-foreground">Standalone episode</div>
           )}
-          <h1 className="text-xl font-semibold">{episode.title}</h1>
+          <h1 className="font-display text-3xl text-foreground">{episode.title}</h1>
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>{statusLabel}</span>
             <a
@@ -93,16 +93,16 @@ export default async function EpisodeDetailPage({
       <Card>
         <CardContent className="py-5">
           {episode.status === "CANCELLED" && (
-            <p className="mb-3 text-sm text-amber-700">Generation was cancelled.</p>
+            <p className="mb-3 text-sm text-warning-foreground">Generation was cancelled.</p>
           )}
           {episode.errorMessage && episode.status !== "CANCELLED" && (
-            <p className="mb-3 text-sm text-red-600">Generation failed: {episode.errorMessage}</p>
+            <p className="mb-3 text-sm text-destructive">Generation failed: {episode.errorMessage}</p>
           )}
           {episode.status === "PUBLISHED" ? (
             <AudioPlayer publicId={episode.publicId} />
           ) : episode.status === "QUEUED" || episode.status === "RUNNING" ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-warning" />
               Generating audio...
             </div>
           ) : (

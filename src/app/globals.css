@@ -49,63 +49,59 @@
 }
 
 :root {
-  --radius: 1rem;
-  
-  /* Background: grayish sage green - slightly lighter for more "air" */
-  --background: #C5D1CD; 
-  --foreground: #1A1A1A;
-  
-  /* Cards & sidebar: pure white */
+  --radius: 0.875rem;
+
+  /* Backgrounds */
+  --background: #F7F7F5;
+  --foreground: #111214;
+
   --card: #FFFFFF;
-  --card-foreground: #1A1A1A;
-  --sidebar: #FFFFFF;
-  
+  --card-foreground: #111214;
+  --sidebar: #F1F3F5;
+
   --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
-  
-  /* Primary: Lighter, softer teal as requested */
-  --primary: #4A7A6A; 
+  --popover-foreground: #111214;
+
+  /* Brand + accents */
+  --primary: #1F3A5F;
   --primary-foreground: #FFFFFF;
-  
-  /* Secondary: very light gray/sage tint */
-  --secondary: #F4F7F6;
-  --secondary-foreground: #1A1A1A;
-  
-  /* Muted: for secondary text */
-  --muted: #F4F7F6;
-  --muted-foreground: #757575;
-  
-  /* Accent: warm peach/coral */
-  --accent: #E8B490;
-  --accent-foreground: #1A1A1A;
-  
+
+  --secondary: #F1F3F5;
+  --secondary-foreground: #111214;
+
+  --muted: #F4F5F7;
+  --muted-foreground: #6B7280;
+
+  --accent: #E7EDF3;
+  --accent-foreground: #1F3A5F;
+
   /* Functional */
-  --destructive: #D15555;
-  --success: #4A7A6A;
+  --destructive: #DC2626;
+  --success: #16A34A;
   --success-foreground: #FFFFFF;
-  --warning: #E8B490;
-  --warning-foreground: #1A1A1A;
-  
-  /* Borders: very subtle */
-  --border: #E8EBEA;
-  --input: #E8EBEA;
-  --ring: #4A7A6A;
-  
+  --warning: #D97706;
+  --warning-foreground: #111214;
+
+  /* Borders + rings */
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #1F3A5F;
+
   /* Charts */
-  --chart-1: #4A7A6A;
-  --chart-2: #E8B490;
-  --chart-3: #6A9A8A;
-  --chart-4: #F0C0A0;
-  --chart-5: #8BA39E;
-  
+  --chart-1: #1F3A5F;
+  --chart-2: #4F8BCB;
+  --chart-3: #9AA7B2;
+  --chart-4: #E2B38A;
+  --chart-5: #6B7280;
+
   /* Sidebar specific */
-  --sidebar-foreground: #757575;
-  --sidebar-primary: #1A1A1A;
+  --sidebar-foreground: #4B5563;
+  --sidebar-primary: #111214;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F4F7F6;
-  --sidebar-accent-foreground: #1A1A1A;
-  --sidebar-border: #E8EBEA;
-  --sidebar-ring: #4A7A6A;
+  --sidebar-accent: #E8EBEF;
+  --sidebar-accent-foreground: #111214;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #1F3A5F;
 }
 
 @layer base {
@@ -114,9 +110,9 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-size: 14px;
-    line-height: 1.5;
-    letter-spacing: -0.01em;
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: -0.006em;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
   }
@@ -126,26 +122,26 @@
   /* Display serif - for titles like "Overview" */
   .font-display {
     font-family: var(--font-display), Georgia, "Times New Roman", serif;
-    font-weight: 400;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.015em;
   }
   /* Display serif italic - for logos */
   .font-display-italic {
     font-family: var(--font-display), Georgia, "Times New Roman", serif;
     font-style: italic;
-    font-weight: 900;
-    letter-spacing: 1em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
   }
   .text-accent {
-    color: var(--accent);
+    color: var(--accent-foreground);
   }
   .shadow-soft {
-    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1px rgba(16, 24, 40, 0.04);
   }
   .shadow-soft-md {
-    box-shadow: 0 4px 12px -2px rgba(0,0,0,0.05);
+    box-shadow: 0 6px 16px -6px rgba(16, 24, 40, 0.14);
   }
   .shadow-soft-lg {
-    box-shadow: 0 8px 20px -4px rgba(0,0,0,0.05);
+    box-shadow: 0 18px 32px -14px rgba(16, 24, 40, 0.22);
   }
 }

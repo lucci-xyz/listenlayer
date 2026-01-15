@@ -43,8 +43,13 @@ export default async function AnalyticsPage() {
   const hasData = episodes.some((ep) => (stats[ep.id]?.plays || 0) > 0);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Analytics</h1>
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="border-b border-border/60 pb-6">
+        <h1 className="font-display text-4xl text-foreground">Analytics</h1>
+        <p className="mt-2 text-lg text-muted-foreground">
+          Track episode plays and completion rates.
+        </p>
+      </div>
 
       {!hasData ? (
         <Card>

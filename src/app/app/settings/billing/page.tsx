@@ -28,7 +28,7 @@ export default async function BillingPage() {
       </Link>
 
       {/* Page title */}
-      <div className="border-b border-border pb-6">
+      <div className="border-b border-border/60 pb-6">
         <h1 className="font-display text-4xl text-foreground">Billing</h1>
         <p className="mt-2 text-lg text-muted-foreground">
           Manage your subscription and payment methods

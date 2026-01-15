@@ -80,14 +80,14 @@ export default function EpisodesClient({
   const statusColor = (status: string) => {
     switch (status) {
       case "PUBLISHED":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-success/10 text-success";
       case "RUNNING":
       case "QUEUED":
-        return "bg-amber-100 text-amber-700";
+        return "bg-warning/15 text-warning-foreground";
       case "FAILED":
-        return "bg-red-100 text-red-700";
+        return "bg-destructive/10 text-destructive";
       default:
-        return "bg-secondary text-muted-foreground";
+        return "bg-muted/60 text-muted-foreground";
     }
   };
 
@@ -102,8 +102,8 @@ export default function EpisodesClient({
               type="button"
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
                 filter === opt
-                  ? "bg-foreground text-background shadow-md"
-                  : "bg-white border border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-background border border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
               }`}
               onClick={() => setFilter(opt)}
             >
@@ -117,13 +117,13 @@ export default function EpisodesClient({
             placeholder="Search episodes..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-9 bg-white border-border/60 rounded-xl"
+            className="pl-9"
           />
         </div>
       </div>
 
       {/* List Card */}
-      <div className="rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden">
+      <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
             No episodes found matching your filters.
@@ -133,10 +133,10 @@ export default function EpisodesClient({
             {filtered.map((ep) => (
               <div
                 key={ep.id}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-secondary/50 rounded-xl transition-colors"
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-muted/40 rounded-xl transition-colors"
               >
                 <div className="flex items-start gap-4 min-w-0 flex-1">
-                  <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${ep.status === 'PUBLISHED' ? 'bg-emerald-400' : ep.status === 'FAILED' ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
+                  <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${ep.status === 'PUBLISHED' ? 'bg-success' : ep.status === 'FAILED' ? 'bg-destructive' : 'bg-warning animate-pulse'}`} />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="font-medium text-foreground truncate text-base">{ep.title}</div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

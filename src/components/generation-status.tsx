@@ -64,7 +64,7 @@ export function GenerationStatus() {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border/70 bg-muted/60 px-5 py-4">
+    <div className="mb-6 rounded-xl border border-border/60 bg-muted/50 px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-[13px] font-semibold text-foreground">Generating</div>

@@ -26,7 +26,7 @@ export default async function FeedsPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex items-end justify-between border-b border-border pb-6">
+      <div className="flex items-end justify-between border-b border-border/60 pb-6">
         <div>
           <h1 className="font-display text-4xl text-foreground">Feeds</h1>
           <p className="mt-2 text-muted-foreground text-lg">
@@ -42,8 +42,8 @@ export default async function FeedsPage() {
       </div>
 
       {feeds.length === 0 ? (
-        <div className="rounded-[2rem] border border-dashed border-border/60 bg-white py-20 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+        <div className="rounded-2xl border border-dashed border-border/60 bg-card py-20 text-center shadow-soft">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Rss className="h-8 w-8" strokeWidth={1.5} />
           </div>
           <h2 className="text-xl font-semibold text-foreground">No feed subscriptions</h2>
@@ -60,12 +60,12 @@ export default async function FeedsPage() {
             <Link
               key={feed.id}
               href={`/app/feeds/${feed.id}`}
-              className="group flex flex-col justify-between rounded-[2rem] border border-border/50 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:border-border"
+              className="group flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-soft transition-all hover:shadow-soft-md hover:border-border"
             >
               <div>
                 <div className="flex items-start justify-between gap-4 mb-1">
                   <h3 className="font-display text-xl text-foreground line-clamp-1">{feed.name}</h3>
-                  <div className="shrink-0 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground group-hover:bg-foreground group-hover:text-background transition-colors">
+                  <div className="shrink-0 rounded-full bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                     {feed._count.episodes} eps
                   </div>
                 </div>
@@ -76,11 +76,11 @@ export default async function FeedsPage() {
                 </div>
               </div>
               
-              <div className="mt-8 flex items-center justify-between border-t border-border/40 pt-4">
+              <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-4">
                 <span className="text-xs font-medium text-muted-foreground/80">
                   {feed.lastFetchedAt ? `Updated ${formatRelativeTime(feed.lastFetchedAt)}` : "Just added"}
                 </span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/60 text-foreground opacity-0 group-hover:opacity-100 transition-all">
                   <ArrowRight className="h-4 w-4" />
                 </div>
               </div>

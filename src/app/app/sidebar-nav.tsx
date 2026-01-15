@@ -39,16 +39,16 @@ export function SidebarNav({ feeds }: { feeds: SidebarFeed[] }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-[14px] transition-all duration-200 group",
+              "flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[14px] transition-colors duration-150 group",
               isActive
-                ? "bg-white text-foreground font-medium shadow-sm ring-1 ring-black/5" // Active pill style
-                : "text-foreground/60 hover:text-foreground hover:bg-white/30"
+                ? "bg-background text-foreground font-medium shadow-soft ring-1 ring-border/60"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/70"
             )}
           >
             <item.icon 
               className={cn(
                 "h-[18px] w-[18px] transition-colors", 
-                isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground"
+                isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
               )} 
               strokeWidth={1.5} 
             />
@@ -60,7 +60,7 @@ export function SidebarNav({ feeds }: { feeds: SidebarFeed[] }) {
       {/* Feed subscriptions */}
       {feeds.length > 0 && (
         <div className="pt-6 mt-2 space-y-1.5">
-          <div className="px-4 pb-2 text-[11px] font-medium text-foreground/40 uppercase tracking-widest">
+          <div className="px-4 pb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
             Your Feeds
           </div>
           {feeds.map((feed) => {
@@ -70,16 +70,16 @@ export function SidebarNav({ feeds }: { feeds: SidebarFeed[] }) {
                 key={feed.id}
                 href={`/app/feeds/${feed.id}`}
                 className={cn(
-                  "flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-[14px] transition-all duration-200 group",
+                  "flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[14px] transition-colors duration-150 group",
                   isActive
-                    ? "bg-white text-foreground font-medium shadow-sm ring-1 ring-black/5"
-                    : "text-foreground/60 hover:text-foreground hover:bg-white/30"
+                    ? "bg-background text-foreground font-medium shadow-soft ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/70"
                 )}
               >
                 <Rss 
                   className={cn(
                     "h-[18px] w-[18px] transition-colors", 
-                    isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground"
+                    isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                   )} 
                   strokeWidth={1.5} 
                 />

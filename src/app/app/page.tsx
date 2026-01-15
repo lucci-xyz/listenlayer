@@ -85,16 +85,16 @@ export default async function DashboardPage() {
     <>
       <UpgradeModalTrigger currentPlan={currentPlan} />
       <div className="space-y-10 max-w-6xl">
-        <div className="flex items-end justify-between border-b border-border pb-6">
+        <div className="flex items-end justify-between border-b border-border/60 pb-6">
           <h1 className="font-display text-4xl text-foreground">Overview</h1>
         </div>
 
       {/* Stats & Chart Section */}
       <div className="grid gap-6 md:grid-cols-[300px_1fr]">
         {/* Total Episodes Counter */}
-        <div className="flex flex-col justify-center rounded-[2rem] bg-white p-8 shadow-sm border border-border/50">
+        <div className="flex flex-col justify-center rounded-2xl bg-card p-8 shadow-soft border border-border/60">
           <div className="flex items-center gap-3 text-muted-foreground mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
               <AudioLines className="h-4 w-4 text-primary" />
             </div>
             <span className="text-sm font-medium uppercase tracking-wide">Total Episodes</span>
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
             {episodeCount}
           </div>
           <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5 text-primary font-medium bg-primary/5 px-2.5 py-1 rounded-full">
+            <span className="flex items-center gap-1.5 text-primary font-medium bg-primary/10 px-2.5 py-1 rounded-full">
               <BarChart3 className="h-3.5 w-3.5" />
               {playCount} plays
             </span>
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Chart */}
-        <div className="flex flex-col justify-between rounded-[2rem] bg-white p-8 shadow-sm border border-border/50">
+        <div className="flex flex-col justify-between rounded-2xl bg-card p-8 shadow-soft border border-border/60">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-medium text-muted-foreground">Recent Performance</h3>
             <span className="text-xs text-muted-foreground/60">Plays per episode</span>
@@ -129,10 +129,10 @@ export default async function DashboardPage() {
       {/* Content Grid */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Recent Episodes */}
-        <div className="group flex flex-col rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-secondary/30">
+        <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
+          <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-muted/40">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Play className="h-5 w-5 fill-current" />
               </div>
               <span className="font-semibold text-foreground">Recent episodes</span>
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
                     href={`/app/episodes/${episode.id}`}
                     className="flex items-center gap-4 px-6 py-4 rounded-xl hover:bg-secondary/50 transition-colors"
                   >
-                    <div className="h-2 w-2 rounded-full bg-blue-400 shrink-0 opacity-50" />
+                    <div className="h-2 w-2 rounded-full bg-primary/60 shrink-0 opacity-60" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground truncate">{episode.title}</div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -173,10 +173,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* Feeds */}
-        <div className="group flex flex-col rounded-[2rem] bg-white border border-border/50 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-secondary/30">
+        <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
+          <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-muted/40">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Radio className="h-5 w-5" />
               </div>
               <span className="font-semibold text-foreground">Feeds</span>
@@ -202,7 +202,7 @@ export default async function DashboardPage() {
                     href={`/app/feeds/${feed.id}`}
                     className="flex items-center gap-4 px-6 py-4 rounded-xl hover:bg-secondary/50 transition-colors"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-border text-muted-foreground">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/40 border border-border/60 text-muted-foreground">
                       <span className="text-xs font-bold">{feed.name.slice(0,1)}</span>
                     </div>
                     <div className="flex-1 min-w-0">

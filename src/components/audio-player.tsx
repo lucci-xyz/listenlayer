@@ -120,7 +120,7 @@ export function AudioPlayer({ publicId }: { publicId: string }) {
   };
 
   if (error) {
-    return <div className="text-[13px] text-red-600">{error}</div>;
+    return <div className="text-[13px] text-destructive">{error}</div>;
   }
 
   if (!audioUrl) {
@@ -134,7 +134,7 @@ export function AudioPlayer({ publicId }: { publicId: string }) {
         type="button"
         aria-label={isPlaying ? "Pause audio" : "Play audio"}
         onClick={togglePlay}
-        className="grid h-10 w-10 place-items-center rounded-full bg-foreground text-background transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/60"
+        className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
       </button>
@@ -153,12 +153,12 @@ export function AudioPlayer({ publicId }: { publicId: string }) {
         <div className="flex items-center gap-2">
           <div
             ref={barRef}
-            className="relative h-1 w-full cursor-pointer overflow-hidden rounded-full bg-foreground/15"
+            className="relative h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-muted/70"
             onClick={handleSeek}
             aria-label="Seek"
           >
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-foreground"
+              className="absolute inset-y-0 left-0 rounded-full bg-primary"
               style={{ width: `${progress}%` }}
             />
           </div>

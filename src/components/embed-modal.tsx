@@ -47,7 +47,7 @@ export function EmbedModal({
         </DialogHeader>
 
         {!publicId ? (
-          <div className="rounded-lg border border-border bg-muted p-4 text-[13px] text-muted-foreground">
+          <div className="rounded-lg border border-border/60 bg-muted/40 p-4 text-[13px] text-muted-foreground">
             Publish an episode to unlock embed snippets.
           </div>
         ) : (
@@ -77,7 +77,7 @@ export function EmbedModal({
         )}
 
         {publicId ? (
-          <div className="mt-4 flex items-center justify-between rounded-lg bg-muted px-4 py-3 text-[13px]">
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-[13px]">
             <div className="text-muted-foreground">Want to see the live embed?</div>
             <Button asChild size="sm" variant="outline">
               <Link href={`/app/embed?publicId=${publicId}`}>Test embed</Link>

@@ -34,7 +34,7 @@ export default async function EpisodesPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex items-end justify-between border-b border-border pb-6">
+      <div className="flex items-end justify-between border-b border-border/60 pb-6">
         <h1 className="font-display text-4xl text-foreground">Episodes</h1>
       </div>
       <EpisodesClient episodes={items} baseUrl={baseUrl} />

@@ -17,22 +17,22 @@ const badgeVariants = cva(
       variant: {
         // Default: primary teal tint
         default:
-          "border-transparent bg-primary/10 text-primary",
+          "border border-primary/15 bg-primary/10 text-primary",
         // Secondary: neutral surface
         secondary:
-          "border-border bg-secondary text-muted-foreground",
+          "border border-border/60 bg-muted/50 text-muted-foreground",
         // Destructive: muted red tint
         destructive:
-          "border-transparent bg-destructive/10 text-destructive",
+          "border border-destructive/20 bg-destructive/10 text-destructive",
         // Success: muted green tint
         success:
-          "border-transparent bg-success/10 text-success",
+          "border border-success/20 bg-success/10 text-success",
         // Warning: muted amber/peach tint
         warning:
-          "border-transparent bg-accent/20 text-accent-foreground",
+          "border border-warning/20 bg-warning/15 text-warning-foreground",
         // Outline: just border
         outline:
-          "border-border bg-transparent text-muted-foreground",
+          "border border-border/70 bg-transparent text-muted-foreground",
       },
     },
     defaultVariants: {
