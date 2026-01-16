@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe, getPlanLimits } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import type { SubscriptionStatus } from "@prisma/client";
 import type Stripe from "stripe";
 
 // Use test webhook secret in preview environment
@@ -11,7 +10,7 @@ const webhookSecret = isPreview
   ? process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET
   : process.env.STRIPE_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET_TEST;
 
-function mapStripeStatus(status: string): SubscriptionStatus {
+function mapStripeStatus(status: string): string {
   switch (status) {
     case "trialing":
       return "TRIALING";
