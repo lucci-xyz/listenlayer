@@ -55,7 +55,7 @@ type SourceAuth = {
   token?: string;
 };
 
-function normalizeAuth(auth?: SourceAuth | null) {
+function normalizeAuth(auth?: SourceAuth | null): SourceAuth | null {
   if (!auth) return null;
   if (auth.type === "basic" && auth.username && auth.password) {
     return { type: "basic", username: auth.username, password: auth.password };
@@ -66,7 +66,7 @@ function normalizeAuth(auth?: SourceAuth | null) {
   return null;
 }
 
-function buildAuthHeaders(auth?: SourceAuth | null) {
+function buildAuthHeaders(auth?: SourceAuth | null): Record<string, string> {
   if (!auth) return {};
   if (auth.type === "basic" && auth.username && auth.password) {
     const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString("base64");

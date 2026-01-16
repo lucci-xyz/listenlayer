@@ -11,6 +11,7 @@ export async function POST() {
       );
     }
 
+    const stripeClient = stripe;
     const user = await requireUser();
 
     if (!user.stripeCustomerId) {
@@ -20,7 +21,7 @@ export async function POST() {
       );
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await stripeClient.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${process.env.NEXTAUTH_URL}/app/settings`,
     });

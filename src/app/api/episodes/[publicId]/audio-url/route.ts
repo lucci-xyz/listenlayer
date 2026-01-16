@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPresignedAudioUrl } from "@/lib/r2";
 import { rateLimit } from "@/lib/rate-limit";
+import { isAllowedAppOrigin } from "@/lib/security";
 
 export async function GET(
   request: Request,
@@ -14,6 +15,10 @@ export async function GET(
   const publicId = resolvedParams?.publicId || fallbackPublicId;
   if (!publicId) {
     return NextResponse.json({ error: "Missing publicId" }, { status: 400 });
+  }
+
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   const ip =

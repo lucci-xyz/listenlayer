@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
+  const stripeClient = stripe;
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    event = stripeClient.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
         const subscriptionId = session.subscription as string;
 
         if (userId && subscriptionId) {
-          const subscription = (await stripe.subscriptions.retrieve(
+          const subscription = (await stripeClient.subscriptions.retrieve(
             subscriptionId,
             { expand: ["items.data"] }
           )) as Stripe.Subscription;

@@ -28,7 +28,7 @@ type SourceAuth = {
   token?: string;
 };
 
-function buildAuthHeaders(auth?: SourceAuth | null) {
+function buildAuthHeaders(auth?: SourceAuth | null): Record<string, string> {
   if (!auth) return {};
   if (auth.type === "basic" && auth.username && auth.password) {
     const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
