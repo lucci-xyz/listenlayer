@@ -36,11 +36,15 @@ export function CheckoutModal({
   const plan = PLANS[planKey];
   const priceId = plan.priceId;
   const [isCheckoutReady, setIsCheckoutReady] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const checkoutContainerRef = useRef<HTMLDivElement | null>(null);
 
   const fetchClientSecret = useCallback(async () => {
+    setCheckoutError(null);
     if (!priceId) {
-      throw new Error("No price ID for this plan");
+      const message = "No price ID for this plan";
+      setCheckoutError(message);
+      throw new Error(message);
     }
 
     const res = await fetch("/api/billing/checkout", {
@@ -51,7 +55,9 @@ export function CheckoutModal({
 
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.error || "Failed to create checkout session");
+      const message = error.error || "Failed to create checkout session";
+      setCheckoutError(message);
+      throw new Error(message);
     }
 
     const data = await res.json();
@@ -73,6 +79,7 @@ export function CheckoutModal({
   useEffect(() => {
     if (!open) {
       setIsCheckoutReady(false);
+      setCheckoutError(null);
       return;
     }
 
@@ -153,6 +160,11 @@ export function CheckoutModal({
         <DialogDescription className="sr-only">
           Secure payment checkout form.
         </DialogDescription>
+        {checkoutError && (
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {checkoutError}
+          </div>
+        )}
         <div
           ref={checkoutContainerRef}
           className="relative w-full min-h-[620px] bg-background rounded-2xl border border-border/60"

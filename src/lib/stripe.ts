@@ -1,9 +1,36 @@
 import Stripe from "stripe";
 
-// Check if we're in test mode (works on both server and client)
-const isTestMode =
+const explicitTestMode =
   process.env.TEST_STRIPE_PAYMENTS === "true" ||
   process.env.NEXT_PUBLIC_TEST_STRIPE_PAYMENTS === "true";
+
+const resolveKeyMode = (key?: string) => {
+  if (!key) return null;
+  if (key.startsWith("sk_test") || key.startsWith("pk_test")) return "test";
+  if (key.startsWith("sk_live") || key.startsWith("pk_live")) return "live";
+  return null;
+};
+
+const pickValue = (mode: "test" | "live", testValue?: string, liveValue?: string) =>
+  mode === "test" ? testValue ?? liveValue : liveValue ?? testValue;
+
+const serverSecretKeyCandidate =
+  typeof window === "undefined"
+    ? explicitTestMode
+      ? process.env.STRIPE_SECRET_KEY_TEST ?? process.env.STRIPE_SECRET_KEY
+      : process.env.STRIPE_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY_TEST
+    : undefined;
+
+const publishableKeyCandidate = explicitTestMode
+  ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST ?? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST;
+
+const inferredMode =
+  resolveKeyMode(serverSecretKeyCandidate) ?? resolveKeyMode(publishableKeyCandidate);
+
+// Check if we're in test mode (works on both server and client)
+const isTestMode = inferredMode ? inferredMode === "test" : explicitTestMode;
+export const stripeMode = isTestMode ? "test" : "live";
 
 // Debug: Log env vars on server (only logs once at module load)
 if (typeof window === "undefined") {
@@ -15,10 +42,15 @@ if (typeof window === "undefined") {
   });
 }
 
-// Get the appropriate secret key based on test mode
-const secretKey = isTestMode
-  ? process.env.STRIPE_SECRET_KEY_TEST
-  : process.env.STRIPE_SECRET_KEY;
+// Get the appropriate secret key based on resolved mode
+const secretKey =
+  typeof window === "undefined"
+    ? pickValue(
+        stripeMode,
+        process.env.STRIPE_SECRET_KEY_TEST,
+        process.env.STRIPE_SECRET_KEY
+      )
+    : undefined;
 
 // Stripe client - will be null if not configured
 export const stripe = secretKey
@@ -28,24 +60,32 @@ export const stripe = secretKey
     })
   : null;
 
-// Get price IDs based on test mode
+// Get price IDs based on resolved mode
 // Note: These need NEXT_PUBLIC_ prefix to be available in client components
-const CREATOR_PRICE_ID = isTestMode
-  ? process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST
-  : process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID;
+const CREATOR_PRICE_ID = pickValue(
+  stripeMode,
+  process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST,
+  process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID
+);
 
-const PRO_PRICE_ID = isTestMode
-  ? process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID_TEST
-  : process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
+const PRO_PRICE_ID = pickValue(
+  stripeMode,
+  process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID_TEST,
+  process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID
+);
 
-const BUSINESS_PRICE_ID = isTestMode
-  ? process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID_TEST
-  : process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID;
+const BUSINESS_PRICE_ID = pickValue(
+  stripeMode,
+  process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID_TEST,
+  process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID
+);
 
 // Export publishable key for client-side Stripe initialization
-export const stripePublishableKey = isTestMode
-  ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST
-  : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+export const stripePublishableKey = pickValue(
+  stripeMode,
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST,
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+);
 
 // Plan configurations
 export const PLANS = {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe, PLANS } from "@/lib/stripe";
+import { stripe, PLANS, stripeMode } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     console.log("Checkout debug:", {
       receivedPriceId: priceId,
       validPriceIds,
-      isTestMode: process.env.TEST_STRIPE_PAYMENTS,
+      stripeMode,
     });
 
     if (!validPriceIds.includes(priceId)) {
@@ -37,22 +37,47 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get or create Stripe customer
-    let customerId = user.stripeCustomerId;
+    const isMissingCustomerError = (error: unknown) => {
+      const err = error as { code?: string; param?: string };
+      return err?.code === "resource_missing" && err?.param === "customer";
+    };
 
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          userId: user.id,
-        },
-      });
-      customerId = customer.id;
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { stripeCustomerId: customerId },
-      });
-    }
+    const ensureCustomer = async () => {
+      let customerId = user.stripeCustomerId;
+
+      if (customerId) {
+        try {
+          const existing = await stripe.customers.retrieve(customerId);
+          if (typeof existing === "object" && "deleted" in existing && existing.deleted) {
+            customerId = null;
+          }
+        } catch (error) {
+          if (isMissingCustomerError(error)) {
+            customerId = null;
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: {
+            userId: user.id,
+          },
+        });
+        customerId = customer.id;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { stripeCustomerId: customerId },
+        });
+      }
+
+      return customerId;
+    };
+
+    const customerId = await ensureCustomer();
 
     // Create checkout session with embedded mode
     const session = await stripe.checkout.sessions.create({
@@ -80,6 +105,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error("Checkout error:", error);
+    const stripeError = error as {
+      code?: string;
+      param?: string;
+      message?: string;
+    };
+    if (
+      stripeError?.code === "resource_missing" &&
+      stripeError?.param === "line_items[0][price]"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Stripe price not found for the current mode. Check that your Stripe keys and price IDs belong to the same (test or live) account.",
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: "Unable to create checkout session" },
       { status: 500 }
