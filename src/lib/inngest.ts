@@ -1,9 +1,9 @@
 import { Inngest } from "inngest";
 import Parser from "rss-parser";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { JSDOM } from "jsdom";
 import { prisma } from "@/lib/prisma";
 import { extractReadableText } from "@/lib/content";
+import { extractTitleFromHtml } from "@/lib/html";
 import { chunkText, estimateDurationSec, extractJsonObject } from "@/lib/text";
 import { openai } from "@/lib/openai";
 import { getR2Client, getR2Bucket, deleteAudioObjects } from "@/lib/r2";
@@ -243,20 +243,8 @@ function buildTwoHostSegments(script: string): TwoHostSegment[] {
 }
 
 function deriveTitleFromHtml(html: string, url: string, fallback: string) {
-  try {
-    const dom = new JSDOM(html, { url });
-    const doc = dom.window.document;
-    const meta = (selector: string) => doc.querySelector(selector)?.getAttribute("content") || "";
-    const title =
-      meta('meta[property="og:title"]') ||
-      meta('meta[name="twitter:title"]') ||
-      doc.querySelector("h1")?.textContent?.trim() ||
-      doc.title ||
-      fallback;
-    return title || fallback;
-  } catch {
-    return fallback;
-  }
+  const title = extractTitleFromHtml(html, fallback) || fallback;
+  return title;
 }
 
 // New simplified episode generation - works with or without a feed

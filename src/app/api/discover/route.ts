@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { JSDOM } from "jsdom";
 import Parser from "rss-parser";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAllowedAppOrigin } from "@/lib/security";
+import { extractLinkTags, extractMetaContent, extractTitleFromHtml, stripHtml } from "@/lib/html";
 
 const schema = z.object({
   url: z.string().url(),
@@ -76,16 +76,17 @@ function detectPlatform(url: string, html: string): string | null {
   return null;
 }
 
-function isArticlePage(doc: Document, pathname: string): boolean {
+function isArticlePage(html: string, pathname: string): boolean {
   // Check for article-like URLs
   if (pathname.match(/\/\d{4}\/\d{2}\//) || pathname.includes("/post/") || pathname.includes("/p/")) {
     return true;
   }
-  // Check for article meta tags
-  if (doc.querySelector('meta[property="og:type"][content="article"]')) {
+  // Check for article meta tags / structural hints
+  const ogType = (extractMetaContent(html, "og:type") || "").toLowerCase();
+  if (ogType.includes("article") || ogType.includes("news") || ogType.includes("story")) {
     return true;
   }
-  if (doc.querySelector('article') || doc.querySelector('[itemprop="articleBody"]')) {
+  if (/<article\b/i.test(html) || /itemprop\s*=\s*["']articleBody["']/i.test(html)) {
     return true;
   }
   return false;
@@ -148,34 +149,40 @@ export async function POST(request: Request) {
     const finalUrl = response.url;
     const urlObj = new URL(finalUrl);
     const html = await response.text();
-    const dom = new JSDOM(html, { url: finalUrl });
-    const doc = dom.window.document;
 
-    // Extract metadata
-    const getMeta = (selector: string) => doc.querySelector(selector)?.getAttribute("content") || "";
-    const displayName = getMeta('meta[property="og:site_name"]') || 
-                       getMeta('meta[property="og:title"]') || 
-                       doc.title || 
-                       urlObj.hostname;
-    const faviconUrl = doc.querySelector('link[rel*="icon"]')?.getAttribute("href") || 
-                       `${urlObj.origin}/favicon.ico`;
-    const canonicalUrl = doc.querySelector('link[rel="canonical"]')?.getAttribute("href") || finalUrl;
+    // Extract metadata (no DOM dependency)
+    const displayName =
+      extractMetaContent(html, "og:site_name") ||
+      extractMetaContent(html, "og:title") ||
+      extractTitleFromHtml(html) ||
+      urlObj.hostname;
+
+    const linkTags = extractLinkTags(html);
+    const iconHref =
+      linkTags.find((l) => (l["rel"] || "").toLowerCase().includes("icon"))?.["href"] ||
+      null;
+    const faviconUrl = iconHref || `${urlObj.origin}/favicon.ico`;
+
+    const canonicalHref =
+      linkTags.find((l) => (l["rel"] || "").toLowerCase() === "canonical")?.["href"] ||
+      null;
+    const canonicalUrl = canonicalHref || finalUrl;
     
     const platform = detectPlatform(finalUrl, html);
 
     // Discover feeds from link tags
-    const feedLinks = doc.querySelectorAll('link[rel="alternate"][type*="rss"], link[rel="alternate"][type*="atom"]');
     const feeds: FeedInfo[] = [];
-
-    for (const link of Array.from(feedLinks) as Element[]) {
-      const href = link.getAttribute("href");
+    const alternateLinks = linkTags.filter((l) => {
+      const rel = (l["rel"] || "").toLowerCase();
+      const type = (l["type"] || "").toLowerCase();
+      return rel.includes("alternate") && (type.includes("rss") || type.includes("atom"));
+    });
+    for (const link of alternateLinks) {
+      const href = link["href"];
       if (!href) continue;
-      
       const feedUrl = new URL(href, finalUrl).href;
       const feedInfo = await isValidFeed(feedUrl);
-      if (feedInfo) {
-        feeds.push(feedInfo);
-      }
+      if (feedInfo) feeds.push(feedInfo);
     }
 
     // If no feeds found via link tags, try common endpoints
@@ -201,7 +208,7 @@ export async function POST(request: Request) {
     let kind: DiscoveryResult["kind"] = "website";
     if (feeds.length > 0) {
       kind = "feed";
-    } else if (isArticlePage(doc, urlObj.pathname)) {
+    } else if (isArticlePage(html, urlObj.pathname)) {
       kind = "article";
     }
 
