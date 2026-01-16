@@ -21,6 +21,25 @@ const defaultHeaders = {
   Pragma: "no-cache",
 };
 
+type SourceAuth = {
+  type: "basic" | "bearer";
+  username?: string;
+  password?: string;
+  token?: string;
+};
+
+function buildAuthHeaders(auth?: SourceAuth | null) {
+  if (!auth) return {};
+  if (auth.type === "basic" && auth.username && auth.password) {
+    const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
+    return { Authorization: `Basic ${encoded}` };
+  }
+  if (auth.type === "bearer" && auth.token) {
+    return { Authorization: `Bearer ${auth.token}` };
+  }
+  return {};
+}
+
 async function fetchWithHeaders(
   url: string,
   headers: Record<string, string> = {}
@@ -31,9 +50,10 @@ async function fetchWithHeaders(
   });
 }
 
-async function fetchLatestFromRss(url: string) {
+async function fetchLatestFromRss(url: string, auth?: SourceAuth | null) {
   const response = await fetchWithHeaders(url, {
     Accept: "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+    ...buildAuthHeaders(auth),
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch RSS: ${response.status}`);
@@ -51,13 +71,25 @@ async function fetchLatestFromRss(url: string) {
   };
 }
 
-async function fetchHtml(url: string) {
-  let response = await fetchWithHeaders(url);
+class FetchError extends Error {
+  status: number;
+
+  constructor(status: number) {
+    super(`Failed to fetch article: ${status}`);
+    this.status = status;
+  }
+}
+
+async function fetchHtml(url: string, auth?: SourceAuth | null) {
+  let response = await fetchWithHeaders(url, buildAuthHeaders(auth));
   if (!response.ok && (response.status === 403 || response.status === 429)) {
-    response = await fetchWithHeaders(url, { "User-Agent": "ListenLayer/1.0" });
+    response = await fetchWithHeaders(url, {
+      "User-Agent": "ListenLayer/1.0",
+      ...buildAuthHeaders(auth),
+    });
   }
   if (!response.ok) {
-    throw new Error(`Failed to fetch article: ${response.status}`);
+    throw new FetchError(response.status);
   }
   const lengthHeader = response.headers.get("content-length");
   if (lengthHeader && Number(lengthHeader) > 5 * 1024 * 1024) {
@@ -232,24 +264,49 @@ export const generateEpisode = inngest.createFunction(
   { id: "episode-generate" },
   { event: "episode/generate.requested" },
   async ({ event, step }) => {
-    const { userId, episodeId, feedId, canonicalUrl, episodeTitle, format, sourceText } =
-      event.data as {
-        userId: string;
-        episodeId: string;
-        feedId?: string | null;
-        canonicalUrl: string;
-        episodeTitle?: string;
-        format?: string;
-        sourceText?: string;
-      };
+    const {
+      userId,
+      episodeId,
+      feedId,
+      canonicalUrl,
+      episodeTitle,
+      format,
+      sourceText,
+      sourceAuth,
+    } = event.data as {
+      userId: string;
+      episodeId: string;
+      feedId?: string | null;
+      canonicalUrl: string;
+      episodeTitle?: string;
+      format?: string;
+      sourceText?: string;
+      sourceAuth?: SourceAuth | null;
+    };
 
     let cachedTwoHostSegments: TwoHostSegment[] | null = null;
+    const sourceWordCount = sourceText ? sourceText.split(/\s+/).filter(Boolean).length : 0;
+
+    console.info("[episode-generate] start", {
+      episodeId,
+      userId,
+      feedId,
+      canonicalUrl,
+      format,
+      sourceWordCount,
+      hasAuth: Boolean(sourceAuth),
+    });
 
     try {
       const episodeState = await step.run("load-episode", async () => {
         return prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { status: true },
+          select: {
+            status: true,
+            scriptText: true,
+            audioObjectKey: true,
+            format: true,
+          },
         });
       });
 
@@ -259,6 +316,11 @@ export const generateEpisode = inngest.createFunction(
 
       if (episodeState.status === "CANCELLED") {
         return { cancelled: true };
+      }
+
+      if (episodeState.status === "PUBLISHED" && episodeState.audioObjectKey) {
+        console.info("[episode-generate] skip published", { episodeId });
+        return { skipped: true };
       }
 
       await step.run("mark-running", async () => {
@@ -274,7 +336,7 @@ export const generateEpisode = inngest.createFunction(
         if (feedId && !canonicalUrl) {
           const feed = await prisma.feed.findUnique({ where: { id: feedId } });
           if (!feed) throw new Error("Feed not found");
-          const latest = await fetchLatestFromRss(feed.feedUrl);
+          const latest = await fetchLatestFromRss(feed.feedUrl, sourceAuth);
           return {
             canonicalUrl: latest.link,
             episodeTitle: latest.title,
@@ -293,6 +355,12 @@ export const generateEpisode = inngest.createFunction(
           feedTitle: null,
           sourceText: sourceText || null,
         };
+      });
+
+      console.info("[episode-generate] source resolved", {
+        episodeId,
+        canonicalUrl: resolved.canonicalUrl,
+        sourceTextWords: resolved.sourceText ? resolved.sourceText.split(/\s+/).filter(Boolean).length : 0,
       });
 
       // Update feed metadata if this came from a feed
@@ -323,17 +391,40 @@ export const generateEpisode = inngest.createFunction(
       }
 
       await step.run("generate-script", async () => {
+        const existing = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { scriptText: true, chaptersJson: true },
+        });
+
+        if (existing?.scriptText && existing.scriptText.trim().length > 0) {
+          console.info("[episode-generate] script exists, skipping generation", { episodeId });
+          return { skipped: true };
+        }
+
         let html: string | null = null;
         let readableText = resolved.sourceText?.trim() || "";
+        if (readableText) {
+          const words = readableText.split(/\s+/).filter(Boolean);
+          if (words.length < 120) {
+            readableText = "";
+          }
+        }
         if (!readableText) {
-          html = await fetchHtml(resolved.canonicalUrl);
+          html = await fetchHtml(resolved.canonicalUrl, sourceAuth);
           readableText = extractReadableText(html, resolved.canonicalUrl);
         }
         const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
-        const minWords = resolved.sourceText ? 120 : 300;
+        const minWords = 300;
         if (!readableText || words.length < minWords) {
           throw new Error("Not enough article text to generate an episode");
         }
+
+        console.info("[episode-generate] text ready", {
+          episodeId,
+          wordCount: words.length,
+          usedSourceText: Boolean(resolved.sourceText),
+        });
+
         const betterTitle = html
           ? deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle)
           : resolved.episodeTitle;
@@ -381,8 +472,12 @@ export const generateEpisode = inngest.createFunction(
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true, format: true },
+          select: { scriptText: true, format: true, audioObjectKey: true },
         });
+        if (episode?.audioObjectKey) {
+          console.info("[episode-generate] audio exists, skipping generation", { episodeId });
+          return episode.audioObjectKey;
+        }
         if (!episode?.scriptText) {
           throw new Error("Script is missing");
         }
@@ -391,6 +486,12 @@ export const generateEpisode = inngest.createFunction(
         const buffers: Buffer[] = [];
 
         const audioFormat = episode.format || format;
+        console.info("[episode-generate] tts", {
+          episodeId,
+          audioFormat,
+          primaryVoice,
+          secondaryVoice,
+        });
         const twoHostSegments =
           audioFormat === "two-host" ? buildTwoHostSegments(episode.scriptText) : null;
 
@@ -483,8 +584,11 @@ export const generateEpisode = inngest.createFunction(
       await step.run("update-episode", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true },
+          select: { scriptText: true, status: true, audioObjectKey: true },
         });
+        if (episode?.status === "PUBLISHED" && episode.audioObjectKey) {
+          return;
+        }
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
@@ -499,6 +603,13 @@ export const generateEpisode = inngest.createFunction(
 
       return { episodeId, userId };
     } catch (error) {
+      console.error("[episode-generate] error", {
+        episodeId,
+        feedId,
+        canonicalUrl,
+        hasAuth: Boolean(sourceAuth),
+        message: error instanceof Error ? error.message : String(error),
+      });
       const shouldThrow = await step.run("mark-failed", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
@@ -527,10 +638,15 @@ export const generateEpisode = inngest.createFunction(
         return true;
       });
 
-      if (shouldThrow) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const isPermanent =
+        message === "Not enough article text to generate an episode" ||
+        (error instanceof FetchError && [401, 403, 404, 410].includes(error.status));
+
+      if (shouldThrow && !isPermanent) {
         throw error;
       }
-      return { cancelled: true };
+      return { failed: true };
     }
   }
 );

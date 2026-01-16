@@ -42,7 +42,13 @@ const formats = [
 
 type Format = (typeof formats)[number]["value"];
 type FlowType = "article" | "feed";
-type ModalStep = "feed-select" | "feed-preview" | "article-preview" | "format" | "confirm";
+type ModalStep =
+  | "feed-select"
+  | "feed-preview"
+  | "article-preview"
+  | "format"
+  | "confirm"
+  | "auth-required";
 type ArticlePreview = {
   kind: "article";
   title: string;
@@ -71,6 +77,12 @@ type FeedPreview = {
   items: FeedItem[];
 };
 type PreviewData = ArticlePreview | FeedPreview;
+type AuthPayload = {
+  type: "basic" | "bearer";
+  username?: string;
+  password?: string;
+  token?: string;
+};
 
 const modalStepLabels: Record<ModalStep, string> = {
   "feed-select": "Choose episode",
@@ -78,6 +90,7 @@ const modalStepLabels: Record<ModalStep, string> = {
   "article-preview": "Preview article",
   format: "Choose format",
   confirm: "Review & generate",
+  "auth-required": "Credentials required",
 };
 
 const modalStepMeta: Record<ModalStep, { title: string; description: string }> = {
@@ -101,6 +114,10 @@ const modalStepMeta: Record<ModalStep, { title: string; description: string }> =
     title: "Review and generate",
     description: "Confirm the details before generating audio.",
   },
+  "auth-required": {
+    title: "Credentials required",
+    description: "This source needs authentication before we can continue.",
+  },
 };
 
 export function CreateAudioCard() {
@@ -120,21 +137,36 @@ export function CreateAudioCard() {
   const [selectedItemError, setSelectedItemError] = useState<string | null>(null);
   const [selectedItemLoading, setSelectedItemLoading] = useState(false);
   const [addFeed, setAddFeed] = useState(false);
+  const [authMode, setAuthMode] = useState<"basic" | "bearer">("basic");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [authHint, setAuthHint] = useState<"basic" | "bearer" | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authContext, setAuthContext] = useState<
+    "preview" | "item-preview" | "generate" | null
+  >(null);
+  const [authSource, setAuthSource] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
+  const isAuthStep = modalStep === "auth-required";
   const modalSteps = useMemo(() => {
+    if (isAuthStep) {
+      return ["auth-required"] as ModalStep[];
+    }
     if (flowType === "feed") {
       return ["feed-select", "feed-preview", "format", "confirm"] as ModalStep[];
     }
     return ["article-preview", "format", "confirm"] as ModalStep[];
-  }, [flowType]);
+  }, [flowType, isAuthStep]);
 
   const modalStepIndex = useMemo(() => {
-    if (!flowType) return 1;
+    if (!flowType && !isAuthStep) return 1;
     const index = modalSteps.indexOf(modalStep);
     return index === -1 ? 1 : index + 1;
-  }, [flowType, modalSteps, modalStep]);
+  }, [flowType, modalSteps, modalStep, isAuthStep]);
 
-  const modalStepTotal = flowType ? modalSteps.length : 1;
+  const modalStepTotal = flowType || isAuthStep ? modalSteps.length : 1;
 
   const selectedFormat = useMemo(
     () => formats.find((option) => option.value === format),
@@ -143,6 +175,17 @@ export function CreateAudioCard() {
 
   const readyToGenerate =
     flowType === "feed" ? Boolean(selectedItem) : Boolean(articlePreview);
+  const authReady =
+    authMode === "basic" ? Boolean(authUsername && authPassword) : Boolean(authToken);
+  const authPayload = useMemo<AuthPayload | undefined>(() => {
+    if (authMode === "basic" && authUsername && authPassword) {
+      return { type: "basic", username: authUsername, password: authPassword };
+    }
+    if (authMode === "bearer" && authToken) {
+      return { type: "bearer", token: authToken };
+    }
+    return undefined;
+  }, [authMode, authUsername, authPassword, authToken]);
 
   const resetFlow = () => {
     setModalOpen(false);
@@ -158,6 +201,15 @@ export function CreateAudioCard() {
     setFormat("narration");
     setPreviewError(null);
     setGenerating(false);
+    setAuthMode("basic");
+    setAuthUsername("");
+    setAuthPassword("");
+    setAuthToken("");
+    setAuthHint(null);
+    setAuthMessage(null);
+    setAuthContext(null);
+    setAuthSource(null);
+    setAuthSubmitting(false);
   };
 
   const handleModalOpenChange = (open: boolean) => {
@@ -166,6 +218,42 @@ export function CreateAudioCard() {
       return;
     }
     setModalOpen(true);
+  };
+
+  const requiresAuthNotice = "Source requires authentication. Add credentials to continue.";
+  const rejectedAuthNotice = "Credentials were rejected or are insufficient.";
+
+  const openAuthPrompt = (
+    context: "preview" | "item-preview" | "generate",
+    message: string,
+    hint: "basic" | "bearer" | null,
+    source: string
+  ) => {
+    setAuthContext(context);
+    setAuthMessage(message);
+    setAuthHint(hint);
+    setAuthSource(source);
+    if (hint) {
+      setAuthMode(hint);
+    }
+    setModalStep("auth-required");
+    setModalOpen(true);
+  };
+
+  const handleAuthContinue = async () => {
+    if (!authReady || !authContext) return;
+    setAuthSubmitting(true);
+    try {
+      if (authContext === "preview") {
+        await handlePreview();
+      } else if (authContext === "item-preview") {
+        await loadSelectedItemPreview();
+      } else {
+        await handleGenerate();
+      }
+    } finally {
+      setAuthSubmitting(false);
+    }
   };
 
   const handlePreview = async () => {
@@ -179,14 +267,29 @@ export function CreateAudioCard() {
         normalizedUrl = "https://" + normalizedUrl;
       }
 
+      const payload: { url: string; auth?: AuthPayload } = { url: normalizedUrl };
+      if (authPayload) {
+        payload.auth = authPayload;
+      }
+
       const res = await fetch("/api/episodes/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: normalizedUrl }),
+        body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as PreviewData & { error?: string };
+      const data = (await res.json()) as PreviewData & {
+        error?: string;
+        code?: string;
+        authHint?: "basic" | "bearer" | null;
+      };
       if (!res.ok) {
+        if (data.code === "FORBIDDEN") {
+          const message = data.error || requiresAuthNotice;
+          const hint = data.authHint ?? null;
+          openAuthPrompt("preview", message, hint, normalizedUrl);
+          return;
+        }
         throw new Error(data.error || "Unable to preview link");
       }
 
@@ -210,6 +313,11 @@ export function CreateAudioCard() {
         setModalStep("article-preview");
       }
 
+      setAuthHint(null);
+      setAuthMessage(null);
+      setAuthContext(null);
+      setAuthSource(null);
+
       setModalOpen(true);
     } catch (err) {
       setPreviewError(err instanceof Error ? err.message : "Unable to preview link");
@@ -228,18 +336,34 @@ export function CreateAudioCard() {
 
   const loadSelectedItemPreview = async () => {
     if (!selectedItem) return;
+    let openedAuthPrompt = false;
     setSelectedItemError(null);
     setSelectedItemLoading(true);
     setSelectedItemPreview(null);
 
     try {
+      const payload: { url: string; auth?: AuthPayload } = { url: selectedItem.url };
+      if (authPayload) {
+        payload.auth = authPayload;
+      }
       const res = await fetch("/api/episodes/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: selectedItem.url }),
+        body: JSON.stringify(payload),
       });
-      const data = (await res.json()) as PreviewData & { error?: string };
+      const data = (await res.json()) as PreviewData & {
+        error?: string;
+        code?: string;
+        authHint?: "basic" | "bearer" | null;
+      };
       if (!res.ok) {
+        if (data.code === "FORBIDDEN") {
+          const message = data.error || requiresAuthNotice;
+          const hint = data.authHint ?? null;
+          openAuthPrompt("item-preview", message, hint, selectedItem.url);
+          openedAuthPrompt = true;
+          return;
+        }
         throw new Error(data.error || "Unable to preview episode");
       }
 
@@ -248,11 +372,20 @@ export function CreateAudioCard() {
       } else {
         setSelectedItemPreview({ ...data, kind: "article" });
       }
+
+      setAuthHint(null);
+      setAuthMessage(null);
+      setAuthContext(null);
+      setAuthSource(null);
     } catch (err) {
-      setSelectedItemError(previewUnavailableNotice);
+      setSelectedItemError(
+        err instanceof Error ? err.message : previewUnavailableNotice
+      );
     } finally {
       setSelectedItemLoading(false);
-      setModalStep("feed-preview");
+      if (!openedAuthPrompt) {
+        setModalStep("feed-preview");
+      }
     }
   };
 
@@ -285,20 +418,43 @@ export function CreateAudioCard() {
           ? selectedItemPreview?.title ?? selectedItem?.title
           : articlePreview?.title;
 
+      const payload: {
+        url: string;
+        format: Format;
+        title?: string;
+        feedId?: string;
+        sourceText?: string;
+        auth?: AuthPayload;
+      } = {
+        url: sourceUrl,
+        format,
+        title,
+        feedId,
+        sourceText: flowType === "feed" ? selectedItem?.contentText ?? undefined : undefined,
+      };
+      if (authPayload) {
+        payload.auth = authPayload;
+      }
+
       const res = await fetch("/api/episodes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: sourceUrl,
-          format,
-          title,
-          feedId,
-          sourceText: flowType === "feed" ? selectedItem?.contentText ?? undefined : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        authHint?: "basic" | "bearer" | null;
+        episodeId?: string;
+      };
       if (!res.ok) {
+        if (data.code === "FORBIDDEN") {
+          const message = data.error || requiresAuthNotice;
+          const hint = data.authHint ?? null;
+          openAuthPrompt("generate", message, hint, sourceUrl);
+          return;
+        }
         throw new Error(data.error || "Failed to generate");
       }
 
@@ -347,6 +503,7 @@ export function CreateAudioCard() {
   const summaryPreview = flowType === "feed" ? selectedItemPreview : articlePreview;
   const formatBackStep: ModalStep =
     flowType === "feed" ? "feed-preview" : "article-preview";
+  const authSourceLabel = authSource ? getDomainFromUrl(authSource) : null;
 
   return (
     <>
@@ -402,7 +559,7 @@ export function CreateAudioCard() {
 
       <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="sm:max-w-2xl">
-          {flowType ? (
+          {flowType || modalStep === "auth-required" ? (
             <div className="space-y-6">
               <DialogHeader>
                 <div className="flex items-center justify-between pr-10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
@@ -418,6 +575,91 @@ export function CreateAudioCard() {
                   {modalStepMeta[modalStep].description}
                 </DialogDescription>
               </DialogHeader>
+
+              {modalStep === "auth-required" ? (
+                <>
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Access required
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-foreground">
+                      {authMessage || requiresAuthNotice}
+                    </div>
+                    {authSourceLabel ? (
+                      <div className="mt-1 text-xs text-muted-foreground">{authSourceLabel}</div>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background p-4">
+                    <div className="text-sm font-medium text-foreground">Provide credentials</div>
+                    <div className="text-xs text-muted-foreground">
+                      {authHint === "basic"
+                        ? "This source appears to require Basic authentication."
+                        : authHint === "bearer"
+                        ? "This source appears to require a Bearer token."
+                        : "Choose the credential type required by the source."}
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={authMode === "basic" ? "default" : "outline"}
+                          onClick={() => setAuthMode("basic")}
+                        >
+                          Basic
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={authMode === "bearer" ? "default" : "outline"}
+                          onClick={() => setAuthMode("bearer")}
+                        >
+                          Bearer token
+                        </Button>
+                      </div>
+                      {authMode === "basic" ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Input
+                            placeholder="Username"
+                            value={authUsername}
+                            onChange={(e) => setAuthUsername(e.target.value)}
+                          />
+                          <Input
+                            type="password"
+                            placeholder="Password"
+                            value={authPassword}
+                            onChange={(e) => setAuthPassword(e.target.value)}
+                          />
+                        </div>
+                      ) : (
+                        <Input
+                          type="password"
+                          placeholder="Bearer token"
+                          value={authToken}
+                          onChange={(e) => setAuthToken(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={resetFlow}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAuthContinue} disabled={!authReady || authSubmitting}>
+                      {authSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Checking access
+                        </>
+                      ) : (
+                        "Continue"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : null}
 
               {modalStep === "feed-select" && feedPreview ? (
                 <>
@@ -661,7 +903,10 @@ export function CreateAudioCard() {
                     <Button variant="outline" onClick={() => setModalStep("format")}>
                       Back
                     </Button>
-                    <Button onClick={handleGenerate} disabled={!readyToGenerate || generating}>
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={!readyToGenerate || generating}
+                    >
                       {generating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -16,7 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,13 @@ type FeedItem = {
   status: string | null;
 };
 
+type AuthPayload = {
+  type: "basic" | "bearer";
+  username?: string;
+  password?: string;
+  token?: string;
+};
+
 const SUPPORT_EMAIL = "ops@luccilabs.xyz";
 
 export function FeedDetailClient({
@@ -90,6 +97,26 @@ export function FeedDetailClient({
   const [formatDialogOpen, setFormatDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<FormatOption>("narration");
+  const [authMode, setAuthMode] = useState<"basic" | "bearer">("basic");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [authHint, setAuthHint] = useState<"basic" | "bearer" | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+
+  const authReady =
+    authMode === "basic" ? Boolean(authUsername && authPassword) : Boolean(authToken);
+  const authPayload = useMemo<AuthPayload | undefined>(() => {
+    if (authMode === "basic" && authUsername && authPassword) {
+      return { type: "basic", username: authUsername, password: authPassword };
+    }
+    if (authMode === "bearer" && authToken) {
+      return { type: "bearer", token: authToken };
+    }
+    return undefined;
+  }, [authMode, authUsername, authPassword, authToken]);
 
   const fetchItems = async () => {
     try {
@@ -120,6 +147,9 @@ export function FeedDetailClient({
   const openFormatDialog = (item: FeedItem) => {
     setSelectedItem(item);
     setSelectedFormat("narration");
+    setAuthStep(false);
+    setAuthMessage(null);
+    setAuthHint(null);
     setFormatDialogOpen(true);
   };
 
@@ -127,39 +157,82 @@ export function FeedDetailClient({
   const handleGenerate = async () => {
     if (!selectedItem) return;
     
-    setFormatDialogOpen(false);
+    let shouldClearSelection = true;
     setGeneratingId(selectedItem.id);
     
     try {
+      const payload: {
+        url: string;
+        feedId: string;
+        title: string;
+        format: FormatOption;
+        sourceText?: string;
+        auth?: AuthPayload;
+      } = {
+        url: selectedItem.url,
+        feedId: feed.id,
+        title: selectedItem.title,
+        format: selectedFormat,
+        sourceText: selectedItem.contentText ?? undefined,
+      };
+      if (authPayload) {
+        payload.auth = authPayload;
+      }
+
       const res = await fetch("/api/episodes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: selectedItem.url,
-          feedId: feed.id,
-          title: selectedItem.title,
-          format: selectedFormat,
-          sourceText: selectedItem.contentText ?? undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        authHint?: "basic" | "bearer" | null;
+        episodeId?: string;
+      };
 
       if (!res.ok) {
+        if (data.code === "FORBIDDEN") {
+          shouldClearSelection = false;
+          setAuthStep(true);
+          setAuthMessage(data.error || "Source requires authentication.");
+          if (data.authHint) {
+            setAuthHint(data.authHint);
+            setAuthMode(data.authHint);
+          }
+          return;
+        }
         throw new Error(data.error || "Failed to generate");
       }
 
       toast.success("Generation started!");
       router.refresh();
+      setAuthStep(false);
+      setFormatDialogOpen(false);
 
       if (data.episodeId) {
         router.push(`/app/episodes/${data.episodeId}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate");
+      setAuthStep(false);
+      setFormatDialogOpen(false);
     } finally {
       setGeneratingId(null);
-      setSelectedItem(null);
+      if (shouldClearSelection) {
+        setSelectedItem(null);
+      }
+    }
+  };
+
+  const handleAuthContinue = async () => {
+    if (!authReady || authSubmitting) return;
+    setAuthSubmitting(true);
+    try {
+      await handleGenerate();
+    } finally {
+      setAuthSubmitting(false);
     }
   };
 
@@ -448,59 +521,171 @@ export function FeedDetailClient({
       </div>
 
       {/* Dialogs */}
-      <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
+      <Dialog
+        open={formatDialogOpen}
+        onOpenChange={(open) => {
+          setFormatDialogOpen(open);
+          if (!open) {
+            setAuthStep(false);
+            setAuthMessage(null);
+            setAuthHint(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Choose Format</DialogTitle>
+            <DialogTitle className="font-display text-2xl">
+              {authStep ? "Credentials required" : "Choose Format"}
+            </DialogTitle>
             <DialogDescription className="text-base">
-              Select how you want this article to be narrated.
+              {authStep
+                ? "This source needs authentication before we can continue."
+                : "Select how you want this article to be narrated."}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="grid gap-3 py-4">
-            {[
-              { id: "narration", label: "Solo narration", desc: "Professional single-voice reading", icon: Mic },
-              { id: "two-host", label: "Two hosts", desc: "Conversational discussion style", icon: Users },
-              { id: "tldr", label: "TL;DR summary", desc: "Concise 2-minute overview", icon: Zap },
-            ].map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setSelectedFormat(option.id as FormatOption)}
-                className={cn(
-                  "flex items-center gap-4 rounded-xl border border-border/60 p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
-                  selectedFormat === option.id
-                    ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
-                    : "border-border/60"
-                )}
-              >
-                <div className={cn(
-                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
-                  selectedFormat === option.id ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
-                )}>
-                  <option.icon className="h-6 w-6" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <div className={cn("font-semibold", selectedFormat === option.id ? "text-primary" : "text-foreground")}>
-                    {option.label}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {option.desc}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
 
-          <DialogFooter className="sm:justify-between gap-4">
-            <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
-              Cancel
-            </Button>
-            <Button onClick={handleGenerate} className="rounded-lg px-8">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Generate Audio
-            </Button>
-          </DialogFooter>
+          {authStep ? (
+            <>
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Access required
+                </div>
+                <div className="mt-2 text-lg font-semibold text-foreground">
+                  {authMessage || "Source requires authentication."}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-background p-4">
+                <div className="text-sm font-medium text-foreground">Provide credentials</div>
+                <div className="text-xs text-muted-foreground">
+                  {authHint === "basic"
+                    ? "This source appears to require Basic authentication."
+                    : authHint === "bearer"
+                    ? "This source appears to require a Bearer token."
+                    : "Choose the credential type required by the source."}
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={authMode === "basic" ? "default" : "outline"}
+                      onClick={() => setAuthMode("basic")}
+                    >
+                      Basic
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={authMode === "bearer" ? "default" : "outline"}
+                      onClick={() => setAuthMode("bearer")}
+                    >
+                      Bearer token
+                    </Button>
+                  </div>
+                  {authMode === "basic" ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Input
+                        placeholder="Username"
+                        value={authUsername}
+                        onChange={(e) => setAuthUsername(e.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Password"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      type="password"
+                      placeholder="Bearer token"
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="sm:justify-between gap-4">
+                <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAuthContinue}
+                  className="rounded-lg px-8"
+                  disabled={!authReady || authSubmitting}
+                >
+                  {authSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking access
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Continue
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-3 py-4">
+                {[
+                  { id: "narration", label: "Solo narration", desc: "Professional single-voice reading", icon: Mic },
+                  { id: "two-host", label: "Two hosts", desc: "Conversational discussion style", icon: Users },
+                  { id: "tldr", label: "TL;DR summary", desc: "Concise 2-minute overview", icon: Zap },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedFormat(option.id as FormatOption)}
+                    className={cn(
+                      "flex items-center gap-4 rounded-xl border border-border/60 p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
+                      selectedFormat === option.id
+                        ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border/60"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
+                        selectedFormat === option.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/60 text-muted-foreground"
+                      )}
+                    >
+                      <option.icon className="h-6 w-6" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <div
+                        className={cn(
+                          "font-semibold",
+                          selectedFormat === option.id ? "text-primary" : "text-foreground"
+                        )}
+                      >
+                        {option.label}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{option.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <DialogFooter className="sm:justify-between gap-4">
+                <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button onClick={handleGenerate} className="rounded-lg px-8">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Audio
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

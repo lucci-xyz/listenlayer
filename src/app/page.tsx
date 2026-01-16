@@ -10,6 +10,7 @@ import {
   Check,
 } from "lucide-react";
 import { PLANS } from "@/lib/stripe";
+import { LandingAudioPlayer } from "@/components/landing-audio-player";
 
 export default function Home() {
   return (
@@ -37,7 +38,7 @@ export default function Home() {
       {/* Hero — two-column layout */}
       <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-32">
         <div className="mx-auto max-w-[1200px] px-6">
-          <div className="grid gap-16 lg:grid-cols-2 lg:gap-24 items-center">
+          <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 items-center">
             {/* Left: copy */}
             <div className="max-w-xl">
               <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
@@ -70,49 +71,34 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Right: mock player visual */}
-            <div className="relative hidden lg:block">
-              <div className="relative z-10 rounded-[2rem] bg-card p-8 shadow-soft-lg ring-1 ring-border/60 transition-transform duration-500 ease-out">
-                {/* Mock player header */}
-                <div className="flex items-start gap-5">
-                  <div className="h-16 w-16 rounded-2xl bg-accent/60 flex items-center justify-center shrink-0 text-accent-foreground">
-                    <Play className="h-6 w-6 fill-current" />
+            <div id="demo" className="relative">
+              <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft-lg">
+                <Badge className="mb-4" variant="secondary">Sample episode</Badge>
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    The role of music in society
                   </div>
-                  <div className="min-w-0 flex-1 pt-1">
-                    <div className="font-display text-2xl text-foreground mb-1 leading-tight">
-                      How We Redesigned Our Checkout Flow
-                    </div>
-                    <div className="text-sm font-medium text-foreground/50">
-                      The Design Blog · 8 min listen
-                    </div>
+                  <div className="text-2xl font-display text-foreground">
+                    Sir Hugh Percy Allen (1934)
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    4 min 16 sec · Public domain recording
                   </div>
                 </div>
-                
-                {/* Mock waveform */}
-                <div className="mt-8 flex items-end justify-between gap-1 h-12">
-                  {[...Array(40)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="w-1.5 rounded-full transition-all duration-500"
-                      style={{ 
-                        height: `${Math.max(20, Math.random() * 100)}%`,
-                        backgroundColor: i < 15 ? 'var(--primary)' : 'rgba(0,0,0,0.06)'
-                      }}
-                    />
-                  ))}
+
+                <div className="mt-6">
+                  <LandingAudioPlayer
+                    src="https://commons.wikimedia.org/wiki/Special:FilePath/Sir-hugh-allen-speech.mp3"
+                    durationLabel="4:16"
+                  />
                 </div>
-                
-                {/* Mock controls */}
-                <div className="mt-6 flex items-center justify-between text-xs font-medium text-muted-foreground font-mono tracking-wider">
-                  <span>02:34</span>
-                  <span>08:12</span>
-                </div>
+
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Source: Wikimedia Commons (public domain).
+                </p>
               </div>
-              
-              {/* Decorative elements behind */}
-              <div className="absolute -inset-4 bg-primary/5 rounded-[2.5rem] -z-10 scale-95" />
-              <div className="absolute -inset-8 bg-muted/40 rounded-[3rem] -z-20 scale-90" />
             </div>
+
           </div>
         </div>
       </section>
@@ -167,7 +153,7 @@ export default function Home() {
       {/* Features */}
       <section className="py-24 md:py-32">
         <div className="mx-auto max-w-[1200px] px-6">
-          <div className="grid gap-16 lg:grid-cols-2 items-center">
+          <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] items-start">
             <div>
               <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
                 Features
@@ -175,78 +161,43 @@ export default function Home() {
               <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
                 Your writing, now with an audio option
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-12">
-                Not everyone has time to read. Give them the choice to listen 
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Not everyone has time to read. Give them the choice to listen
                 without recording anything yourself. Perfect for newsletters and blogs.
               </p>
-              
-              <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
-                {[
-                  {
-                    icon: Rss,
-                    title: "RSS Auto-sync",
-                    desc: "New posts become audio automatically."
-                  },
-                  {
-                    icon: Code2,
-                    title: "Simple Embed",
-                    desc: "One line of code. Works on any CMS."
-                  },
-                  {
-                    icon: BarChart3,
-                    title: "Deep Analytics",
-                    desc: "Track plays, completion rates, and more."
-                  },
-                  {
-                    icon: Play,
-                    title: "Clean Player",
-                    desc: "Minimal design that fits your brand."
-                  },
-                ].map((feature, i) => (
-                  <div key={i}>
-                    <feature.icon className="h-6 w-6 text-primary mb-4" strokeWidth={1.5} />
-                    <h3 className="font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-sm text-foreground/60 leading-relaxed">
-                      {feature.desc}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
-            
-            <div className="relative lg:h-[600px] rounded-[2.5rem] bg-card p-8 md:p-12 shadow-soft-lg ring-1 ring-border/60 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-muted/60 via-transparent to-transparent" />
-              <div className="relative z-10 flex flex-col h-full justify-between">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-2">Now Playing</div>
-                  <div className="font-display text-3xl mb-2">The Future of Digital Media</div>
-                  <div className="text-muted-foreground">Tech Daily · Episode 42</div>
+
+            <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
+              {[
+                {
+                  icon: Rss,
+                  title: "RSS Auto-sync",
+                  desc: "New posts become audio automatically."
+                },
+                {
+                  icon: Code2,
+                  title: "Simple Embed",
+                  desc: "One line of code. Works on any CMS."
+                },
+                {
+                  icon: BarChart3,
+                  title: "Deep Analytics",
+                  desc: "Track plays, completion rates, and more."
+                },
+                {
+                  icon: Play,
+                  title: "Clean Player",
+                  desc: "Minimal design that fits your brand."
+                },
+              ].map((feature, i) => (
+                <div key={i}>
+                  <feature.icon className="h-6 w-6 text-primary mb-4" strokeWidth={1.5} />
+                  <h3 className="font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm text-foreground/60 leading-relaxed">
+                    {feature.desc}
+                  </p>
                 </div>
-                
-                <div className="space-y-6">
-                  <div className="h-32 flex items-end gap-1 opacity-80">
-                    {[...Array(50)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="flex-1 bg-muted/60 rounded-full"
-                        style={{ height: `${20 + Math.random() * 80}%` }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex justify-center gap-8">
-                    {/* Mock controls */}
-                    <div className="h-12 w-12 rounded-full border border-border/60 flex items-center justify-center hover:bg-muted/60 cursor-pointer transition-colors">
-                      <div className="w-4 h-4 border-l-2 border-b-2 border-foreground rotate-45 ml-1" />
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:scale-105 transition-transform cursor-pointer">
-                      <div className="w-3 h-3 bg-current rounded-sm" />
-                    </div>
-                    <div className="h-12 w-12 rounded-full border border-border/60 flex items-center justify-center hover:bg-muted/60 cursor-pointer transition-colors">
-                      <div className="w-4 h-4 border-r-2 border-b-2 border-foreground -rotate-45 mr-1" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
