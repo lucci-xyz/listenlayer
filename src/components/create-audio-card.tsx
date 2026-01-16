@@ -303,7 +303,6 @@ export function CreateAudioCard({
         throw new Error(data.error || "Unable to preview link");
       }
 
-      const kind = data?.kind === "feed" ? "feed" : "article";
       setFormat("narration");
       setAddFeed(false);
       setSelectedItem(null);
@@ -311,14 +310,14 @@ export function CreateAudioCard({
       setSelectedItemError(null);
       setSelectedItemLoading(false);
 
-      if (kind === "feed") {
+      if (data.kind === "feed") {
         setFlowType("feed");
-        setFeedPreview({ ...data, kind: "feed" });
+        setFeedPreview(data);
         setArticlePreview(null);
         setModalStep("feed-select");
       } else {
         setFlowType("article");
-        setArticlePreview({ ...data, kind: "article" });
+        setArticlePreview(data);
         setFeedPreview(null);
         setModalStep("article-preview");
       }

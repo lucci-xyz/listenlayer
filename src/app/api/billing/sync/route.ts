@@ -31,6 +31,7 @@ export async function POST() {
       );
     }
 
+    const stripeClient = stripe;
     const user = await requireUser();
 
     if (!user.stripeCustomerId) {
@@ -41,7 +42,7 @@ export async function POST() {
     }
 
     try {
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions = await stripeClient.subscriptions.list({
         customer: user.stripeCustomerId,
         status: "all",
         limit: 1,
