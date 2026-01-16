@@ -1,71 +1,89 @@
-import { type NextAuthOptions, getServerSession } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+// Create a Supabase client for server-side operations with cookie handling
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Called from Server Component - ignore
+          }
+        },
       },
-      async authorize(credentials) {
-        const email = credentials?.email?.toLowerCase().trim();
-        const password = credentials?.password;
-        if (!email || !password) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
-        return { id: user.id, email: user.email };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-      }
-      return session;
-    },
-  },
-};
+    }
+  );
+}
 
 const demoEmail = "demo@listenlayer.local";
 
 async function getOrCreateDemoUser() {
-  const passwordHash = await bcrypt.hash("demo1234", 10);
   return prisma.user.upsert({
     where: { email: demoEmail },
     update: {},
-    create: { email: demoEmail, passwordHash },
+    create: { email: demoEmail },
   });
 }
 
-export async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
-  if (email) {
-    return prisma.user.findUnique({ where: { email } });
+// Get or create our app's User record from Supabase auth user
+async function getOrCreateAppUser(supabaseUser: { id: string; email?: string }) {
+  if (!supabaseUser.email) return null;
+
+  const email = supabaseUser.email.toLowerCase();
+
+  // Try to find by supabaseId first, then by email
+  let user = await prisma.user.findFirst({
+    where: {
+      OR: [{ supabaseId: supabaseUser.id }, { email }],
+    },
+  });
+
+  if (!user) {
+    // Create new user linked to Supabase
+    user = await prisma.user.create({
+      data: {
+        email,
+        supabaseId: supabaseUser.id,
+      },
+    });
+  } else if (!user.supabaseId) {
+    // Link existing user to Supabase
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { supabaseId: supabaseUser.id },
+    });
   }
 
+  return user;
+}
+
+export async function getCurrentUser() {
+  // DEV_AUTH_BYPASS for local development
   if (process.env.DEV_AUTH_BYPASS === "true") {
     return getOrCreateDemoUser();
   }
 
-  return null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user: supabaseUser },
+  } = await supabase.auth.getUser();
+
+  if (!supabaseUser) return null;
+
+  return getOrCreateAppUser(supabaseUser);
 }
 
 export async function requireUser() {

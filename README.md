@@ -4,8 +4,8 @@ ListenLayer is a lightweight MVP SaaS that turns blog posts and RSS feeds into n
 
 ## Tech stack
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui
-- Prisma ORM + Postgres
-- Auth.js (NextAuth) credentials provider
+- Prisma ORM + Postgres (Supabase)
+- Supabase Auth (email confirmation built-in)
 - Inngest background jobs
 - OpenAI TTS (`gpt-4o-mini-tts`)
 - Cloudflare R2 via AWS SDK v3
@@ -41,7 +41,7 @@ docker-compose up -d
 cp .env.example .env
 ```
 
-Fill in the required values (OpenAI + R2 + NEXTAUTH_SECRET).
+Fill in the required values (OpenAI + R2). For local dev, set `DEV_AUTH_BYPASS=true`.
 
 4) Run migrations + seed demo user
 
@@ -51,12 +51,6 @@ pnpm db:seed
 ```
 
 5) Start Inngest dev server
-
-```bash
-pnpm dlx inngest-cli@latest dev -u http://localhost:3000/api/inngest
-```
-
-Or:
 
 ```bash
 pnpm inngest:dev
@@ -70,60 +64,205 @@ pnpm dev
 
 Open http://localhost:3000.
 
-## Demo login
-- Email: `demo@listenlayer.local`
-- Password: `demo1234`
+## Local development auth
 
-Or bypass auth entirely:
+For local development, bypass Supabase auth entirely:
 
 ```bash
 DEV_AUTH_BYPASS=true
 ```
 
-## Generate an episode
-1. Log in and click **Add site**.
-2. Paste a link, choose whether to keep it synced or just generate once, pick a format, and generate your first episode.
-3. Watch the Inngest dev server logs to see the job progress.
-4. Visit **Embeds** for the hosted player URL and copyable snippets.
+This auto-logs you in as the demo user.
 
-## Onboarding detection checklist
-- Pasting a valid RSS URL offers “Keep it synced” and allows continuing.
-- Pasting a blog homepage with a `<link rel=\"alternate\">` feed enables “Keep it synced”.
-- Pasting a Substack profile URL like `https://substack.com/@username` resolves to the publication and finds `/feed`.
-- Pasting a non-feed homepage without a feed disables Continue with guidance to paste a post URL.
-- Pasting a specific article URL enables the “Just this one” path.
+---
 
-## Embed testing
-Create a simple HTML file and paste:
+## Production Deployment (Vercel)
 
-```html
-<iframe src="http://localhost:3000/embed/e/YOUR_PUBLIC_ID" style="width:100%;height:160px;border:0" loading="lazy"></iframe>
-<script async src="http://localhost:3000/widget.js" data-episode="YOUR_PUBLIC_ID" data-theme="auto" data-accent="#111827" data-radius="soft" data-size="standard" data-chapters="1" data-transcript="1" data-open="1"></script>
+### Architecture: Preview vs Production
+
+| | **Preview** | **Production** |
+|---|---|---|
+| URL | `preview.listenlayer.luccilabs.xyz` | `listenlayer.luccilabs.xyz` |
+| Database | Same Supabase, `preview` schema | Same Supabase, `public` schema |
+| Auth | Same Supabase Auth | Same Supabase Auth |
+| Stripe | Test mode | Live mode |
+| Inngest | Same app (auto-routes) | Same app (auto-routes) |
+| R2 | Shared bucket | Shared bucket |
+
+**Data is completely isolated** between preview and production using PostgreSQL schemas.
+
+---
+
+### Step 1: Set Up Supabase
+
+Create **one** Supabase project (free tier).
+
+1. Go to **Project Settings > API** and copy:
+   - Project URL
+   - `anon` public key  
+   - `service_role` secret key
+2. Go to **Settings > Database** and copy the connection string
+3. Go to **Authentication > URL Configuration** and add redirect URLs:
+   - `https://preview.listenlayer.luccilabs.xyz/api/auth/callback`
+   - `https://listenlayer.luccilabs.xyz/api/auth/callback`
+
+### Step 2: Create the Preview Schema
+
+In Supabase Dashboard, go to **SQL Editor** and run:
+
+```sql
+-- Create the preview schema for isolated preview data
+CREATE SCHEMA IF NOT EXISTS preview;
+
+-- Grant permissions
+GRANT USAGE ON SCHEMA preview TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA preview TO postgres, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA preview TO postgres, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA preview TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA preview TO authenticated;
+
+-- Set default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA preview GRANT ALL ON TABLES TO postgres, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA preview GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA preview GRANT USAGE, SELECT ON SEQUENCES TO postgres, service_role, authenticated;
 ```
 
-## Environment variables
-See `.env.example` for the full list.
+Or run the included script: `scripts/setup-preview-schema.sql`
 
-Required for generation:
-- `DATABASE_URL`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
-- `OPENAI_API_KEY`
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET`
-- `R2_ENDPOINT`
+### Step 3: Run Migrations for Both Schemas
 
-Optional:
-- `INNGEST_EVENT_KEY`
-- `DEV_AUTH_BYPASS`
-- `OPENAI_TTS_VOICE` (default: `marin`)
-- `AUDIO_URL_TTL_SECONDS` (default: 21600)
-- `STRIPE_BUSINESS_PRICE_ID` (if using the Business plan)
+```bash
+# Production schema (public - default)
+DATABASE_URL="postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres" pnpm db:migrate:deploy
 
-## Deployment notes
-- Set all environment variables in your hosting provider.
-- Run `pnpm db:migrate` against your production database.
-- Ensure your Inngest production endpoint points to `/api/inngest`.
-- R2 bucket remains private; audio is served via presigned URLs.
+# Preview schema
+DATABASE_URL="postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres?options=-csearch_path%3Dpreview" pnpm db:migrate:deploy
+```
+
+### Step 4: Set Up Inngest (Free)
+
+1. Create an account at [app.inngest.com](https://app.inngest.com)
+2. Create one app called `listenlayer`
+3. Go to **Manage > Keys** and copy:
+   - Event Key
+   - Signing Key
+
+### Step 5: Configure Vercel Environment Variables
+
+In Vercel, go to **Project Settings > Environment Variables**.
+
+#### Shared Variables (All Environments)
+
+```
+# Supabase (same project for both)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# Shared services
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key
+R2_SECRET_ACCESS_KEY=your-secret-key
+R2_BUCKET=listenlayer
+R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+
+OPENAI_API_KEY=sk-...
+OPENAI_TTS_VOICE=marin
+OPENAI_TTS_VOICE_SECONDARY=cedar
+
+INNGEST_EVENT_KEY=your-event-key
+INNGEST_SIGNING_KEY=your-signing-key
+
+# Stripe keys (ALL environments need both test and live)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_SECRET_KEY_TEST=sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_live_...
+STRIPE_WEBHOOK_SECRET_TEST=whsec_test_...
+
+# Price IDs (both test and live)
+NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID=price_live_...
+NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST=price_test_...
+NEXT_PUBLIC_STRIPE_PRO_PRICE_ID=price_live_...
+NEXT_PUBLIC_STRIPE_PRO_PRICE_ID_TEST=price_test_...
+NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID=price_live_...
+NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID_TEST=price_test_...
+```
+
+#### Preview Environment Only
+
+Set with **Environment: Preview**:
+
+```
+NEXT_PUBLIC_APP_ENV=preview
+DATABASE_URL=postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres?options=-csearch_path%3Dpreview
+```
+
+#### Production Environment Only
+
+Set with **Environment: Production**:
+
+```
+NEXT_PUBLIC_APP_ENV=production
+DATABASE_URL=postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
+```
+
+### Step 6: Configure Custom Domains
+
+In Vercel **Project Settings > Domains**:
+- `listenlayer.luccilabs.xyz` → Production
+- `preview.listenlayer.luccilabs.xyz` → Preview
+
+### Step 7: Configure Stripe Webhooks
+
+Create two webhook endpoints in Stripe Dashboard:
+
+1. **Test mode** → `https://preview.listenlayer.luccilabs.xyz/api/billing/webhook`
+2. **Live mode** → `https://listenlayer.luccilabs.xyz/api/billing/webhook`
+
+Select events: `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_succeeded`
+
+---
+
+## How It Works
+
+### Database Schema Isolation
+- **Production** uses the default `public` schema
+- **Preview** uses the `preview` schema (via `?options=-csearch_path%3Dpreview` in DATABASE_URL)
+- Same Supabase project, completely isolated data
+
+### Supabase Auth (Shared)
+Users can sign up on either environment and log into both. This is intentional—you're testing the same auth flow.
+
+### Stripe Mode Selection
+The app automatically uses Stripe test or live keys based on `NEXT_PUBLIC_APP_ENV`:
+- `preview` → Uses `*_TEST` keys
+- `production` → Uses live keys
+
+### Inngest Branch Environments
+Inngest Cloud auto-detects Vercel deployments and routes events correctly.
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_APP_ENV` | Yes | `preview` or `production` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
+| `DATABASE_URL` | Yes | Postgres connection string (with schema for preview) |
+| `OPENAI_API_KEY` | Yes | OpenAI API key |
+| `R2_ACCOUNT_ID` | Yes | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | Yes | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | Yes | R2 secret key |
+| `R2_BUCKET` | Yes | R2 bucket name |
+| `INNGEST_EVENT_KEY` | Yes | Inngest event key |
+| `INNGEST_SIGNING_KEY` | Yes | Inngest signing key |
+| `STRIPE_SECRET_KEY` | For billing | Stripe live secret key |
+| `STRIPE_SECRET_KEY_TEST` | For billing | Stripe test secret key |
+| `STRIPE_WEBHOOK_SECRET[_TEST]` | For billing | Stripe webhook secrets |
+| `NEXT_PUBLIC_STRIPE_*` | For billing | Stripe publishable keys and price IDs |
+| `DEV_AUTH_BYPASS` | Local only | Set `true` to skip auth locally |

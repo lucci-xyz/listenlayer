@@ -1,16 +1,17 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { createSupabaseBrowserClient } from "@/lib/supabase";
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const planParam = searchParams.get("plan");
   
@@ -22,6 +23,8 @@ function LoginContent() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const supabase = createSupabaseBrowserClient();
+
   // Build callback URL with plan param if present
   const getCallbackUrl = () => {
     if (planParam) {
@@ -32,17 +35,27 @@ function LoginContent() {
 
   const handleLogin = async () => {
     setError(null);
+    setInfo(null);
     setLoading(true);
     try {
-      const result = await signIn("credentials", {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
-        callbackUrl: getCallbackUrl(),
-        redirect: true,
       });
-      if (result?.error) {
-        setError("Invalid email or password.");
+
+      if (signInError) {
+        if (signInError.message.includes("Email not confirmed")) {
+          setError("Please confirm your email before signing in.");
+        } else if (signInError.message.includes("Invalid login credentials")) {
+          setError("Invalid email or password.");
+        } else {
+          setError(signInError.message);
+        }
+        return;
       }
+
+      router.push(getCallbackUrl());
+      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -55,31 +68,39 @@ function LoginContent() {
     setInfo(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: registerEmail, password: registerPassword }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Unable to register" }));
-        setError(data.error || "Unable to register");
-        return;
-      }
-      
-      // Auto sign-in after registration and redirect to dashboard
-      // The upgrade param will trigger the checkout modal
-      await signIn("credentials", {
+      const { error: signUpError } = await supabase.auth.signUp({
         email: registerEmail,
         password: registerPassword,
-        callbackUrl: getCallbackUrl(),
-        redirect: true,
+        options: {
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(getCallbackUrl())}`,
+        },
       });
+
+      if (signUpError) {
+        if (signUpError.message.includes("already registered")) {
+          setError("This email is already registered. Try signing in.");
+        } else {
+          setError(signUpError.message);
+        }
+        return;
+      }
+
+      setInfo("Check your email to confirm your account.");
+      setRegisterEmail("");
+      setRegisterPassword("");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "auth_callback_error") {
+      setError("Unable to verify your email. Please try again.");
+    }
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10 sm:px-6 sm:py-12 relative">
@@ -200,23 +221,13 @@ function LoginContent() {
               </div>
             )}
             {info && (
-              <div className="mt-6 flex items-center gap-2 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
+              <div className="mt-6 flex items-center gap-2 rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-600 dark:text-green-400">
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 {info}
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Demo credentials */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-6 rounded-xl border border-border/60 bg-muted/40 p-4 text-center">
-            <div className="text-xs font-medium text-foreground/60">Demo credentials</div>
-            <div className="mt-1 font-mono text-xs text-foreground/80">
-              demo@listenlayer.local / demo1234
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

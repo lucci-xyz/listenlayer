@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma";
 import type { SubscriptionStatus } from "@prisma/client";
 import type Stripe from "stripe";
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Use test webhook secret in preview environment
+const isPreview = process.env.NEXT_PUBLIC_APP_ENV === "preview";
+const webhookSecret = isPreview
+  ? process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET
+  : process.env.STRIPE_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET_TEST;
 
 function mapStripeStatus(status: string): SubscriptionStatus {
   switch (status) {

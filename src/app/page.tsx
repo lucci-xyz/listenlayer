@@ -78,7 +78,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-6">
-                  <LandingAudioPlayer endpoint="/api/episodes/demo-audio" />
+                  <LandingAudioPlayer src="/demo/demo-audio.mp3" />
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">

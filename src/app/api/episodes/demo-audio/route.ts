@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getPresignedAudioUrl } from "@/lib/r2";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAllowedAppOrigin } from "@/lib/security";
 
-const DEMO_EMAIL = "demo2@listenlayer.local";
+const DEMO_AUDIO_URL = process.env.DEMO_AUDIO_URL || "/demo/demo-audio.mp3";
 const DEMO_TITLE = "Could Life Survive on Mars? Yeast Offers a Surprising Answer";
+const DEMO_SOURCE_URL =
+  "https://scitechdaily.com/could-life-survive-on-mars-yeast-offers-a-surprising-answer/";
 
 export async function GET(request: Request) {
   if (!isAllowedAppOrigin(request)) {
@@ -21,35 +21,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rate limit" }, { status: 429 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: DEMO_EMAIL },
-    select: { id: true },
-  });
-  if (!user) {
-    return NextResponse.json({ error: "Demo user not found" }, { status: 404 });
-  }
-
-  const episode = await prisma.episode.findFirst({
-    where: {
-      userId: user.id,
-      status: "PUBLISHED",
-      audioObjectKey: { not: null },
-      title: { contains: DEMO_TITLE, mode: "insensitive" },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (!episode?.audioObjectKey) {
-    return NextResponse.json({ error: "Demo episode not found" }, { status: 404 });
-  }
-
-  const ttl = Number(process.env.AUDIO_URL_TTL_SECONDS || 21600);
-  const url = await getPresignedAudioUrl(episode.audioObjectKey, ttl);
   return NextResponse.json({
-    url,
-    publicId: episode.publicId,
-    title: episode.title,
-    sourceUrl: episode.sourceUrl,
-    durationSec: episode.durationSec ?? null,
+    url: DEMO_AUDIO_URL,
+    publicId: "demo",
+    title: DEMO_TITLE,
+    sourceUrl: DEMO_SOURCE_URL,
+    durationSec: null,
   });
 }

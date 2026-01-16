@@ -15,6 +15,9 @@ export async function POST(req: Request) {
     const user = await requireUser();
     const stripeClient = stripe;
     const { priceId } = await req.json();
+    
+    // Get the origin from the request for return URL
+    const origin = new URL(req.url).origin;
 
     if (!priceId) {
       return NextResponse.json({ error: "Price ID required" }, { status: 400 });
@@ -97,7 +100,7 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      return_url: `${process.env.NEXTAUTH_URL}/app?checkout_success=true&session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${origin}/app?checkout_success=true&session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId: user.id,
       },
