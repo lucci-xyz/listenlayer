@@ -73,28 +73,28 @@ export default function Home() {
 
             <div id="demo" className="relative">
               <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft-lg">
-                <Badge className="mb-4" variant="secondary">Sample episode</Badge>
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    The role of music in society
+                    Science highlights
                   </div>
                   <div className="text-2xl font-display text-foreground">
-                    Sir Hugh Percy Allen (1934)
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    4 min 16 sec · Public domain recording
+                    Could Life Survive on Mars? Yeast Offers a Surprising Answer
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <LandingAudioPlayer
-                    src="https://commons.wikimedia.org/wiki/Special:FilePath/Sir-hugh-allen-speech.mp3"
-                    durationLabel="4:16"
-                  />
+                  <LandingAudioPlayer endpoint="/api/episodes/demo-audio" />
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Source: Wikimedia Commons (public domain).
+                  <a
+                    href="https://scitechdaily.com/could-life-survive-on-mars-yeast-offers-a-surprising-answer/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4 decoration-border/80 hover:text-foreground transition-colors"
+                  >
+                    Source: SciTechDaily.
+                  </a>
                 </p>
               </div>
             </div>

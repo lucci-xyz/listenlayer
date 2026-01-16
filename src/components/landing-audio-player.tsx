@@ -14,9 +14,11 @@ function formatTime(value: number) {
 
 export function LandingAudioPlayer({
   src,
+  endpoint,
   durationLabel,
 }: {
-  src: string;
+  src?: string;
+  endpoint?: string;
   durationLabel?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -24,6 +26,44 @@ export function LandingAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [audioSrc, setAudioSrc] = useState<string | null>(src ?? null);
+  const [loading, setLoading] = useState(Boolean(endpoint && !src));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (src) {
+      setAudioSrc(src);
+      setLoading(false);
+      setError(null);
+    }
+  }, [src]);
+
+  useEffect(() => {
+    if (!endpoint || src) return;
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error("Failed to load demo audio");
+        const data = (await res.json()) as { url?: string };
+        if (!data.url) throw new Error("Audio URL unavailable");
+        if (active) setAudioSrc(data.url);
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load demo audio");
+          setAudioSrc(null);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [endpoint, src]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -53,9 +93,15 @@ export function LandingAudioPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    if (!audioSrc) return;
+    setCurrentTime(0);
+    setDuration(0);
+  }, [audioSrc]);
+
   const togglePlay = () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioSrc) return;
     if (audio.paused) {
       void audio.play();
     } else {
@@ -66,7 +112,7 @@ export function LandingAudioPlayer({
   const handleSeek = (event: MouseEvent<HTMLDivElement>) => {
     const bar = barRef.current;
     const audio = audioRef.current;
-    if (!bar || !audio || !duration) return;
+    if (!bar || !audio || !duration || !audioSrc) return;
     const rect = bar.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
     audio.currentTime = ratio * duration;
@@ -75,17 +121,21 @@ export function LandingAudioPlayer({
 
   const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
 
-  const displayDuration = duration ? formatTime(duration) : durationLabel ?? "--:--";
+  const displayDuration = duration
+    ? formatTime(duration)
+    : durationLabel ?? (loading ? "--:--" : "--:--");
+  const isReady = Boolean(audioSrc) && !loading && !error;
 
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-4 shadow-sm">
-      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <audio ref={audioRef} src={audioSrc ?? undefined} preload="metadata" className="hidden" />
       <div className="flex items-center gap-4">
         <button
           type="button"
           aria-label={isPlaying ? "Pause sample audio" : "Play sample audio"}
           onClick={togglePlay}
-          className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          disabled={!isReady}
+          className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
         </button>
@@ -106,6 +156,11 @@ export function LandingAudioPlayer({
               style={{ width: `${progress}%` }}
             />
           </div>
+          {error ? (
+            <div className="text-[11px] text-destructive">{error}</div>
+          ) : loading ? (
+            <div className="text-[11px] text-muted-foreground">Loading audio…</div>
+          ) : null}
         </div>
       </div>
     </div>
