@@ -41,14 +41,20 @@ export default function NewFeedPage() {
       let faviconUrl: string | undefined;
 
       if (discoverRes.ok) {
-        const discovery = await discoverRes.json();
-        if (discovery.recommendedFeedUrl) {
+        const raw = await discoverRes.text();
+        let discovery: any = null;
+        try {
+          discovery = raw ? JSON.parse(raw) : null;
+        } catch {
+          discovery = null;
+        }
+        if (discovery?.recommendedFeedUrl) {
           feedUrl = discovery.recommendedFeedUrl;
-        } else if (discovery.feeds?.[0]?.url) {
+        } else if (discovery?.feeds?.[0]?.url) {
           feedUrl = discovery.feeds[0].url;
         }
-        name = discovery.displayName;
-        faviconUrl = discovery.faviconUrl;
+        name = discovery?.displayName;
+        faviconUrl = discovery?.faviconUrl;
       }
 
       // Create the feed subscription
@@ -58,10 +64,19 @@ export default function NewFeedPage() {
         body: JSON.stringify({ feedUrl, name, faviconUrl }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to add feed");
+        throw new Error(
+          data?.error ||
+            "Failed to add feed. The server returned an invalid response (check deployment logs)."
+        );
       }
 
       toast.success("Feed added!");

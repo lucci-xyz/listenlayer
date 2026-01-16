@@ -288,19 +288,34 @@ export function CreateAudioCard({
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as PreviewData & {
+      const raw = await res.text();
+      type PreviewResponse = PreviewData & {
         error?: string;
         code?: string;
         authHint?: "basic" | "bearer" | null;
       };
+      let data: PreviewResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as PreviewResponse) : null;
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
-        if (data.code === "FORBIDDEN") {
-          const message = data.error || requiresAuthNotice;
-          const hint = data.authHint ?? null;
+        if (data?.code === "FORBIDDEN") {
+          const message = data?.error || requiresAuthNotice;
+          const hint = data?.authHint ?? null;
           openAuthPrompt("preview", message, hint, normalizedUrl);
           return;
         }
-        throw new Error(data.error || "Unable to preview link");
+        throw new Error(
+          data?.error ||
+            "Preview failed. The server returned an invalid response (check deployment logs)."
+        );
+      }
+      if (!data) {
+        throw new Error(
+          "Preview failed. The server returned an invalid response (check deployment logs)."
+        );
       }
 
       setFormat("narration");
@@ -360,20 +375,35 @@ export function CreateAudioCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await res.json()) as PreviewData & {
+      const raw = await res.text();
+      type PreviewResponse = PreviewData & {
         error?: string;
         code?: string;
         authHint?: "basic" | "bearer" | null;
       };
+      let data: PreviewResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as PreviewResponse) : null;
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
-        if (data.code === "FORBIDDEN") {
-          const message = data.error || requiresAuthNotice;
-          const hint = data.authHint ?? null;
+        if (data?.code === "FORBIDDEN") {
+          const message = data?.error || requiresAuthNotice;
+          const hint = data?.authHint ?? null;
           openAuthPrompt("item-preview", message, hint, selectedItem.url);
           openedAuthPrompt = true;
           return;
         }
-        throw new Error(data.error || "Unable to preview episode");
+        throw new Error(
+          data?.error ||
+            "Preview failed. The server returned an invalid response (check deployment logs)."
+        );
+      }
+      if (!data) {
+        throw new Error(
+          "Preview failed. The server returned an invalid response (check deployment logs)."
+        );
       }
 
       if (data?.kind === "feed") {
