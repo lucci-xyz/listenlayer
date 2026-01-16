@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 
+// Use test mode when APP_ENV is "preview" or explicitly set
 const explicitTestMode =
+  process.env.NEXT_PUBLIC_APP_ENV === "preview" ||
   process.env.TEST_STRIPE_PAYMENTS === "true" ||
   process.env.NEXT_PUBLIC_TEST_STRIPE_PAYMENTS === "true";
 
@@ -32,14 +34,9 @@ const inferredMode =
 const isTestMode = inferredMode ? inferredMode === "test" : explicitTestMode;
 export const stripeMode = isTestMode ? "test" : "live";
 
-// Debug: Log env vars on server (only logs once at module load)
-if (typeof window === "undefined") {
-  console.log("Stripe config debug (server):", {
-    isTestMode,
-    TEST_STRIPE_PAYMENTS: process.env.TEST_STRIPE_PAYMENTS,
-    CREATOR_TEST: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID_TEST,
-    CREATOR_PROD: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID,
-  });
+// Debug: Log Stripe mode on server (only logs once at module load)
+if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
+  console.log("[stripe] mode:", stripeMode, "| APP_ENV:", process.env.NEXT_PUBLIC_APP_ENV);
 }
 
 // Get the appropriate secret key based on resolved mode

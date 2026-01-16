@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -13,6 +13,7 @@ export async function POST() {
 
     const stripeClient = stripe;
     const user = await requireUser();
+    const origin = new URL(req.url).origin;
 
     if (!user.stripeCustomerId) {
       return NextResponse.json(
@@ -23,7 +24,7 @@ export async function POST() {
 
     const session = await stripeClient.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${process.env.NEXTAUTH_URL}/app/settings`,
+      return_url: `${origin}/app/settings`,
     });
 
     return NextResponse.json({ url: session.url });
