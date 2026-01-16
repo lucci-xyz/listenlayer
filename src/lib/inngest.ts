@@ -189,6 +189,27 @@ function fallbackAlternateSegments(script: string): TwoHostSegment[] {
   }));
 }
 
+function buildTwoHostSegments(script: string): TwoHostSegment[] {
+  const parsed = parseTwoHostSegments(script).filter((seg) => seg.text.trim().length > 0);
+  const hasH1 = parsed.some((seg) => seg.speaker === "H1");
+  const hasH2 = parsed.some((seg) => seg.speaker === "H2");
+
+  if (!hasH1 || !hasH2) {
+    return fallbackAlternateSegments(script);
+  }
+
+  let lastSpeaker: "H1" | "H2" = hasH1 ? "H1" : "H2";
+  return parsed.map((seg) => {
+    if (seg.speaker === "H1" || seg.speaker === "H2") {
+      lastSpeaker = seg.speaker;
+      return seg;
+    }
+    const nextSpeaker = lastSpeaker === "H1" ? "H2" : "H1";
+    lastSpeaker = nextSpeaker;
+    return { speaker: nextSpeaker, text: seg.text };
+  });
+}
+
 function deriveTitleFromHtml(html: string, url: string, fallback: string) {
   try {
     const dom = new JSDOM(html, { url });
@@ -360,7 +381,7 @@ export const generateEpisode = inngest.createFunction(
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true },
+          select: { scriptText: true, format: true },
         });
         if (!episode?.scriptText) {
           throw new Error("Script is missing");
@@ -369,8 +390,12 @@ export const generateEpisode = inngest.createFunction(
         const secondaryVoice = process.env.OPENAI_TTS_VOICE_SECONDARY || "verse";
         const buffers: Buffer[] = [];
 
-        if (format === "two-host" && cachedTwoHostSegments?.length) {
-          for (const segment of cachedTwoHostSegments) {
+        const audioFormat = episode.format || format;
+        const twoHostSegments =
+          audioFormat === "two-host" ? buildTwoHostSegments(episode.scriptText) : null;
+
+        if (audioFormat === "two-host" && twoHostSegments?.length) {
+          for (const segment of twoHostSegments) {
             const voice = segment.speaker === "H2" ? secondaryVoice || primaryVoice : primaryVoice;
             const chunks = chunkText(segment.text, 3500);
             for (const chunk of chunks) {
