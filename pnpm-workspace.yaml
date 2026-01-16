@@ -1,6 +1,11 @@
 packages:
   - .
 
+onlyBuiltDependencies:
+  - "@prisma/engines"
+  - prisma
+  - protobufjs
+
 ignoredBuiltDependencies:
   - esbuild
   - sharp
