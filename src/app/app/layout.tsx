@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SidebarNav } from "@/app/app/sidebar-nav";
-import { GenerationStatus } from "@/components/generation-status";
 import { getPlanFromPriceId, PLANS } from "@/lib/stripe";
 import { AudioLines, Home, Radio, User } from "lucide-react";
 
@@ -62,7 +61,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 bg-background overflow-hidden flex flex-col relative">
-            <GenerationStatus />
             <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-10 scroll-smooth">
               <div className="mb-6 lg:hidden">
                 <div className="flex items-center gap-2 overflow-x-auto pb-1">
