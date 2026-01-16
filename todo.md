@@ -1,4 +1,3 @@
-- Put up real audio for landing page
 - Add real stripe payments
 - add legal notice
 - fix popular text on stripe payments

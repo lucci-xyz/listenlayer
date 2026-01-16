@@ -295,6 +295,10 @@ export default function Home() {
               <span>© {new Date().getFullYear()}</span>
             </div>
           </div>
+          <p className="mt-6 text-xs text-muted-foreground">
+            Legal notice: You are responsible for ensuring you have the rights and permissions
+            to use any content you submit, and for complying with applicable copyright laws.
+          </p>
         </div>
       </footer>
     </div>

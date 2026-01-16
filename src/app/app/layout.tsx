@@ -58,6 +58,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <GenerationStatus />
             <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-12 lg:py-10 scroll-smooth">
               {children}
+              <p className="mt-10 text-xs text-muted-foreground">
+                Legal notice: You are responsible for ensuring you have the rights and permissions
+                to use any content you submit, and for complying with applicable copyright laws.
+              </p>
             </main>
           </div>
         </div>
