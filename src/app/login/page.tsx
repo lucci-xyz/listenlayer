@@ -82,7 +82,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-12 relative">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10 sm:px-6 sm:py-12 relative">
       {/* Back button - Top Left */}
       <Link 
         href="/" 
@@ -108,11 +108,11 @@ export default function LoginPage() {
 
         {/* Card */}
         <Card className="border-border/60 shadow-soft-lg bg-card">
-          <CardContent className="p-8">
+          <CardContent className="p-6 sm:p-8">
             <Tabs defaultValue={planParam ? "register" : "login"} className="w-full">
-              <TabsList className="mb-8 flex w-full rounded-full bg-muted/60 border border-border/60 p-1">
-                <TabsTrigger value="login" className="flex-1 justify-center rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign in</TabsTrigger>
-                <TabsTrigger value="register" className="flex-1 justify-center rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Create account</TabsTrigger>
+              <TabsList className="mb-8 flex h-11 w-full rounded-full bg-muted/60 border border-border/60 p-1">
+                <TabsTrigger value="login" className="flex-1 h-9 justify-center rounded-full px-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign in</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1 h-9 justify-center rounded-full px-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">Create account</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login" className="space-y-5">

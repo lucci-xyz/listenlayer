@@ -89,8 +89,8 @@ export default async function DashboardPage() {
   return (
     <>
       <UpgradeModalTrigger currentPlan={currentPlan} />
-      <div className="space-y-10 max-w-6xl">
-        <div className="flex items-end justify-between border-b border-border/60 pb-6">
+      <div className="space-y-10 w-full max-w-6xl">
+        <div className="flex flex-col gap-3 border-b border-border/60 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <h1 className="font-display text-4xl text-foreground">Overview</h1>
         </div>
 
@@ -149,8 +149,8 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/60 bg-card p-8 shadow-soft">
-          <div className="flex items-center justify-between mb-6">
+        <section className="rounded-2xl border border-border/60 bg-card p-6 sm:p-8 shadow-soft">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
             <h3 className="font-medium text-foreground">Recent performance</h3>
             <span className="text-xs text-muted-foreground">Plays per episode</span>
           </div>
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Recent Episodes */}
           <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-muted/40">
+            <div className="flex flex-col gap-3 px-6 py-5 border-b border-border/40 bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Play className="h-5 w-5 fill-current" />
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
                     <Link
                       key={episode.id}
                       href={`/app/episodes/${episode.id}`}
-                      className="flex items-center gap-4 px-6 py-4 rounded-xl hover:bg-muted/40 transition-colors"
+                      className="flex items-center gap-4 px-4 py-4 sm:px-6 rounded-xl hover:bg-muted/40 transition-colors"
                     >
                       <div className="h-2 w-2 rounded-full bg-primary/60 shrink-0 opacity-60" />
                       <div className="flex-1 min-w-0">
@@ -217,7 +217,7 @@ export default async function DashboardPage() {
 
           {/* Feeds */}
           <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 bg-muted/40">
+            <div className="flex flex-col gap-3 px-6 py-5 border-b border-border/40 bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Radio className="h-5 w-5" />
@@ -243,7 +243,7 @@ export default async function DashboardPage() {
                     <Link
                       key={feed.id}
                       href={`/app/feeds/${feed.id}`}
-                      className="flex items-center gap-4 px-6 py-4 rounded-xl hover:bg-muted/40 transition-colors"
+                      className="flex items-center gap-4 px-4 py-4 sm:px-6 rounded-xl hover:bg-muted/40 transition-colors"
                     >
                       <FeedIcon
                         url={feed.faviconUrl}

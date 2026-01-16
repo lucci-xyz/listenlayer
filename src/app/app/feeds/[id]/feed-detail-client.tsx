@@ -325,7 +325,7 @@ export function FeedDetailClient({
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 w-full max-w-5xl mx-auto">
       {/* Header */}
       <div>
         <Link
@@ -395,7 +395,7 @@ export function FeedDetailClient({
       <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
         {/* Latest Articles */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-display text-foreground">Latest Articles</h2>
             {feed.lastFetchedAt && (
               <span className="text-xs font-medium text-muted-foreground bg-muted/60 border border-border/60 px-2.5 py-1 rounded-full">
@@ -416,7 +416,7 @@ export function FeedDetailClient({
             ) : (
               <div className="divide-y divide-border/40">
                 {items.map((item) => (
-                  <div key={item.id} className="group p-6 hover:bg-muted/40 transition-colors">
+                  <div key={item.id} className="group p-4 sm:p-6 hover:bg-muted/40 transition-colors">
                     <div className="flex flex-col gap-4">
                       <div className="space-y-2">
                         <a

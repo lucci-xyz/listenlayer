@@ -33,8 +33,8 @@ export default async function EpisodesPage() {
   }));
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex items-end justify-between border-b border-border/60 pb-6">
+    <div className="space-y-8 w-full max-w-6xl mx-auto">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="font-display text-4xl text-foreground">Episodes</h1>
       </div>
       <EpisodesClient episodes={items} baseUrl={baseUrl} />

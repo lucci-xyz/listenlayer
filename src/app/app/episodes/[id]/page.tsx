@@ -65,7 +65,9 @@ export default async function EpisodeDetailPage({
           ) : (
             <div className="text-xs text-muted-foreground">Standalone episode</div>
           )}
-          <h1 className="font-display text-3xl text-foreground">{episode.title}</h1>
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground">
+            {episode.title}
+          </h1>
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>{statusLabel}</span>
             <a

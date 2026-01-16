@@ -45,7 +45,7 @@ export default async function SettingsPage() {
             <User className="h-5 w-5 text-muted-foreground" />
             Account
           </h2>
-          <div className="bg-card rounded-2xl border border-border/60 p-8 shadow-soft">
+          <div className="bg-card rounded-2xl border border-border/60 p-6 sm:p-8 shadow-soft">
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-muted-foreground">Email Address</label>
@@ -87,7 +87,7 @@ export default async function SettingsPage() {
             <Zap className="h-5 w-5 text-muted-foreground" />
             Subscription
           </h2>
-          <div className="bg-card rounded-2xl border border-border/60 p-8 shadow-soft">
+          <div className="bg-card rounded-2xl border border-border/60 p-6 sm:p-8 shadow-soft">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-border/60">
               <div>
                 <div className="text-2xl font-display text-foreground">{plan.name}</div>

@@ -572,7 +572,7 @@ export function CreateAudioCard({
       </div>
 
       <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           {flowType || modalStep === "auth-required" ? (
             <div className="space-y-6">
               <DialogHeader>

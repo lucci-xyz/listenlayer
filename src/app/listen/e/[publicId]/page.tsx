@@ -27,7 +27,7 @@ export default async function ListenPage({
     : []) as { title: string; startApproxSec: number }[];
 
   return (
-    <div className="min-h-screen bg-background px-6 py-8">
+    <div className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-3xl space-y-6">
         {/* Back button */}
         <Link
@@ -38,7 +38,7 @@ export default async function ListenPage({
           Back
         </Link>
 
-        <div className="rounded-xl border border-border/60 bg-card p-6 shadow-soft">
+        <div className="rounded-xl border border-border/60 bg-card p-5 sm:p-6 shadow-soft">
           <div className="text-[12px] font-medium text-muted-foreground">ListenLayer</div>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">{episode.title}</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -48,7 +48,7 @@ export default async function ListenPage({
             <AudioPlayer publicId={episode.publicId} />
           </div>
         </div>
-        <div id="chapters" className="rounded-xl border border-border/60 bg-card p-6 shadow-soft">
+        <div id="chapters" className="rounded-xl border border-border/60 bg-card p-5 sm:p-6 shadow-soft">
           <h2 className="text-lg font-semibold">Chapters</h2>
           {chapters.length === 0 ? (
             <p className="mt-2 text-[13px] text-muted-foreground">No chapters available yet.</p>
@@ -65,7 +65,7 @@ export default async function ListenPage({
             </ul>
           )}
         </div>
-        <div id="transcript" className="rounded-xl border border-border/60 bg-card p-6 shadow-soft">
+        <div id="transcript" className="rounded-xl border border-border/60 bg-card p-5 sm:p-6 shadow-soft">
           <h2 className="text-lg font-semibold">Transcript</h2>
           <p className="mt-3 whitespace-pre-wrap text-[13px] text-muted-foreground">
             {episode.transcriptText}

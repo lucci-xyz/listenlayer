@@ -25,15 +25,15 @@ export default async function FeedsPage() {
   });
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex items-end justify-between border-b border-border/60 pb-6">
+    <div className="space-y-8 w-full max-w-6xl mx-auto">
+      <div className="flex flex-col gap-4 border-b border-border/60 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-4xl text-foreground">Feeds</h1>
           <p className="mt-2 text-muted-foreground text-lg">
             Manage your content subscriptions
           </p>
         </div>
-        <Button asChild className="rounded-full shadow-sm">
+        <Button asChild className="rounded-full shadow-sm w-full sm:w-auto">
           <Link href="/app/feeds/new">
             <Plus className="mr-2 h-4 w-4" />
             Add Feed

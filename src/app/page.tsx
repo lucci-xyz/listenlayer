@@ -17,18 +17,18 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
-        <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-6">
+        <div className="mx-auto flex h-16 sm:h-20 max-w-[1200px] items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
               <Link href="#pricing">Pricing</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button size="sm" className="rounded-full px-6" asChild>
+            <Button size="sm" className="rounded-full px-5 sm:px-6" asChild>
               <Link href="/login">Get started</Link>
             </Button>
           </div>
@@ -36,15 +36,15 @@ export default function Home() {
       </nav>
 
       {/* Hero — two-column layout */}
-      <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-32">
-        <div className="mx-auto max-w-[1200px] px-6">
+      <section className="relative overflow-hidden pt-10 pb-16 sm:pt-12 sm:pb-20 md:pt-20 md:pb-32">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 items-center">
             {/* Left: copy */}
             <div className="max-w-xl">
               <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
                 Audio for blogs & newsletters
               </div>
-              <h1 className="font-display text-5xl leading-[1.1] tracking-tight md:text-6xl lg:text-[4rem] text-foreground mb-8">
+              <h1 className="font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-[4rem] text-foreground mb-8">
                 Turn any article into an audio episode
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-md">
@@ -54,7 +54,7 @@ export default function Home() {
               </p>
               
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                <Button size="lg" className="rounded-full px-8 h-12 text-base shadow-sm" asChild>
+                <Button size="lg" className="rounded-full px-8 h-11 sm:h-12 text-base shadow-sm" asChild>
                   <Link href="/login">
                     Start free <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
@@ -67,7 +67,7 @@ export default function Home() {
             </div>
 
             <div id="demo" className="relative">
-              <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft-lg">
+              <div className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6 shadow-soft-lg">
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     Science highlights
@@ -99,8 +99,8 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 md:py-32 bg-card rounded-2xl mx-4 md:mx-6 shadow-soft border border-border/60 mb-6">
-        <div className="mx-auto max-w-[1200px] px-6">
+      <section className="py-20 sm:py-24 md:py-32 bg-card rounded-2xl mx-3 sm:mx-4 md:mx-6 shadow-soft border border-border/60 mb-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="max-w-2xl mx-auto text-center mb-20">
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Three steps to audio content
@@ -146,8 +146,8 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-24 md:py-32">
-        <div className="mx-auto max-w-[1200px] px-6">
+      <section className="py-20 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] items-start">
             <div>
               <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
@@ -199,8 +199,8 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 md:py-32 bg-card mx-4 md:mx-6 rounded-2xl shadow-soft border border-border/60 mb-6">
-        <div className="mx-auto max-w-[1200px] px-6">
+      <section id="pricing" className="py-20 sm:py-24 md:py-32 bg-card mx-3 sm:mx-4 md:mx-6 rounded-2xl shadow-soft border border-border/60 mb-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Start free, scale as you grow
@@ -218,7 +218,7 @@ export default function Home() {
               return (
                 <div
                   key={key}
-                  className={`relative flex flex-col p-8 rounded-2xl border transition-all duration-300 ${
+                  className={`relative flex flex-col p-6 sm:p-8 rounded-2xl border transition-all duration-300 ${
                     isPopular 
                       ? "bg-primary/5 border-primary/30 shadow-soft-md" 
                       : "bg-card border-border/60 hover:border-border"
@@ -275,12 +275,12 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-12 border-t border-border/60">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
             </div>
-            <div className="flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-sm font-medium text-muted-foreground">
               <Link href="#pricing" className="hover:text-foreground transition-colors">
                 Pricing
               </Link>
