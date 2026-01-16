@@ -1,5 +1,5 @@
 import { extractReadableText } from "@/lib/content";
-import { JSDOM } from "jsdom";
+import { extractMetaContent } from "@/lib/html";
 
 const MAX_BYTES = 800_000;
 
@@ -19,13 +19,11 @@ export async function fetchHtmlSnippet(url: string) {
 export async function validateReadableUrl(url: string, minWords = 300) {
   const { html, finalUrl } = await fetchHtmlSnippet(url);
   const text = extractReadableText(html, finalUrl);
-  const dom = new JSDOM(html, { url: finalUrl });
-  const doc = dom.window.document;
   if (!text) {
     throw new Error("No readable article text found. Use a specific article URL.");
   }
   const words = text.split(/\s+/).filter(Boolean);
-  const looksLikeArticle = looksLikeArticleUrl(finalUrl) || hasArticleMetadata(doc, html);
+  const looksLikeArticle = looksLikeArticleUrl(finalUrl) || hasArticleMetadata(html);
   const relaxedThreshold = 120;
   if (words.length < minWords && (!looksLikeArticle || words.length < relaxedThreshold)) {
     throw new Error("Not enough article text to generate an episode. Use a specific article URL.");
@@ -49,20 +47,17 @@ function looksLikeArticleUrl(value: string) {
   }
 }
 
-function getMetaContent(doc: Document, selector: string) {
-  return doc.querySelector(selector)?.getAttribute("content") || "";
-}
-
-function hasArticleMetadata(doc: Document, html: string) {
-  const ogType = getMetaContent(doc, 'meta[property="og:type"]').toLowerCase();
+function hasArticleMetadata(html: string) {
+  const ogType = (extractMetaContent(html, "og:type") || "").toLowerCase();
   if (ogType.includes("article") || ogType.includes("news") || ogType.includes("story")) return true;
-  if (doc.querySelector('meta[property="article:section"]')) return true;
-  const parsely = doc.querySelector('meta[name="parsely-type"]')?.getAttribute("content") || "";
+  if (extractMetaContent(html, "article:section")) return true;
+  const parsely = extractMetaContent(html, "parsely-type") || "";
   if (/post|story|article|live/i.test(parsely)) return true;
 
-  const scripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
-  for (const script of scripts) {
-    const content = script.textContent || "";
+  const scripts = html.match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
+  for (const scriptTag of scripts) {
+    const contentMatch = scriptTag.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i);
+    const content = contentMatch?.[1] || "";
     if (!content.trim()) continue;
     try {
       const json = JSON.parse(content);
