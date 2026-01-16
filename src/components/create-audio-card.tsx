@@ -2,11 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Mic, Users, Zap } from "lucide-react";
+import { Loader2, Sparkles, Mic, Users, Zap, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/time";
+import { getDomainFromUrl } from "@/lib/url";
 
 const formats = [
   {
@@ -30,8 +41,10 @@ const formats = [
 ] as const;
 
 type Format = (typeof formats)[number]["value"];
-type Step = "input" | "preview" | "format";
-type PreviewData = {
+type FlowType = "article" | "feed";
+type ModalStep = "feed-select" | "feed-preview" | "article-preview" | "format" | "confirm";
+type ArticlePreview = {
+  kind: "article";
   title: string;
   excerpt: string;
   wordCount: number;
@@ -39,26 +52,121 @@ type PreviewData = {
   siteName: string;
   url: string;
 };
+type FeedItem = {
+  id: string;
+  title: string;
+  url: string;
+  pubDate: string | null;
+  description: string | null;
+  contentText?: string | null;
+};
+type FeedPreview = {
+  kind: "feed";
+  feed: {
+    title: string;
+    feedUrl: string;
+    siteUrl: string | null;
+    itemCount: number;
+  };
+  items: FeedItem[];
+};
+type PreviewData = ArticlePreview | FeedPreview;
 
-const stepLabels: Record<Step, string> = {
-  input: "Paste link",
-  preview: "Review article",
+const modalStepLabels: Record<ModalStep, string> = {
+  "feed-select": "Choose episode",
+  "feed-preview": "Preview episode",
+  "article-preview": "Preview article",
   format: "Choose format",
+  confirm: "Review & generate",
+};
+
+const modalStepMeta: Record<ModalStep, { title: string; description: string }> = {
+  "feed-select": {
+    title: "Choose an episode",
+    description: "Pick an episode from the feed to generate audio.",
+  },
+  "feed-preview": {
+    title: "Preview episode",
+    description: "Review the episode summary before choosing a format.",
+  },
+  "article-preview": {
+    title: "Preview article",
+    description: "Review the article summary before choosing a format.",
+  },
+  format: {
+    title: "Choose a format",
+    description: "Select how the episode should sound.",
+  },
+  confirm: {
+    title: "Review and generate",
+    description: "Confirm the details before generating audio.",
+  },
 };
 
 export function CreateAudioCard() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("input");
   const [url, setUrl] = useState("");
   const [format, setFormat] = useState<Format>("narration");
-  const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [flowType, setFlowType] = useState<FlowType | null>(null);
+  const [modalStep, setModalStep] = useState<ModalStep>("article-preview");
+  const [articlePreview, setArticlePreview] = useState<ArticlePreview | null>(null);
+  const [feedPreview, setFeedPreview] = useState<FeedPreview | null>(null);
+  const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [selectedItemPreview, setSelectedItemPreview] = useState<ArticlePreview | null>(null);
+  const [selectedItemError, setSelectedItemError] = useState<string | null>(null);
+  const [selectedItemLoading, setSelectedItemLoading] = useState(false);
+  const [addFeed, setAddFeed] = useState(false);
 
-  const stepIndex = useMemo(() => {
-    return (["input", "preview", "format"] as Step[]).indexOf(step) + 1;
-  }, [step]);
+  const modalSteps = useMemo(() => {
+    if (flowType === "feed") {
+      return ["feed-select", "feed-preview", "format", "confirm"] as ModalStep[];
+    }
+    return ["article-preview", "format", "confirm"] as ModalStep[];
+  }, [flowType]);
+
+  const modalStepIndex = useMemo(() => {
+    if (!flowType) return 1;
+    const index = modalSteps.indexOf(modalStep);
+    return index === -1 ? 1 : index + 1;
+  }, [flowType, modalSteps, modalStep]);
+
+  const modalStepTotal = flowType ? modalSteps.length : 1;
+
+  const selectedFormat = useMemo(
+    () => formats.find((option) => option.value === format),
+    [format]
+  );
+
+  const readyToGenerate =
+    flowType === "feed" ? Boolean(selectedItem) : Boolean(articlePreview);
+
+  const resetFlow = () => {
+    setModalOpen(false);
+    setFlowType(null);
+    setModalStep("article-preview");
+    setArticlePreview(null);
+    setFeedPreview(null);
+    setSelectedItem(null);
+    setSelectedItemPreview(null);
+    setSelectedItemError(null);
+    setSelectedItemLoading(false);
+    setAddFeed(false);
+    setFormat("narration");
+    setPreviewError(null);
+    setGenerating(false);
+  };
+
+  const handleModalOpenChange = (open: boolean) => {
+    if (!open) {
+      resetFlow();
+      return;
+    }
+    setModalOpen(true);
+  };
 
   const handlePreview = async () => {
     if (!url.trim()) return;
@@ -77,29 +185,116 @@ export function CreateAudioCard() {
         body: JSON.stringify({ url: normalizedUrl }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as PreviewData & { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || "Unable to preview article");
+        throw new Error(data.error || "Unable to preview link");
       }
 
-      setPreview(data);
-      setStep("preview");
+      const kind = data?.kind === "feed" ? "feed" : "article";
+      setFormat("narration");
+      setAddFeed(false);
+      setSelectedItem(null);
+      setSelectedItemPreview(null);
+      setSelectedItemError(null);
+      setSelectedItemLoading(false);
+
+      if (kind === "feed") {
+        setFlowType("feed");
+        setFeedPreview({ ...data, kind: "feed" });
+        setArticlePreview(null);
+        setModalStep("feed-select");
+      } else {
+        setFlowType("article");
+        setArticlePreview({ ...data, kind: "article" });
+        setFeedPreview(null);
+        setModalStep("article-preview");
+      }
+
+      setModalOpen(true);
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : "Unable to preview article");
+      setPreviewError(err instanceof Error ? err.message : "Unable to preview link");
     } finally {
       setPreviewLoading(false);
     }
   };
 
+  const previewUnavailableNotice = "Full preview unavailable. Using feed summary.";
+
+  const handleSelectItem = (item: FeedItem) => {
+    setSelectedItem(item);
+    setSelectedItemPreview(null);
+    setSelectedItemError(null);
+  };
+
+  const loadSelectedItemPreview = async () => {
+    if (!selectedItem) return;
+    setSelectedItemError(null);
+    setSelectedItemLoading(true);
+    setSelectedItemPreview(null);
+
+    try {
+      const res = await fetch("/api/episodes/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: selectedItem.url }),
+      });
+      const data = (await res.json()) as PreviewData & { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || "Unable to preview episode");
+      }
+
+      if (data?.kind === "feed") {
+        setSelectedItemError(previewUnavailableNotice);
+      } else {
+        setSelectedItemPreview({ ...data, kind: "article" });
+      }
+    } catch (err) {
+      setSelectedItemError(previewUnavailableNotice);
+    } finally {
+      setSelectedItemLoading(false);
+      setModalStep("feed-preview");
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!preview?.url) return;
+    const sourceUrl = flowType === "feed" ? selectedItem?.url : articlePreview?.url;
+    if (!sourceUrl) return;
     setGenerating(true);
 
     try {
+      let feedId: string | undefined;
+      if (flowType === "feed" && addFeed && feedPreview) {
+        const feedRes = await fetch("/api/feeds", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            feedUrl: feedPreview.feed.feedUrl,
+            name: feedPreview.feed.title,
+            siteUrl: feedPreview.feed.siteUrl ?? undefined,
+          }),
+        });
+        const feedData = await feedRes.json();
+        if (!feedRes.ok) {
+          throw new Error(feedData.error || "Failed to add feed");
+        }
+        feedId = feedData.feed.id;
+      }
+
+      const title =
+        flowType === "feed"
+          ? selectedItemPreview?.title ?? selectedItem?.title
+          : articlePreview?.title;
+
       const res = await fetch("/api/episodes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: preview.url, format, title: preview.title }),
+        body: JSON.stringify({
+          url: sourceUrl,
+          format,
+          title,
+          feedId,
+          sourceText: flowType === "feed" ? selectedItem?.contentText ?? undefined : undefined,
+        }),
       });
 
       const data = await res.json();
@@ -109,9 +304,8 @@ export function CreateAudioCard() {
 
       toast.success("Started generating");
       setUrl("");
-      setPreview(null);
-      setStep("input");
-      
+      resetFlow();
+
       if (data.episodeId) {
         router.push(`/app/episodes/${data.episodeId}`);
       } else {
@@ -124,22 +318,52 @@ export function CreateAudioCard() {
     }
   };
 
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        <span>Step {stepIndex} of 3</span>
-        <span className="text-foreground/70">{stepLabels[step]}</span>
+  const renderArticlePreview = (previewData: ArticlePreview, sourceLabel?: string) => (
+    <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        Preview
       </div>
+      <div className="mt-2 text-lg font-semibold text-foreground">{previewData.title}</div>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>{sourceLabel ?? previewData.siteName}</span>
+        <span>•</span>
+        <span>{previewData.estimatedMinutes} min listen</span>
+        <span>•</span>
+        <span>{previewData.wordCount.toLocaleString()} words</span>
+      </div>
+      {previewData.excerpt ? (
+        <p className="mt-3 text-sm text-muted-foreground">{previewData.excerpt}</p>
+      ) : null}
+    </div>
+  );
 
-      {step === "input" && (
+  const summaryTitle =
+    flowType === "feed" ? selectedItem?.title : articlePreview?.title;
+  const summarySource =
+    flowType === "feed"
+      ? feedPreview?.feed.title ??
+        (selectedItem ? getDomainFromUrl(selectedItem.url) : undefined)
+      : articlePreview?.siteName;
+  const summaryPreview = flowType === "feed" ? selectedItemPreview : articlePreview;
+  const formatBackStep: ModalStep =
+    flowType === "feed" ? "feed-preview" : "article-preview";
+
+  return (
+    <>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <span>Create episode</span>
+          <span className="text-foreground/70">Paste link</span>
+        </div>
+
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground" htmlFor="article-url">
-              Article URL
+              Article or RSS feed URL
             </label>
             <Input
               id="article-url"
-              placeholder="https://example.com/article"
+              placeholder="https://example.com/article or https://example.com/feed.xml"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(event) => {
@@ -151,7 +375,7 @@ export function CreateAudioCard() {
               className="h-11"
             />
             <p className="text-xs text-muted-foreground">
-              We will extract the article title and content for review.
+              We will detect articles or RSS feeds and guide you through the next step.
             </p>
           </div>
 
@@ -174,83 +398,289 @@ export function CreateAudioCard() {
             </Button>
           </div>
         </div>
-      )}
+      </div>
 
-      {step === "preview" && preview && (
-        <div className="mt-4 space-y-4">
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Found
-            </div>
-            <div className="mt-2 text-lg font-semibold text-foreground">{preview.title}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{preview.siteName}</span>
-              <span>•</span>
-              <span>{preview.estimatedMinutes} min listen</span>
-              <span>•</span>
-              <span>{preview.wordCount.toLocaleString()} words</span>
-            </div>
-            {preview.excerpt ? (
-              <p className="mt-3 text-sm text-muted-foreground">{preview.excerpt}</p>
-            ) : null}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("input")}>
-              Edit link
-            </Button>
-            <Button onClick={() => setStep("format")}>Choose format</Button>
-          </div>
-        </div>
-      )}
-
-      {step === "format" && preview && (
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            {formats.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFormat(option.value)}
-                className={cn(
-                  "flex flex-col gap-3 rounded-xl border border-border/60 bg-background px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
-                  format === option.value && "border-primary/30 bg-primary/5 shadow-soft"
-                )}
-              >
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-lg border border-border/60",
-                  format === option.value ? "bg-primary text-primary-foreground border-primary/30" : "bg-muted/40 text-muted-foreground"
-                )}>
-                  <option.icon className="h-5 w-5" />
+      <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          {flowType ? (
+            <div className="space-y-6">
+              <DialogHeader>
+                <div className="flex items-center justify-between pr-10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <span>
+                    Step {modalStepIndex} of {modalStepTotal}
+                  </span>
+                  <span className="text-foreground/70">{modalStepLabels[modalStep]}</span>
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{option.label}</div>
-                  <div className="text-xs text-muted-foreground">{option.description}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+                <DialogTitle className="mt-3 font-display text-2xl text-foreground">
+                  {modalStepMeta[modalStep].title}
+                </DialogTitle>
+                <DialogDescription className="text-base">
+                  {modalStepMeta[modalStep].description}
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("preview")}>
-              Back
-            </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
-              {generating ? (
+              {modalStep === "feed-select" && feedPreview ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Rss className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          Feed detected
+                        </div>
+                        <div className="mt-2 text-lg font-semibold text-foreground">
+                          {feedPreview.feed.title}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>
+                            {getDomainFromUrl(feedPreview.feed.siteUrl ?? feedPreview.feed.feedUrl)}
+                          </span>
+                          <span>•</span>
+                          <span>{feedPreview.feed.itemCount} episodes</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Choose an episode
+                    </div>
+                    <div className="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {feedPreview.items.map((item) => {
+                        const isSelected = selectedItem?.id === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleSelectItem(item)}
+                            className={cn(
+                              "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                              isSelected
+                                ? "border-primary/30 bg-primary/5 shadow-soft"
+                                : "border-border/60 hover:border-primary/30 hover:bg-muted/40"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-foreground line-clamp-2">
+                                  {item.title}
+                                </div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  {item.pubDate ? (
+                                    <span>{formatRelativeTime(item.pubDate)}</span>
+                                  ) : null}
+                                  {item.description ? <span>•</span> : null}
+                                  {item.description ? (
+                                    <span className="line-clamp-1">{item.description}</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {isSelected ? (
+                                <span className="text-xs font-semibold text-primary">Selected</span>
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={resetFlow}>
+                      Edit link
+                    </Button>
+                    <Button
+                      onClick={loadSelectedItemPreview}
+                      disabled={!selectedItem || selectedItemLoading}
+                    >
+                      {selectedItemLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading preview
+                        </>
+                      ) : (
+                        "Preview episode"
+                      )}
+                    </Button>
+                  </DialogFooter>
                 </>
-              ) : (
+              ) : null}
+
+              {modalStep === "feed-preview" && selectedItem ? (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate audio
+                  {selectedItemError ? (
+                    <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                      {selectedItemError}
+                    </div>
+                  ) : null}
+
+                  {selectedItemPreview
+                    ? renderArticlePreview(
+                        selectedItemPreview,
+                        feedPreview?.feed.title ?? getDomainFromUrl(selectedItem.url)
+                      )
+                    : (
+                      <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          Preview
+                        </div>
+                        <div className="mt-2 text-lg font-semibold text-foreground">
+                          {selectedItem.title}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>
+                            {feedPreview?.feed.title ?? getDomainFromUrl(selectedItem.url)}
+                          </span>
+                          {selectedItem.pubDate ? <span>•</span> : null}
+                          {selectedItem.pubDate ? (
+                            <span>{formatRelativeTime(selectedItem.pubDate)}</span>
+                          ) : null}
+                        </div>
+                        {selectedItem.description ? (
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            {selectedItem.description}
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={() => setModalStep("feed-select")}>
+                      Back
+                    </Button>
+                    <Button onClick={() => setModalStep("format")}>Choose format</Button>
+                  </DialogFooter>
                 </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+              ) : null}
+
+              {modalStep === "article-preview" && articlePreview ? (
+                <>
+                  {renderArticlePreview(articlePreview)}
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={resetFlow}>
+                      Edit link
+                    </Button>
+                    <Button onClick={() => setModalStep("format")}>Choose format</Button>
+                  </DialogFooter>
+                </>
+              ) : null}
+
+              {modalStep === "format" ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {formats.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormat(option.value)}
+                        className={cn(
+                          "flex flex-col gap-3 rounded-xl border border-border/60 bg-background px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
+                          format === option.value && "border-primary/30 bg-primary/5 shadow-soft"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-lg border border-border/60",
+                            format === option.value
+                              ? "bg-primary text-primary-foreground border-primary/30"
+                              : "bg-muted/40 text-muted-foreground"
+                          )}
+                        >
+                          <option.icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{option.label}</div>
+                          <div className="text-xs text-muted-foreground">{option.description}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={() => setModalStep(formatBackStep)}>
+                      Back
+                    </Button>
+                    <Button onClick={() => setModalStep("confirm")}>Review</Button>
+                  </DialogFooter>
+                </>
+              ) : null}
+
+              {modalStep === "confirm" ? (
+                <>
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Summary
+                    </div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {summaryTitle ?? "Untitled"}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      {summarySource ? <span>{summarySource}</span> : null}
+                      {summaryPreview?.estimatedMinutes ? <span>•</span> : null}
+                      {summaryPreview?.estimatedMinutes ? (
+                        <span>{summaryPreview.estimatedMinutes} min listen</span>
+                      ) : null}
+                      {summaryPreview?.wordCount ? <span>•</span> : null}
+                      {summaryPreview?.wordCount ? (
+                        <span>{summaryPreview.wordCount.toLocaleString()} words</span>
+                      ) : null}
+                    </div>
+                    {summaryPreview?.excerpt ? (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {summaryPreview.excerpt}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background p-4">
+                    <div className="text-sm font-medium text-foreground">Format</div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedFormat?.label}
+                      {selectedFormat?.description ? ` — ${selectedFormat.description}` : ""}
+                    </div>
+                  </div>
+
+                  {flowType === "feed" && feedPreview ? (
+                    <div className="rounded-xl border border-border/60 bg-background p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            Add this feed to your dashboard
+                          </div>
+                          <div className="text-xs text-muted-foreground">{feedPreview.feed.title}</div>
+                        </div>
+                        <Switch checked={addFeed} onCheckedChange={setAddFeed} />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <DialogFooter className="sm:justify-between">
+                    <Button variant="outline" onClick={() => setModalStep("format")}>
+                      Back
+                    </Button>
+                    <Button onClick={handleGenerate} disabled={!readyToGenerate || generating}>
+                      {generating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generate audio
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

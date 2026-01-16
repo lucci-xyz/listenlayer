@@ -12,9 +12,29 @@ import { maybeNormalizeMp3 } from "@/lib/audio";
 export const inngest = new Inngest({ id: "listenlayer" });
 
 const parser = new Parser();
+const defaultHeaders = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Cache-Control": "no-cache",
+  Pragma: "no-cache",
+};
+
+async function fetchWithHeaders(
+  url: string,
+  headers: Record<string, string> = {}
+) {
+  return fetch(url, {
+    redirect: "follow",
+    headers: { ...defaultHeaders, ...headers },
+  });
+}
 
 async function fetchLatestFromRss(url: string) {
-  const response = await fetch(url);
+  const response = await fetchWithHeaders(url, {
+    Accept: "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch RSS: ${response.status}`);
   }
@@ -32,7 +52,10 @@ async function fetchLatestFromRss(url: string) {
 }
 
 async function fetchHtml(url: string) {
-  const response = await fetch(url, { redirect: "follow" });
+  let response = await fetchWithHeaders(url);
+  if (!response.ok && (response.status === 403 || response.status === 429)) {
+    response = await fetchWithHeaders(url, { "User-Agent": "ListenLayer/1.0" });
+  }
   if (!response.ok) {
     throw new Error(`Failed to fetch article: ${response.status}`);
   }
@@ -188,7 +211,7 @@ export const generateEpisode = inngest.createFunction(
   { id: "episode-generate" },
   { event: "episode/generate.requested" },
   async ({ event, step }) => {
-    const { userId, episodeId, feedId, canonicalUrl, episodeTitle, format } =
+    const { userId, episodeId, feedId, canonicalUrl, episodeTitle, format, sourceText } =
       event.data as {
         userId: string;
         episodeId: string;
@@ -196,6 +219,7 @@ export const generateEpisode = inngest.createFunction(
         canonicalUrl: string;
         episodeTitle?: string;
         format?: string;
+        sourceText?: string;
       };
 
     let cachedTwoHostSegments: TwoHostSegment[] | null = null;
@@ -236,6 +260,7 @@ export const generateEpisode = inngest.createFunction(
             latestItemTitle: latest.title,
             latestItemUrl: latest.link,
             feedTitle: latest.feedTitle,
+            sourceText: sourceText || null,
           };
         }
         // Otherwise use the provided URL
@@ -245,6 +270,7 @@ export const generateEpisode = inngest.createFunction(
           latestItemTitle: episodeTitle || null,
           latestItemUrl: canonicalUrl,
           feedTitle: null,
+          sourceText: sourceText || null,
         };
       });
 
@@ -276,13 +302,20 @@ export const generateEpisode = inngest.createFunction(
       }
 
       await step.run("generate-script", async () => {
-        const html = await fetchHtml(resolved.canonicalUrl);
-        const readableText = extractReadableText(html, resolved.canonicalUrl);
+        let html: string | null = null;
+        let readableText = resolved.sourceText?.trim() || "";
+        if (!readableText) {
+          html = await fetchHtml(resolved.canonicalUrl);
+          readableText = extractReadableText(html, resolved.canonicalUrl);
+        }
         const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
-        if (!readableText || words.length < 300) {
+        const minWords = resolved.sourceText ? 120 : 300;
+        if (!readableText || words.length < minWords) {
           throw new Error("Not enough article text to generate an episode");
         }
-        const betterTitle = deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle);
+        const betterTitle = html
+          ? deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle)
+          : resolved.episodeTitle;
         const { script, chapters } = await generateScriptAndChapters(
           betterTitle,
           resolved.canonicalUrl,

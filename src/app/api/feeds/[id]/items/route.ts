@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import Parser from "rss-parser";
 
+function stripHtml(input: string) {
+  return input.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // Fetch latest items from a feed subscription
 export async function GET(
   request: Request,
@@ -37,22 +41,69 @@ export async function GET(
     // Get existing episodes for this feed to mark which items are already generated
     const existingEpisodes = await prisma.episode.findMany({
       where: { feedId: feed.id },
-      select: { sourceUrl: true, status: true },
+      select: { sourceUrl: true, status: true, title: true },
     });
 
-    const existingUrls = new Map(
-      existingEpisodes.map((ep) => [ep.sourceUrl, ep.status])
-    );
+    const statusPriority: Record<string, number> = {
+      PUBLISHED: 4,
+      RUNNING: 3,
+      QUEUED: 2,
+      FAILED: 1,
+    };
+    const statusByKey = new Map<string, string>();
+    const statusByUrl = new Map<string, { status: string; count: number }>();
+
+    for (const episode of existingEpisodes) {
+      const key = `${episode.sourceUrl}::${episode.title}`;
+      const currentKeyStatus = statusByKey.get(key);
+      if (
+        !currentKeyStatus ||
+        (statusPriority[episode.status] || 0) > (statusPriority[currentKeyStatus] || 0)
+      ) {
+        statusByKey.set(key, episode.status);
+      }
+
+      const existing = statusByUrl.get(episode.sourceUrl);
+      if (existing) {
+        const bestStatus =
+          (statusPriority[episode.status] || 0) > (statusPriority[existing.status] || 0)
+            ? episode.status
+            : existing.status;
+        statusByUrl.set(episode.sourceUrl, {
+          status: bestStatus,
+          count: existing.count + 1,
+        });
+      } else {
+        statusByUrl.set(episode.sourceUrl, { status: episode.status, count: 1 });
+      }
+    }
 
     // Map feed items with generation status
-    const items = (feedData.items || []).slice(0, 20).map((item) => {
+    const items = (feedData.items || []).slice(0, 20).map((item, index) => {
       const url = item.link || "";
+      const pubDate = item.pubDate || item.isoDate || null;
+      const baseKey =
+        (typeof item.guid === "string" && item.guid) ||
+        (typeof item.link === "string" && item.link) ||
+        "item";
+      const id = `${baseKey}-${pubDate ?? "no-date"}-${index}`;
+      const title = item.title || "Untitled";
+      const rawContent = item.content || item.contentSnippet || "";
+      const contentText = rawContent ? stripHtml(rawContent).slice(0, 8000) : null;
+      const statusKey = `${url}::${title}`;
+      const statusByTitle = statusByKey.get(statusKey) || null;
+      const urlStatus = statusByUrl.get(url);
+      const status =
+        statusByTitle || (urlStatus && urlStatus.count === 1 ? urlStatus.status : null);
+
       return {
-        title: item.title || "Untitled",
+        id,
+        title,
         url,
-        pubDate: item.pubDate || item.isoDate || null,
+        pubDate,
         description: item.contentSnippet?.slice(0, 200) || item.content?.slice(0, 200) || null,
-        status: existingUrls.get(url) || null, // null = not generated, or QUEUED/RUNNING/PUBLISHED/FAILED
+        contentText,
+        status, // null = not generated, or QUEUED/RUNNING/PUBLISHED/FAILED
       };
     });
 

@@ -12,6 +12,7 @@ const schema = z.object({
   feedId: z.string().optional(), // Optional - for episodes from a feed subscription
   format: z.enum(["narration", "two-host", "tldr"]).optional(),
   title: z.string().optional(),
+  sourceText: z.string().min(1).optional(),
 });
 
 // Schema for generating from a feed (multiple items)
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 // Generate episode from a single URL (standalone or from feed)
 async function handleUrlGeneration(
   user: { id: string },
-  data: { url: string; feedId?: string; format?: string; title?: string }
+  data: { url: string; feedId?: string; format?: string; title?: string; sourceText?: string }
 ) {
   // Verify feed ownership if feedId provided
   if (data.feedId) {
@@ -115,6 +116,7 @@ async function handleUrlGeneration(
         canonicalUrl: data.url,
         episodeTitle: data.title,
         format: data.format,
+        sourceText: data.sourceText,
       },
     });
 

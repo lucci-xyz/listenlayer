@@ -75,7 +75,7 @@ export default async function DashboardPage() {
         <div className="max-w-xl mx-auto pt-16">
           <h1 className="font-display text-3xl mb-3 text-foreground">Welcome</h1>
           <p className="text-muted-foreground mb-8 text-lg">
-            Paste an article URL to create your first audio episode.
+            Paste an article or RSS feed URL to create your first audio episode.
           </p>
           <CreateAudioCard />
         </div>
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
           <div>
             <h2 className="text-xl font-semibold text-foreground">Create new episode</h2>
             <p className="text-sm text-muted-foreground">
-              Paste a link, review the article, then choose a narration style.
+              Paste a link or RSS feed, review the source, then choose a narration style.
             </p>
           </div>
           <CreateAudioCard />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedIcon } from "@/components/feed-icon";
 
-type FormatOption = "solo" | "two-hosts" | "tldr";
+type FormatOption = "narration" | "two-host" | "tldr";
 
 type Feed = {
   id: string;
@@ -60,12 +60,16 @@ type Episode = {
 };
 
 type FeedItem = {
+  id: string;
   title: string;
   url: string;
   pubDate: string | null;
   description: string | null;
+  contentText?: string | null;
   status: string | null;
 };
+
+const SUPPORT_EMAIL = "ops@luccilabs.xyz";
 
 export function FeedDetailClient({
   feed,
@@ -78,14 +82,14 @@ export function FeedDetailClient({
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [generating, setGenerating] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
   // Format selection dialog state
   const [formatDialogOpen, setFormatDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<FormatOption>("solo");
+  const [selectedFormat, setSelectedFormat] = useState<FormatOption>("narration");
 
   const fetchItems = async () => {
     try {
@@ -115,7 +119,7 @@ export function FeedDetailClient({
   // Open format selection dialog
   const openFormatDialog = (item: FeedItem) => {
     setSelectedItem(item);
-    setSelectedFormat("solo");
+    setSelectedFormat("narration");
     setFormatDialogOpen(true);
   };
 
@@ -124,7 +128,7 @@ export function FeedDetailClient({
     if (!selectedItem) return;
     
     setFormatDialogOpen(false);
-    setGenerating(selectedItem.url);
+    setGeneratingId(selectedItem.id);
     
     try {
       const res = await fetch("/api/episodes/generate", {
@@ -135,6 +139,7 @@ export function FeedDetailClient({
           feedId: feed.id,
           title: selectedItem.title,
           format: selectedFormat,
+          sourceText: selectedItem.contentText ?? undefined,
         }),
       });
 
@@ -153,10 +158,48 @@ export function FeedDetailClient({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate");
     } finally {
-      setGenerating(null);
+      setGeneratingId(null);
       setSelectedItem(null);
     }
   };
+
+  const visibleEpisodes = useMemo(() => {
+    const statusPriority: Record<string, number> = {
+      PUBLISHED: 4,
+      RUNNING: 3,
+      QUEUED: 2,
+      FAILED: 1,
+    };
+    const byKey = new Map<string, Episode>();
+
+    for (const episode of episodes) {
+      const key = `${episode.sourceUrl}::${episode.title}`;
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, episode);
+        continue;
+      }
+
+      const existingPriority = statusPriority[existing.status] ?? 0;
+      const nextPriority = statusPriority[episode.status] ?? 0;
+      if (nextPriority > existingPriority) {
+        byKey.set(key, episode);
+        continue;
+      }
+
+      if (nextPriority === existingPriority) {
+        const existingTime = new Date(existing.createdAt).getTime();
+        const nextTime = new Date(episode.createdAt).getTime();
+        if (nextTime > existingTime) {
+          byKey.set(key, episode);
+        }
+      }
+    }
+
+    return Array.from(byKey.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [episodes]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -286,7 +329,7 @@ export function FeedDetailClient({
             ) : (
               <div className="divide-y divide-border/40">
                 {items.map((item) => (
-                  <div key={item.url} className="group p-6 hover:bg-muted/40 transition-colors">
+                  <div key={item.id} className="group p-6 hover:bg-muted/40 transition-colors">
                     <div className="flex flex-col gap-4">
                       <div className="space-y-2">
                         <a
@@ -313,24 +356,42 @@ export function FeedDetailClient({
                         )}
                       </div>
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        {item.status === "FAILED" ? (
+                          <a
+                            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                              "ListenLayer episode generation failed"
+                            )}&body=${encodeURIComponent(
+                              `Feed: ${feed.name}\nEpisode: ${item.title}\nSource: ${item.url}`
+                            )}`}
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            Contact support
+                          </a>
+                        ) : null}
                         <Button
                           size="sm"
                           variant={item.status ? "outline" : "default"}
                           onClick={() => openFormatDialog(item)}
-                          disabled={generating === item.url || item.status === "QUEUED" || item.status === "RUNNING"}
+                          disabled={
+                            generatingId === item.id ||
+                            item.status === "QUEUED" ||
+                            item.status === "RUNNING"
+                          }
                           className={cn(
                             "rounded-lg h-9 px-5 text-xs font-medium transition-colors",
                             !item.status && "shadow-sm"
                           )}
                         >
-                          {generating === item.url ? (
+                          {generatingId === item.id ? (
                             <>
                               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                               Creating...
                             </>
                           ) : item.status === "PUBLISHED" ? (
                             "Regenerate"
+                          ) : item.status === "FAILED" ? (
+                            "Try again"
                           ) : item.status === "QUEUED" || item.status === "RUNNING" ? (
                             "Generating..."
                           ) : (
@@ -353,7 +414,7 @@ export function FeedDetailClient({
         <div className="space-y-6">
           <h2 className="text-xl font-display text-foreground">Generated Episodes</h2>
           
-          {episodes.length === 0 ? (
+          {visibleEpisodes.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center bg-muted/30">
               <p className="text-sm text-muted-foreground">
                 No episodes generated yet. Pick an article to start.
@@ -362,7 +423,7 @@ export function FeedDetailClient({
           ) : (
             <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
               <div className="divide-y divide-border/40">
-                {episodes.map((ep) => (
+                {visibleEpisodes.map((ep) => (
                   <Link
                     key={ep.id}
                     href={`/app/episodes/${ep.id}`}
@@ -398,9 +459,9 @@ export function FeedDetailClient({
           
           <div className="grid gap-3 py-4">
             {[
-              { id: "solo", label: "Solo Narration", desc: "Professional single-voice reading", icon: Mic },
-              { id: "two-hosts", label: "Two Hosts", desc: "Conversational discussion style", icon: Users },
-              { id: "tldr", label: "TL;DR Summary", desc: "Concise 2-minute overview", icon: Zap },
+              { id: "narration", label: "Solo narration", desc: "Professional single-voice reading", icon: Mic },
+              { id: "two-host", label: "Two hosts", desc: "Conversational discussion style", icon: Users },
+              { id: "tldr", label: "TL;DR summary", desc: "Concise 2-minute overview", icon: Zap },
             ].map((option) => (
               <button
                 key={option.id}
