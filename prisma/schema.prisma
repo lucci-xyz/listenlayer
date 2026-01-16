@@ -19,21 +19,13 @@ enum PlaybackKind {
   progress
 }
 
-enum SubscriptionStatus {
-  TRIALING
-  ACTIVE
-  PAST_DUE
-  CANCELED
-  UNPAID
-}
-
 model User {
-  id                    String              @id @default(cuid())
-  email                 String              @unique
-  supabaseId            String?             @unique
-  stripeCustomerId      String?             @unique
-  subscriptionId        String?             @unique
-  subscriptionStatus    SubscriptionStatus?
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  supabaseId            String?   @unique
+  stripeCustomerId      String?   @unique
+  subscriptionId        String?   @unique
+  subscriptionStatus    String?
   subscriptionPriceId   String?
   subscriptionCurrentPeriodEnd DateTime?
   episodeCredits        Int                 @default(3)
