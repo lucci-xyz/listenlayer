@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { isAllowedAppOrigin } from "@/lib/security";
 
 const schema = z.object({
   publicId: z.string().min(1),
@@ -10,6 +11,10 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0] ||
     request.headers.get("x-real-ip") ||

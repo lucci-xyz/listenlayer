@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { JSDOM } from "jsdom";
 import Parser from "rss-parser";
+import { requireUser } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { isAllowedAppOrigin } from "@/lib/security";
 
 const schema = z.object({
   url: z.string().url(),
@@ -89,9 +92,28 @@ function isArticlePage(doc: Document, pathname: string): boolean {
 }
 
 export async function POST(request: Request) {
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  try {
+    await requireUser();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0] ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  const rate = rateLimit(`discover:${ip}`, 30, 60_000);
+  if (!rate.ok) {
+    return NextResponse.json({ error: "Rate limit" }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  
+
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
