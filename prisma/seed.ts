@@ -1,15 +1,14 @@
 import "dotenv/config";
-import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
 
 async function main() {
+  // Demo user for local development (use with DEV_AUTH_BYPASS=true)
   const demoEmail = "demo@listenlayer.local";
-  const passwordHash = await bcrypt.hash("demo1234", 10);
 
   const user = await prisma.user.upsert({
     where: { email: demoEmail },
     update: {},
-    create: { email: demoEmail, passwordHash },
+    create: { email: demoEmail },
   });
 
   // Create a demo feed subscription
@@ -26,7 +25,8 @@ async function main() {
     },
   });
 
-  console.log("Seeded demo user:", demoEmail, "password: demo1234");
+  console.log("Seeded demo user:", demoEmail);
+  console.log("For local dev, set DEV_AUTH_BYPASS=true to auto-login as demo user");
 }
 
 main()

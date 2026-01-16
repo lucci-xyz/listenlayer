@@ -4,8 +4,8 @@ ListenLayer is a lightweight MVP SaaS that turns blog posts and RSS feeds into n
 
 ## Tech stack
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui
-- Prisma ORM + Postgres
-- Auth.js (NextAuth) credentials provider
+- Prisma ORM + Postgres (Supabase)
+- Supabase Auth (email confirmation built-in)
 - Inngest background jobs
 - OpenAI TTS (`gpt-4o-mini-tts`)
 - Cloudflare R2 via AWS SDK v3
@@ -41,7 +41,7 @@ docker-compose up -d
 cp .env.example .env
 ```
 
-Fill in the required values (OpenAI + R2 + NEXTAUTH_SECRET).
+Fill in the required values (Supabase + OpenAI + R2).
 
 4) Run migrations + seed demo user
 
@@ -70,15 +70,15 @@ pnpm dev
 
 Open http://localhost:3000.
 
-## Demo login
-- Email: `demo@listenlayer.local`
-- Password: `demo1234`
+## Local development auth
 
-Or bypass auth entirely:
+For local development, bypass auth entirely:
 
 ```bash
 DEV_AUTH_BYPASS=true
 ```
+
+This auto-logs you in as the demo user without needing Supabase Auth configured locally.
 
 ## Generate an episode
 1. Log in and click **Add site**.
@@ -87,11 +87,11 @@ DEV_AUTH_BYPASS=true
 4. Visit **Embeds** for the hosted player URL and copyable snippets.
 
 ## Onboarding detection checklist
-- Pasting a valid RSS URL offers “Keep it synced” and allows continuing.
-- Pasting a blog homepage with a `<link rel=\"alternate\">` feed enables “Keep it synced”.
+- Pasting a valid RSS URL offers "Keep it synced" and allows continuing.
+- Pasting a blog homepage with a `<link rel=\"alternate\">` feed enables "Keep it synced".
 - Pasting a Substack profile URL like `https://substack.com/@username` resolves to the publication and finds `/feed`.
 - Pasting a non-feed homepage without a feed disables Continue with guidance to paste a post URL.
-- Pasting a specific article URL enables the “Just this one” path.
+- Pasting a specific article URL enables the "Just this one" path.
 
 ## Embed testing
 Create a simple HTML file and paste:
@@ -104,10 +104,13 @@ Create a simple HTML file and paste:
 ## Environment variables
 See `.env.example` for the full list.
 
+Required for auth (Supabase):
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
 Required for generation:
 - `DATABASE_URL`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
 - `OPENAI_API_KEY`
 - `R2_ACCOUNT_ID`
 - `R2_ACCESS_KEY_ID`
@@ -117,13 +120,21 @@ Required for generation:
 
 Optional:
 - `INNGEST_EVENT_KEY`
-- `DEV_AUTH_BYPASS`
+- `DEV_AUTH_BYPASS` (set to `true` for local dev without Supabase Auth)
 - `OPENAI_TTS_VOICE` (default: `marin`)
 - `AUDIO_URL_TTL_SECONDS` (default: 21600)
-- `STRIPE_BUSINESS_PRICE_ID` (if using the Business plan)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (for billing)
+- `NEXT_PUBLIC_STRIPE_*` price IDs (for billing)
 
 ## Deployment notes
-- Set all environment variables in your hosting provider.
-- Run `pnpm db:migrate` against your production database.
+- Set all environment variables in your hosting provider (Vercel).
+- Run `pnpm prisma migrate deploy` against your production database.
 - Ensure your Inngest production endpoint points to `/api/inngest`.
 - R2 bucket remains private; audio is served via presigned URLs.
+- Configure Supabase Auth redirect URLs to include your production domain + `/api/auth/callback`.
+
+## Supabase setup
+1. Create a Supabase project at https://supabase.com
+2. Go to Project Settings > API to get your URL and keys
+3. In Authentication > URL Configuration, add your redirect URL: `https://your-domain.com/api/auth/callback`
+4. Supabase handles email confirmation automatically - no additional email service needed
