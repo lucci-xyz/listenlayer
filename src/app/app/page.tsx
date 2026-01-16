@@ -2,29 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
 import { formatRelativeTime } from "@/lib/time";
-import { AudioLines, BarChart3, Layers, Play, Plus, Zap, ArrowRight } from "lucide-react";
+import { getPlanFromPriceId } from "@/lib/stripe";
+import { AudioLines, ArrowRight, Play, BarChart3, Radio } from "lucide-react";
+import { CreateAudioCard } from "@/components/create-audio-card";
+import { EpisodePlaysChart } from "@/components/episode-plays-chart";
+import { UpgradeModalTrigger } from "@/components/upgrade-modal-trigger";
+import { getDomainFromUrl } from "@/lib/url";
+import { FeedIcon } from "@/components/feed-icon";
 
 export const dynamic = "force-dynamic";
-
-function StatusPill({ status }: { status: string }) {
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    PUBLISHED: { label: "Published", className: "bg-green-50 text-green-700 border-green-200" },
-    QUEUED: { label: "Queued", className: "bg-amber-50 text-amber-700 border-amber-200" },
-    RUNNING: { label: "Generating", className: "bg-blue-50 text-blue-700 border-blue-200" },
-    FAILED: { label: "Failed", className: "bg-red-50 text-red-700 border-red-200" },
-    CANCELLED: { label: "Canceled", className: "bg-gray-50 text-gray-600 border-gray-200" },
-  };
-  const config = statusConfig[status] ?? { label: status, className: "bg-gray-50 text-gray-600 border-gray-200" };
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${config.className}`}>
-      {config.label}
-    </span>
-  );
-}
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -32,261 +19,252 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const sites = await prisma.site.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  const currentPlan = getPlanFromPriceId(user.subscriptionPriceId ?? null);
 
-  const [episodeCount, activeCount, playCount] = await Promise.all([
-    prisma.episode.count({ where: { site: { userId: user.id } } }),
-    prisma.episode.count({
-      where: {
-        site: { userId: user.id },
-        status: { in: ["QUEUED", "RUNNING"] },
+  // Fetch data in parallel
+  const [episodeStats, recentEpisodes, feeds] = await Promise.all([
+    // 1. Stats & Chart Data
+    prisma.episode.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        title: true,
+        _count: {
+          select: { playbackEvents: { where: { kind: "play" } } }
+        }
       },
+      orderBy: { createdAt: "desc" },
+      take: 20,
     }),
-    prisma.playbackEvent.count({
-      where: { episode: { site: { userId: user.id } }, kind: "play" },
+
+    // 2. Recent Episodes List
+    prisma.episode.findMany({
+      where: { userId: user.id },
+      include: { feed: true },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+
+    // 3. Feeds List
+    prisma.feed.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { episodes: true } } },
+      take: 5,
     }),
   ]);
 
-  const recentEpisodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
-    orderBy: { createdAt: "desc" },
-    take: 8,
+  const episodeCount = await prisma.episode.count({ where: { userId: user.id } });
+  const playCount = await prisma.playbackEvent.count({
+    where: { episode: { userId: user.id }, kind: "play" },
   });
+  const latestEpisode = recentEpisodes[0] ?? null;
 
-  const perSiteCounts = await prisma.episode.groupBy({
-    by: ["siteId"],
-    _count: { _all: true },
-    where: { site: { userId: user.id } },
-  });
+  // Prepare chart data
+  const chartData = episodeStats.map(ep => ({
+    id: ep.id,
+    title: ep.title,
+    playCount: ep._count.playbackEvents
+  }));
 
-  const perSiteMap = new Map(
-    perSiteCounts.map((row) => [row.siteId, row._count._all])
-  );
-
-  // Show onboarding if no sites yet
-  if (sites.length === 0) {
+  // First time user - show simple welcome
+  if (episodeCount === 0 && feeds.length === 0) {
     return (
-      <div className="mx-auto max-w-lg py-16 text-center">
-        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/10 to-violet-600/5">
-          <AudioLines className="h-7 w-7 text-violet-600" />
+      <>
+        <UpgradeModalTrigger currentPlan={currentPlan} />
+        <div className="max-w-xl mx-auto pt-16">
+          <h1 className="font-display text-3xl mb-3 text-foreground">Welcome</h1>
+          <p className="text-muted-foreground mb-8 text-lg">
+            Paste an article or RSS feed URL to create your first audio episode.
+          </p>
+          <CreateAudioCard
+            currentPlan={currentPlan}
+            creditsResetAt={user.subscriptionCurrentPeriodEnd?.toISOString() ?? null}
+          />
         </div>
-        <h1 className="font-display text-2xl tracking-tight">Welcome to ListenLayer</h1>
-        <p className="mt-2 text-muted-foreground">
-          Create your first show to start turning written content into audio episodes.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/app/onboarding">
-            <Plus className="mr-2 h-4 w-4" />
-            Create your first show
-          </Link>
-        </Button>
-        
-        <div className="mt-16 grid gap-8 text-left sm:grid-cols-3">
-          {[
-            {
-              icon: Zap,
-              title: "Quick setup",
-              description: "Connect any website or RSS feed in seconds",
-            },
-            {
-              icon: AudioLines,
-              title: "AI narration",
-              description: "Professional audio generated automatically",
-            },
-            {
-              icon: BarChart3,
-              title: "Track engagement",
-              description: "See what content resonates with listeners",
-            },
-          ].map((feature) => (
-            <div key={feature.title}>
-              <feature.icon className="h-5 w-5 text-muted-foreground" />
-              <h3 className="mt-3 text-sm font-medium">{feature.title}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header row */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Overview of your audio content
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/app/onboarding">
-            <Plus className="mr-2 h-4 w-4" />
-            New show
-          </Link>
-        </Button>
-      </div>
-
-      {/* Stats row — hero metric + compact cards */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        {/* Hero metric: episode credits */}
-        <div className="sm:col-span-1 rounded-2xl border border-border/70 bg-gradient-to-br from-violet-500/5 to-transparent p-5">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Zap className="h-4 w-4 text-violet-600" />
-            Episode credits
-          </div>
-          <div className="mt-3 text-4xl font-semibold tabular-nums">
-            {user.episodeCredits}
-          </div>
-          <Link 
-            href="/app/settings" 
-            className="mt-2 inline-flex items-center text-xs text-violet-600 hover:text-violet-700"
-          >
-            Manage plan →
-          </Link>
+    <>
+      <UpgradeModalTrigger currentPlan={currentPlan} />
+      <div className="space-y-10 w-full max-w-6xl">
+        <div className="flex flex-col gap-3 border-b border-border/60 pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <h1 className="font-display text-4xl text-foreground">Overview</h1>
         </div>
 
-        {/* Compact stats */}
-        <div className="sm:col-span-3 grid grid-cols-3 gap-3">
-          {[
-            { label: "Shows", value: sites.length, icon: Layers },
-            { label: "Episodes", value: episodeCount, icon: AudioLines },
-            { label: "Total plays", value: playCount, icon: Play },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-border/70 bg-card p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <stat.icon className="h-3.5 w-3.5" />
-                {stat.label}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              At a glance
+            </h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                  <AudioLines className="h-3.5 w-3.5 text-primary" />
+                </span>
+                Total episodes
               </div>
-              <div className="mt-2 text-2xl font-semibold tabular-nums">{stat.value}</div>
+              <div className="mt-4 font-display text-4xl text-foreground">{episodeCount}</div>
+              <div className="mt-2 text-sm text-muted-foreground">Created so far</div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Generating indicator */}
-      {activeCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-          <span className="inline-flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-            </span>
-            <span className="font-medium text-amber-800">
-              {activeCount} episode{activeCount > 1 ? "s" : ""} generating
-            </span>
-          </span>
-        </div>
-      )}
-
-      {/* Main content grid */}
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        {/* Recent episodes — structured table */}
-        <div className="rounded-2xl border border-border/70 bg-card">
-          <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
-            <h2 className="font-medium">Recent episodes</h2>
-            <Link 
-              href="/app/episodes" 
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              View all →
-            </Link>
-          </div>
-          
-          {recentEpisodes.length === 0 ? (
-            <div className="p-8">
-              <EmptyState
-                title="No episodes yet"
-                description="Generate your first episode from a show"
-              />
-            </div>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {/* Header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <div>Title</div>
-                <div className="w-20 text-center">Status</div>
-                <div className="w-16 text-right">Plays</div>
-                <div className="w-20 text-right">Age</div>
+            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                </span>
+                Total plays
               </div>
-              
-              {/* Rows */}
-              {recentEpisodes.map((episode) => (
-                <Link
-                  key={episode.id}
-                  href={`/app/episodes/${episode.id}`}
-                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/30"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{episode.title}</div>
-                    <div className="truncate text-xs text-muted-foreground">{episode.site.name}</div>
-                  </div>
-                  <div className="w-20 text-center">
-                    <StatusPill status={episode.status} />
-                  </div>
-                  <div className="w-16 text-right text-sm tabular-nums text-muted-foreground">
-                    —
-                  </div>
-                  <div className="w-20 text-right text-xs text-muted-foreground">
-                    {formatRelativeTime(episode.createdAt)}
-                  </div>
-                </Link>
-              ))}
+              <div className="mt-4 font-display text-4xl text-foreground">{playCount}</div>
+              <div className="mt-2 text-sm text-muted-foreground">All-time listens</div>
             </div>
-          )}
-        </div>
 
-        {/* Shows list */}
-        <div className="rounded-2xl border border-border/70 bg-card">
-          <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
-            <h2 className="font-medium">Your shows</h2>
-            <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-              <Link href="/app/onboarding">
-                <Plus className="mr-1 h-3 w-3" />
-                Add
+            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                  <Play className="h-3.5 w-3.5 text-primary" />
+                </span>
+                Latest episode
+              </div>
+              {latestEpisode ? (
+                <>
+                  <Link
+                    href={`/app/episodes/${latestEpisode.id}`}
+                    className="mt-3 block text-base font-semibold text-foreground hover:underline"
+                  >
+                    {latestEpisode.title}
+                  </Link>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    {formatRelativeTime(latestEpisode.createdAt)}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 text-sm text-muted-foreground">No episodes yet.</div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border/60 bg-card p-6 sm:p-8 shadow-soft">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <h3 className="font-medium text-foreground">Recent performance</h3>
+            <span className="text-xs text-muted-foreground">Plays per episode</span>
+          </div>
+          <EpisodePlaysChart episodes={chartData} />
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Create new episode</h2>
+            <p className="text-sm text-muted-foreground">
+              Paste a link or RSS feed, review the source, then choose a narration style.
+            </p>
+          </div>
+          <CreateAudioCard
+            currentPlan={currentPlan}
+            creditsResetAt={user.subscriptionCurrentPeriodEnd?.toISOString() ?? null}
+          />
+        </section>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Recent Episodes */}
+          <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
+            <div className="flex flex-col gap-3 px-6 py-5 border-b border-border/40 bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Play className="h-5 w-5 fill-current" />
+                </div>
+                <span className="font-semibold text-foreground">Recent episodes</span>
+              </div>
+              <Link href="/app/episodes" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                View all →
               </Link>
-            </Button>
-          </div>
-          
-          <div className="divide-y divide-border/50">
-            {sites.map((site) => {
-              const count = perSiteMap.get(site.id) ?? 0;
-              return (
-                <Link
-                  key={site.id}
-                  href={`/app/sites/${site.id}`}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/5 text-sm font-semibold text-primary">
-                    {site.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{site.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {count} episode{count !== 1 ? "s" : ""}
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
-                </Link>
-              );
-            })}
+            </div>
             
-            {sites.length === 0 && (
-              <div className="p-8">
-                <EmptyState
-                  title="No shows yet"
-                  description="Create your first show to get started"
-                />
+            <div className="flex-1 p-2">
+              {recentEpisodes.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  No episodes yet
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {recentEpisodes.map((episode) => (
+                    <Link
+                      key={episode.id}
+                      href={`/app/episodes/${episode.id}`}
+                      className="flex items-center gap-4 px-4 py-4 sm:px-6 rounded-xl hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="h-2 w-2 rounded-full bg-primary/60 shrink-0 opacity-60" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground truncate">{episode.title}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <span>{formatRelativeTime(episode.createdAt)}</span>
+                          <span>•</span>
+                          <span>{episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Feeds */}
+          <div className="group flex flex-col rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden transition-shadow hover:shadow-soft-md">
+            <div className="flex flex-col gap-3 px-6 py-5 border-b border-border/40 bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Radio className="h-5 w-5" />
+                </div>
+                <span className="font-semibold text-foreground">Feeds</span>
               </div>
-            )}
+              <Link href="/app/feeds" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                Manage →
+              </Link>
+            </div>
+            
+            <div className="flex-1 p-2">
+              {feeds.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground mb-4">No feeds yet</p>
+                  <Link href="/app/feeds/new" className="text-primary font-medium hover:underline">
+                    Add a feed →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {feeds.slice(0, 5).map((feed) => (
+                    <Link
+                      key={feed.id}
+                      href={`/app/feeds/${feed.id}`}
+                      className="flex items-center gap-4 px-4 py-4 sm:px-6 rounded-xl hover:bg-muted/40 transition-colors"
+                    >
+                      <FeedIcon
+                        url={feed.faviconUrl}
+                        className="h-10 w-10 rounded-full border border-border/60 bg-muted/40"
+                        fallbackClassName="h-4 w-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground">{feed.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {feed._count.episodes} episode{feed._count.episodes !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

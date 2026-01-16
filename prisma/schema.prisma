@@ -6,11 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum SourceType {
-  RSS
-  URL
-}
-
 enum EpisodeStatus {
   QUEUED
   RUNNING
@@ -43,7 +38,8 @@ model User {
   subscriptionCurrentPeriodEnd DateTime?
   episodeCredits        Int                 @default(3)
   createdAt             DateTime            @default(now())
-  sites                 Site[]
+  feeds                 Feed[]
+  episodes              Episode[]
   usageRecords          UsageRecord[]
 }
 
@@ -60,43 +56,34 @@ model UsageRecord {
   @@index([createdAt])
 }
 
-model Site {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  domain      String?
-  faviconUrl  String?
-  embedConfig Json?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sources     Source[]
-  episodes    Episode[]
-}
-
-model Source {
-  id              String     @id @default(cuid())
-  siteId          String
-  type            SourceType
-  url             String
-  displayName     String?
+// Feed = RSS subscription that shows article previews
+model Feed {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  feedUrl         String    // The RSS/Atom feed URL
+  siteUrl         String?   // The website homepage
   faviconUrl      String?
   latestItemTitle String?
   latestItemUrl   String?
-  lastFetchStatus String?
-  lastError       String?
-  createdAt       DateTime   @default(now())
   lastFetchedAt   DateTime?
-  site            Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   episodes        Episode[]
+
+  @@index([userId])
 }
 
+// Episode = a generated podcast, can be standalone or from a feed
 model Episode {
   id             String        @id @default(cuid())
-  siteId         String
-  sourceId       String
+  userId         String
+  feedId         String?       // Optional - null for standalone one-off episodes
   title          String
-  sourceUrl      String
+  sourceUrl      String        // The article URL this came from
   status         EpisodeStatus
+  format         String?       // The format used (e.g., "conversational", "solo")
   scriptText     String
   transcriptText String
   chaptersJson   Json
@@ -106,9 +93,13 @@ model Episode {
   createdAt      DateTime      @default(now())
   publishedAt    DateTime?
   errorMessage   String?
-  site           Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  source         Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feed           Feed?         @relation(fields: [feedId], references: [id], onDelete: SetNull)
   playbackEvents PlaybackEvent[]
+
+  @@index([userId])
+  @@index([feedId])
+  @@index([status])
 }
 
 model PlaybackEvent {

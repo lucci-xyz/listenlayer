@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl } from "@/lib/url";
+import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
 import EpisodesClient, { EpisodeListItem } from "@/app/app/episodes/episodes-client";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ export default async function EpisodesPage() {
   }
 
   const episodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
+    where: { userId: user.id },
+    include: { feed: true },
     orderBy: { createdAt: "desc" },
     take: 60,
   });
@@ -23,18 +23,21 @@ export default async function EpisodesPage() {
   const items: EpisodeListItem[] = episodes.map((episode) => ({
     id: episode.id,
     title: episode.title,
-    status: episode.status,
+    status: episode.status as any,
     createdAt: episode.createdAt.toISOString(),
     sourceUrl: episode.sourceUrl,
     publicId: episode.publicId,
-    siteName: episode.site.name,
-    siteId: episode.siteId,
-    embedConfig: episode.site.embedConfig || null,
+    feedName: episode.feed?.name || null,
+    feedId: episode.feedId,
+    sourceDomain: getDomainFromUrl(episode.sourceUrl),
   }));
 
   return (
-    <div className="space-y-4">
-      <EpisodesClient episodes={items} baseUrl={baseUrl} showSite />
+    <div className="space-y-8 w-full max-w-6xl mx-auto">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <h1 className="font-display text-4xl text-foreground">Episodes</h1>
+      </div>
+      <EpisodesClient episodes={items} baseUrl={baseUrl} />
     </div>
   );
 }

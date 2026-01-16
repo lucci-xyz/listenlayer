@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
+import { RootProviders } from "@/components/root-providers";
 
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const instrumentSerif = Instrument_Serif({
+const newsreader = Newsreader({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
 });
 
@@ -32,9 +32,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${instrumentSerif.variable} antialiased`}>
-        {children}
-        <Toaster />
+      <body className={`${inter.variable} ${newsreader.variable} antialiased`}>
+        <RootProviders>{children}</RootProviders>
       </body>
     </html>
   );

@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/time";
 import { toast } from "sonner";
 
 type StatusEpisode = {
@@ -23,6 +21,8 @@ type StatusResponse = {
 export function GenerationStatus() {
   const [data, setData] = useState<StatusResponse | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [showCompleteNotice, setShowCompleteNotice] = useState(false);
+  const previousActiveCount = useRef<number | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -41,7 +41,23 @@ export function GenerationStatus() {
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
-  if (!data || data.activeCount === 0) return null;
+  useEffect(() => {
+    if (!data) return;
+    if (previousActiveCount.current === null) {
+      previousActiveCount.current = data.activeCount;
+      return;
+    }
+
+    if (previousActiveCount.current > 0 && data.activeCount === 0) {
+      setShowCompleteNotice(true);
+    }
+
+    if (data.activeCount > 0) {
+      setShowCompleteNotice(false);
+    }
+
+    previousActiveCount.current = data.activeCount;
+  }, [data]);
 
   const handleStopAll = async () => {
     setStopping(true);
@@ -63,36 +79,58 @@ export function GenerationStatus() {
     }
   };
 
+  const latestEpisode = data?.activeEpisodes?.[0];
+
+  if (!data || (data.activeCount === 0 && !showCompleteNotice)) {
+    return null;
+  }
+
   return (
-    <div className="mb-6 rounded-lg border border-border/70 bg-muted/60 px-5 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-[13px] font-semibold text-foreground">Generating</div>
-          <div className="text-[12px] text-muted-foreground">
-            {data.activeCount} episode{data.activeCount === 1 ? "" : "s"} in queue
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center px-4">
+      <div className="pointer-events-auto w-full max-w-3xl rounded-full border border-border/60 bg-card/95 px-4 py-2 shadow-soft-md backdrop-blur">
+        {data.activeCount > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <div className="text-sm font-medium text-foreground">
+                Generating {data.activeCount} episode{data.activeCount === 1 ? "" : "s"}
+              </div>
+              {latestEpisode ? (
+                <div className="max-w-[260px] truncate text-xs text-muted-foreground">
+                  Latest: {latestEpisode.title}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={handleStopAll} disabled={stopping}>
+                {stopping ? "Stopping..." : "Stop"}
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/app/episodes">View queue</Link>
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handleStopAll} disabled={stopping}>
-            {stopping ? "Stopping..." : "Stop all"}
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/app/episodes">View queue</Link>
-          </Button>
-        </div>
-      </div>
-      <div className="mt-3 space-y-1">
-        {data.activeEpisodes.map((episode) => (
-          <div
-            key={episode.id}
-            className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground"
-          >
-            <Badge variant="secondary">{episode.status}</Badge>
-            <span className="font-medium text-foreground">{episode.title}</span>
-            <span>• {episode.siteName}</span>
-            <span>{formatRelativeTime(episode.createdAt)}</span>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-success" />
+              <div className="text-sm font-medium text-foreground">
+                Generation complete
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Your audio is ready.
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/app/episodes">View episodes</Link>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowCompleteNotice(false)}>
+                Dismiss
+              </Button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

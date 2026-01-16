@@ -1,114 +1,39 @@
-import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AudioPlayer } from "@/components/audio-player";
-import {
-  embedConfigToQuery,
-  mergeEmbedConfig,
-  parseEmbedConfigSearchParams,
-} from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmbedPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { publicId } = await params;
-  const resolvedParams = await searchParams;
   const episode = await prisma.episode.findUnique({
     where: { publicId },
-    include: { site: true },
   });
 
   if (!episode || episode.status !== "PUBLISHED") {
     notFound();
   }
 
-  const overrides = parseEmbedConfigSearchParams(resolvedParams);
-  const config = mergeEmbedConfig(episode.site.embedConfig, overrides);
-  const query = embedConfigToQuery(config);
-
-  const themeClass =
-    config.theme === "dark"
-      ? "bg-neutral-900 text-neutral-100 border-neutral-800/80"
-      : "bg-white text-neutral-900 border-neutral-200/70";
-  const mutedClass =
-    config.theme === "auto"
-      ? "embed-muted text-neutral-500"
-      : config.theme === "dark"
-        ? "text-neutral-400"
-        : "text-neutral-500";
-  const radiusClass =
-    config.radius === "round"
-      ? "rounded-2xl"
-      : config.radius === "sharp"
-        ? "rounded-none"
-        : "rounded-lg";
-  const sizeClass =
-    config.size === "compact"
-      ? "min-h-[120px]"
-      : config.size === "tall"
-        ? "min-h-[220px]"
-        : "min-h-[160px]";
-
   return (
-    <div className={`flex h-full ${sizeClass} items-center justify-center px-4 py-4`}>
-      {config.theme === "auto" ? (
-        <style>{`@media (prefers-color-scheme: dark){.embed-auto{background:#0b0b0b;color:#f4f4f5;border-color:#27272a}.embed-auto .embed-muted{color:#a1a1aa}}`}</style>
-      ) : null}
-      <div
-        className={`embed-shell embed-auto w-full max-w-xl border ${radiusClass} ${config.theme === "auto" ? "bg-white text-neutral-900 border-neutral-200" : themeClass}`}
-        style={{ "--accent": config.accentColor } as CSSProperties}
-      >
-        <div className="px-4 py-3">
-          <div className={`text-[12px] font-medium ${mutedClass}`}>ListenLayer</div>
-          <div className="text-[13px] font-semibold">{episode.title}</div>
-          <div className={`text-[12px] ${mutedClass}`}>{episode.site.name}</div>
-          <div className="mt-2">
-            <AudioPlayer publicId={episode.publicId} />
-          </div>
-          {(config.showChapters || config.showTranscript || config.showOpenPlayer) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-              {config.showChapters ? (
-                <a
-                  className="rounded-md border px-2.5 py-1"
-                  style={{ borderColor: config.accentColor, color: config.accentColor }}
-                  href={`/listen/e/${episode.publicId}?${query}#chapters`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Chapters
-                </a>
-              ) : null}
-              {config.showTranscript ? (
-                <a
-                  className="rounded-md border px-2.5 py-1"
-                  style={{ borderColor: config.accentColor, color: config.accentColor }}
-                  href={`/listen/e/${episode.publicId}?${query}#transcript`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Transcript
-                </a>
-              ) : null}
-              {config.showOpenPlayer ? (
-                <a
-                  className="rounded-md border px-2.5 py-1"
-                  style={{ borderColor: config.accentColor, color: config.accentColor }}
-                  href={`/listen/e/${episode.publicId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open player
-                </a>
-              ) : null}
-            </div>
-          )}
+    <div className="flex h-full w-full items-center justify-center bg-transparent px-4 py-3">
+      <style>{`body{background:transparent!important;color:var(--foreground,#0a0a0a);}@media (prefers-color-scheme: dark){body{color:#f5f5f5;}}`}</style>
+      <div className="w-full max-w-3xl space-y-2" style={{ minHeight: embedHeight() }}>
+        <div className="flex items-center justify-end">
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className="font-display text-sm tracking-tight">ListenLayer</span>
+          </a>
         </div>
+        <AudioPlayer publicId={episode.publicId} />
       </div>
     </div>
   );

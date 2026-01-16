@@ -13,7 +13,7 @@ export async function GET() {
 
   const where = {
     status: { in: [EpisodeStatus.QUEUED, EpisodeStatus.RUNNING] },
-    site: { userId: user.id },
+    userId: user.id,
   };
 
   const [activeCount, activeEpisodes] = await Promise.all([
@@ -27,7 +27,7 @@ export async function GET() {
         title: true,
         status: true,
         createdAt: true,
-        site: { select: { name: true } },
+        feed: { select: { name: true } },
       },
     }),
   ]);
@@ -39,7 +39,7 @@ export async function GET() {
       title: episode.title,
       status: episode.status,
       createdAt: episode.createdAt,
-      siteName: episode.site.name,
+      feedName: episode.feed?.name || null,
     })),
   });
 }

@@ -1,6 +1,7 @@
 import { Inngest } from "inngest";
 import Parser from "rss-parser";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { JSDOM } from "jsdom";
 import { prisma } from "@/lib/prisma";
 import { extractReadableText } from "@/lib/content";
 import { chunkText, estimateDurationSec, extractJsonObject } from "@/lib/text";
@@ -11,9 +12,49 @@ import { maybeNormalizeMp3 } from "@/lib/audio";
 export const inngest = new Inngest({ id: "listenlayer" });
 
 const parser = new Parser();
+const defaultHeaders = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Cache-Control": "no-cache",
+  Pragma: "no-cache",
+};
 
-async function fetchLatestFromRss(url: string) {
-  const response = await fetch(url);
+type SourceAuth = {
+  type: "basic" | "bearer";
+  username?: string;
+  password?: string;
+  token?: string;
+};
+
+function buildAuthHeaders(auth?: SourceAuth | null) {
+  if (!auth) return {};
+  if (auth.type === "basic" && auth.username && auth.password) {
+    const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
+    return { Authorization: `Basic ${encoded}` };
+  }
+  if (auth.type === "bearer" && auth.token) {
+    return { Authorization: `Bearer ${auth.token}` };
+  }
+  return {};
+}
+
+async function fetchWithHeaders(
+  url: string,
+  headers: Record<string, string> = {}
+) {
+  return fetch(url, {
+    redirect: "follow",
+    headers: { ...defaultHeaders, ...headers },
+  });
+}
+
+async function fetchLatestFromRss(url: string, auth?: SourceAuth | null) {
+  const response = await fetchWithHeaders(url, {
+    Accept: "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+    ...buildAuthHeaders(auth),
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch RSS: ${response.status}`);
   }
@@ -30,10 +71,25 @@ async function fetchLatestFromRss(url: string) {
   };
 }
 
-async function fetchHtml(url: string) {
-  const response = await fetch(url, { redirect: "follow" });
+class FetchError extends Error {
+  status: number;
+
+  constructor(status: number) {
+    super(`Failed to fetch article: ${status}`);
+    this.status = status;
+  }
+}
+
+async function fetchHtml(url: string, auth?: SourceAuth | null) {
+  let response = await fetchWithHeaders(url, buildAuthHeaders(auth));
+  if (!response.ok && (response.status === 403 || response.status === 429)) {
+    response = await fetchWithHeaders(url, {
+      "User-Agent": "ListenLayer/1.0",
+      ...buildAuthHeaders(auth),
+    });
+  }
   if (!response.ok) {
-    throw new Error(`Failed to fetch article: ${response.status}`);
+    throw new FetchError(response.status);
   }
   const lengthHeader = response.headers.get("content-length");
   if (lengthHeader && Number(lengthHeader) > 5 * 1024 * 1024) {
@@ -55,9 +111,9 @@ async function generateScriptAndChapters(
   const trimmed = text.slice(0, 12000);
   const formatGuidance =
     format === "two-host"
-      ? "Write as a two-host conversation. Label speakers as Host 1 and Host 2. Plain text only."
+      ? "Write as a two-host conversation. Prefix each spoken line with H1: or H2: (no other labels) so we can split voices. Avoid narration or stage directions. Plain text only."
       : format === "tldr"
-        ? "Write as a tight TL;DR recap with punchy narration, still 500-900 words. Plain text only."
+        ? "Write as a tight TLDR recap with punchy narration, still 500-900 words. Plain text only."
         : "Write as a single-host narration. Plain text only.";
   const response = await openai.responses.create({
     model: "gpt-4o-mini",
@@ -113,26 +169,144 @@ async function generateScriptAndChapters(
   }
 }
 
+type TwoHostSegment = { speaker: "H1" | "H2" | "UNK"; text: string };
+
+function parseTwoHostSegments(script: string): TwoHostSegment[] {
+  const lines = script.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const segments: TwoHostSegment[] = [];
+  const patterns = [
+    { regex: /^h(?:ost)?\s*1\s*:\s*(.+)$/i, speaker: "H1" as const },
+    { regex: /^h(?:ost)?\s*one\s*:\s*(.+)$/i, speaker: "H1" as const },
+    { regex: /^h1\s*:\s*(.+)$/i, speaker: "H1" as const },
+    { regex: /^h(?:ost)?\s*2\s*:\s*(.+)$/i, speaker: "H2" as const },
+    { regex: /^h(?:ost)?\s*two\s*:\s*(.+)$/i, speaker: "H2" as const },
+    { regex: /^h2\s*:\s*(.+)$/i, speaker: "H2" as const },
+  ];
+
+  for (const line of lines) {
+    let matched = false;
+    for (const pattern of patterns) {
+      const m = line.match(pattern.regex);
+      if (m && m[1]) {
+        segments.push({ speaker: pattern.speaker, text: m[1].trim() });
+        matched = true;
+        break;
+      }
+    }
+    if (!matched && line) {
+      segments.push({ speaker: "UNK", text: line });
+    }
+  }
+  return segments;
+}
+
+function fallbackAlternateSegments(script: string): TwoHostSegment[] {
+  const paragraphs = script
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (paragraphs.length === 0) {
+    const sentences = script
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return sentences.map((text, idx) => ({
+      speaker: idx % 2 === 0 ? "H1" : "H2",
+      text,
+    }));
+  }
+  return paragraphs.map((text, idx) => ({
+    speaker: idx % 2 === 0 ? "H1" : "H2",
+    text,
+  }));
+}
+
+function buildTwoHostSegments(script: string): TwoHostSegment[] {
+  const parsed = parseTwoHostSegments(script).filter((seg) => seg.text.trim().length > 0);
+  const hasH1 = parsed.some((seg) => seg.speaker === "H1");
+  const hasH2 = parsed.some((seg) => seg.speaker === "H2");
+
+  if (!hasH1 || !hasH2) {
+    return fallbackAlternateSegments(script);
+  }
+
+  let lastSpeaker: "H1" | "H2" = hasH1 ? "H1" : "H2";
+  return parsed.map((seg) => {
+    if (seg.speaker === "H1" || seg.speaker === "H2") {
+      lastSpeaker = seg.speaker;
+      return seg;
+    }
+    const nextSpeaker = lastSpeaker === "H1" ? "H2" : "H1";
+    lastSpeaker = nextSpeaker;
+    return { speaker: nextSpeaker, text: seg.text };
+  });
+}
+
+function deriveTitleFromHtml(html: string, url: string, fallback: string) {
+  try {
+    const dom = new JSDOM(html, { url });
+    const doc = dom.window.document;
+    const meta = (selector: string) => doc.querySelector(selector)?.getAttribute("content") || "";
+    const title =
+      meta('meta[property="og:title"]') ||
+      meta('meta[name="twitter:title"]') ||
+      doc.querySelector("h1")?.textContent?.trim() ||
+      doc.title ||
+      fallback;
+    return title || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// New simplified episode generation - works with or without a feed
 export const generateEpisode = inngest.createFunction(
   { id: "episode-generate" },
   { event: "episode/generate.requested" },
   async ({ event, step }) => {
-    const { userId, siteId, sourceId, episodeId, canonicalUrl, episodeTitle, format } =
-      event.data as {
-        userId: string;
-        siteId: string;
-        sourceId: string;
-        episodeId: string;
-        canonicalUrl?: string;
-        episodeTitle?: string;
-        format?: string;
-      };
+    const {
+      userId,
+      episodeId,
+      feedId,
+      canonicalUrl,
+      episodeTitle,
+      format,
+      sourceText,
+      sourceAuth,
+    } = event.data as {
+      userId: string;
+      episodeId: string;
+      feedId?: string | null;
+      canonicalUrl: string;
+      episodeTitle?: string;
+      format?: string;
+      sourceText?: string;
+      sourceAuth?: SourceAuth | null;
+    };
+
+    let cachedTwoHostSegments: TwoHostSegment[] | null = null;
+    const sourceWordCount = sourceText ? sourceText.split(/\s+/).filter(Boolean).length : 0;
+
+    console.info("[episode-generate] start", {
+      episodeId,
+      userId,
+      feedId,
+      canonicalUrl,
+      format,
+      sourceWordCount,
+      hasAuth: Boolean(sourceAuth),
+    });
 
     try {
       const episodeState = await step.run("load-episode", async () => {
         return prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { status: true },
+          select: {
+            status: true,
+            scriptText: true,
+            audioObjectKey: true,
+            format: true,
+          },
         });
       });
 
@@ -144,6 +318,11 @@ export const generateEpisode = inngest.createFunction(
         return { cancelled: true };
       }
 
+      if (episodeState.status === "PUBLISHED" && episodeState.audioObjectKey) {
+        console.info("[episode-generate] skip published", { episodeId });
+        return { skipped: true };
+      }
+
       await step.run("mark-running", async () => {
         await prisma.episode.updateMany({
           where: { id: episodeId, status: { not: "CANCELLED" } },
@@ -151,59 +330,53 @@ export const generateEpisode = inngest.createFunction(
         });
       });
 
-      const source = await step.run("load-source", async () => {
-        const record = await prisma.source.findFirst({
-          where: { id: sourceId, siteId },
-          select: { id: true, type: true, url: true, displayName: true },
-        });
-        if (!record) {
-          throw new Error("Source not found");
-        }
-        return record;
-      });
-
+      // Resolve the source URL - either from feed or directly from canonicalUrl
       const resolved = await step.run("resolve-source", async () => {
-        if (canonicalUrl) {
-          return {
-            canonicalUrl,
-            episodeTitle: episodeTitle || "Latest Episode",
-            latestItemTitle: episodeTitle || "Latest Episode",
-            latestItemUrl: canonicalUrl,
-            feedTitle: null,
-          };
-        }
-        if (source.type === "RSS") {
-          const latest = await fetchLatestFromRss(source.url);
+        // If we have a feedId and no canonicalUrl, fetch latest from feed
+        if (feedId && !canonicalUrl) {
+          const feed = await prisma.feed.findUnique({ where: { id: feedId } });
+          if (!feed) throw new Error("Feed not found");
+          const latest = await fetchLatestFromRss(feed.feedUrl, sourceAuth);
           return {
             canonicalUrl: latest.link,
             episodeTitle: latest.title,
             latestItemTitle: latest.title,
             latestItemUrl: latest.link,
             feedTitle: latest.feedTitle,
+            sourceText: sourceText || null,
           };
         }
+        // Otherwise use the provided URL
         return {
-          canonicalUrl: source.url,
-          episodeTitle: "Latest Episode",
-          latestItemTitle: null,
-          latestItemUrl: null,
+          canonicalUrl: canonicalUrl,
+          episodeTitle: episodeTitle || "Episode",
+          latestItemTitle: episodeTitle || null,
+          latestItemUrl: canonicalUrl,
           feedTitle: null,
+          sourceText: sourceText || null,
         };
       });
 
-      await step.run("update-source-meta", async () => {
-        await prisma.source.update({
-          where: { id: source.id },
-          data: {
-            latestItemTitle: resolved.latestItemTitle,
-            latestItemUrl: resolved.latestItemUrl,
-            displayName: resolved.feedTitle || source.displayName || undefined,
-            lastFetchStatus: "success",
-            lastError: null,
-            lastFetchedAt: new Date(),
-          },
-        });
+      console.info("[episode-generate] source resolved", {
+        episodeId,
+        canonicalUrl: resolved.canonicalUrl,
+        sourceTextWords: resolved.sourceText ? resolved.sourceText.split(/\s+/).filter(Boolean).length : 0,
       });
+
+      // Update feed metadata if this came from a feed
+      if (feedId) {
+        await step.run("update-feed-meta", async () => {
+          await prisma.feed.update({
+            where: { id: feedId },
+            data: {
+              latestItemTitle: resolved.latestItemTitle,
+              latestItemUrl: resolved.latestItemUrl,
+              lastFetchedAt: new Date(),
+              lastError: null,
+            },
+          });
+        });
+      }
 
       const cancelBeforeScript = await step.run("check-cancel-before-script", async () => {
         const episode = await prisma.episode.findUnique({
@@ -218,26 +391,67 @@ export const generateEpisode = inngest.createFunction(
       }
 
       await step.run("generate-script", async () => {
-        const html = await fetchHtml(resolved.canonicalUrl);
-        const readableText = extractReadableText(html, resolved.canonicalUrl);
+        const existing = await prisma.episode.findUnique({
+          where: { id: episodeId },
+          select: { scriptText: true, chaptersJson: true },
+        });
+
+        if (existing?.scriptText && existing.scriptText.trim().length > 0) {
+          console.info("[episode-generate] script exists, skipping generation", { episodeId });
+          return { skipped: true };
+        }
+
+        let html: string | null = null;
+        let readableText = resolved.sourceText?.trim() || "";
+        if (readableText) {
+          const words = readableText.split(/\s+/).filter(Boolean);
+          if (words.length < 120) {
+            readableText = "";
+          }
+        }
+        if (!readableText) {
+          html = await fetchHtml(resolved.canonicalUrl, sourceAuth);
+          readableText = extractReadableText(html, resolved.canonicalUrl);
+        }
         const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
-        if (!readableText || words.length < 300) {
+        const minWords = 300;
+        if (!readableText || words.length < minWords) {
           throw new Error("Not enough article text to generate an episode");
         }
+
+        console.info("[episode-generate] text ready", {
+          episodeId,
+          wordCount: words.length,
+          usedSourceText: Boolean(resolved.sourceText),
+        });
+
+        const betterTitle = html
+          ? deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle)
+          : resolved.episodeTitle;
         const { script, chapters } = await generateScriptAndChapters(
-          resolved.episodeTitle,
+          betterTitle,
           resolved.canonicalUrl,
           readableText,
           format
         );
+        if (format === "two-host") {
+          const parsed = parseTwoHostSegments(script);
+          cachedTwoHostSegments = parsed.length > 0 ? parsed : fallbackAlternateSegments(script);
+        }
+        const cleanScript =
+          format === "two-host" && cachedTwoHostSegments?.length
+            ? cachedTwoHostSegments.map((seg) => seg.text).join("\n\n")
+            : script;
+
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
-            title: resolved.episodeTitle,
+            title: betterTitle || resolved.episodeTitle,
             sourceUrl: resolved.canonicalUrl,
-            scriptText: script,
-            transcriptText: script,
+            scriptText: cleanScript,
+            transcriptText: cleanScript,
             chaptersJson: chapters,
+            format: format || null,
           },
         });
         return { length: script.length };
@@ -258,31 +472,72 @@ export const generateEpisode = inngest.createFunction(
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true },
+          select: { scriptText: true, format: true, audioObjectKey: true },
         });
+        if (episode?.audioObjectKey) {
+          console.info("[episode-generate] audio exists, skipping generation", { episodeId });
+          return episode.audioObjectKey;
+        }
         if (!episode?.scriptText) {
           throw new Error("Script is missing");
         }
-        const voice = process.env.OPENAI_TTS_VOICE || "marin";
-        const chunks = chunkText(episode.scriptText, 3500);
+        const primaryVoice = process.env.OPENAI_TTS_VOICE || "marin";
+        const secondaryVoice = process.env.OPENAI_TTS_VOICE_SECONDARY || "verse";
         const buffers: Buffer[] = [];
-        for (const chunk of chunks) {
-          const cancelled = await prisma.episode.findUnique({
-            where: { id: episodeId },
-            select: { status: true },
-          });
-          if (!cancelled || cancelled.status === "CANCELLED") {
-            return null;
+
+        const audioFormat = episode.format || format;
+        console.info("[episode-generate] tts", {
+          episodeId,
+          audioFormat,
+          primaryVoice,
+          secondaryVoice,
+        });
+        const twoHostSegments =
+          audioFormat === "two-host" ? buildTwoHostSegments(episode.scriptText) : null;
+
+        if (audioFormat === "two-host" && twoHostSegments?.length) {
+          for (const segment of twoHostSegments) {
+            const voice = segment.speaker === "H2" ? secondaryVoice || primaryVoice : primaryVoice;
+            const chunks = chunkText(segment.text, 3500);
+            for (const chunk of chunks) {
+              const cancelled = await prisma.episode.findUnique({
+                where: { id: episodeId },
+                select: { status: true },
+              });
+              if (!cancelled || cancelled.status === "CANCELLED") {
+                return null;
+              }
+              const audio = await openai.audio.speech.create({
+                model: "gpt-4o-mini-tts",
+                voice,
+                input: chunk,
+                response_format: "mp3",
+              });
+              const buffer = Buffer.from(await audio.arrayBuffer());
+              buffers.push(buffer);
+            }
           }
-          const audio = await openai.audio.speech.create({
-            model: "gpt-4o-mini-tts",
-            voice,
-            input: chunk,
-            response_format: "mp3",
-          });
-          const buffer = Buffer.from(await audio.arrayBuffer());
-          buffers.push(buffer);
+        } else {
+          const chunks = chunkText(episode.scriptText, 3500);
+          for (const chunk of chunks) {
+            const cancelled = await prisma.episode.findUnique({
+              where: { id: episodeId },
+              select: { status: true },
+            });
+            if (!cancelled || cancelled.status === "CANCELLED") {
+              return null;
+            }
+            const audio = await openai.audio.speech.create({
+              model: "gpt-4o-mini-tts",
+              voice: primaryVoice,
+              input: chunk,
+              response_format: "mp3",
+            });
+            const buffer = Buffer.from(await audio.arrayBuffer());
+            buffers.push(buffer);
+          }
         }
+
         if (buffers.length === 0) {
           return null;
         }
@@ -329,8 +584,11 @@ export const generateEpisode = inngest.createFunction(
       await step.run("update-episode", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true },
+          select: { scriptText: true, status: true, audioObjectKey: true },
         });
+        if (episode?.status === "PUBLISHED" && episode.audioObjectKey) {
+          return;
+        }
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
@@ -345,6 +603,13 @@ export const generateEpisode = inngest.createFunction(
 
       return { episodeId, userId };
     } catch (error) {
+      console.error("[episode-generate] error", {
+        episodeId,
+        feedId,
+        canonicalUrl,
+        hasAuth: Boolean(sourceAuth),
+        message: error instanceof Error ? error.message : String(error),
+      });
       const shouldThrow = await step.run("mark-failed", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
@@ -361,20 +626,27 @@ export const generateEpisode = inngest.createFunction(
           },
         });
 
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            lastFetchStatus: "fail",
-            lastError: error instanceof Error ? error.message : "Unknown error",
-          },
-        });
+        // Update feed error if applicable
+        if (feedId) {
+          await prisma.feed.update({
+            where: { id: feedId },
+            data: {
+              lastError: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        }
         return true;
       });
 
-      if (shouldThrow) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const isPermanent =
+        message === "Not enough article text to generate an episode" ||
+        (error instanceof FetchError && [401, 403, 404, 410].includes(error.status));
+
+      if (shouldThrow && !isPermanent) {
         throw error;
       }
-      return { cancelled: true };
+      return { failed: true };
     }
   }
 );

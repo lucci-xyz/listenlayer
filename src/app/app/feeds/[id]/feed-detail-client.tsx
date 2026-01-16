@@ -1,0 +1,738 @@
+"use client";
+
+import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  Mic,
+  MoreHorizontal,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  Users,
+  Zap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { OutOfCreditsDialog } from "@/components/out-of-credits-dialog";
+import type { PlanKey } from "@/lib/stripe";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { formatRelativeTime } from "@/lib/time";
+import { getDomainFromUrl } from "@/lib/url";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { FeedIcon } from "@/components/feed-icon";
+
+type FormatOption = "narration" | "two-host" | "tldr";
+
+type Feed = {
+  id: string;
+  name: string;
+  feedUrl: string;
+  siteUrl: string | null;
+  faviconUrl: string | null;
+  lastFetchedAt: string | null;
+  lastError: string | null;
+};
+
+type Episode = {
+  id: string;
+  title: string;
+  status: string;
+  sourceUrl: string;
+  publicId: string;
+  createdAt: string;
+};
+
+type FeedItem = {
+  id: string;
+  title: string;
+  url: string;
+  pubDate: string | null;
+  description: string | null;
+  contentText?: string | null;
+  status: string | null;
+};
+
+type AuthPayload = {
+  type: "basic" | "bearer";
+  username?: string;
+  password?: string;
+  token?: string;
+};
+
+const SUPPORT_EMAIL = "ops@luccilabs.xyz";
+
+export function FeedDetailClient({
+  feed,
+  episodes,
+  currentPlan = "free",
+  creditsResetAt = null,
+}: {
+  feed: Feed;
+  episodes: Episode[];
+  currentPlan?: PlanKey;
+  creditsResetAt?: string | null;
+}) {
+  const router = useRouter();
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Format selection dialog state
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<FormatOption>("narration");
+  const [authMode, setAuthMode] = useState<"basic" | "bearer">("basic");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [authHint, setAuthHint] = useState<"basic" | "bearer" | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
+
+  const authReady =
+    authMode === "basic" ? Boolean(authUsername && authPassword) : Boolean(authToken);
+  const authPayload = useMemo<AuthPayload | undefined>(() => {
+    if (authMode === "basic" && authUsername && authPassword) {
+      return { type: "basic", username: authUsername, password: authPassword };
+    }
+    if (authMode === "bearer" && authToken) {
+      return { type: "bearer", token: authToken };
+    }
+    return undefined;
+  }, [authMode, authUsername, authPassword, authToken]);
+
+  const fetchItems = async () => {
+    try {
+      const res = await fetch(`/api/feeds/${feed.id}/items`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+      }
+    } catch {
+      // Ignore fetch errors
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feed.id]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchItems();
+  };
+
+  // Open format selection dialog
+  const openFormatDialog = (item: FeedItem) => {
+    setSelectedItem(item);
+    setSelectedFormat("narration");
+    setAuthStep(false);
+    setAuthMessage(null);
+    setAuthHint(null);
+    setFormatDialogOpen(true);
+  };
+
+  // Actually generate after format is selected
+  const handleGenerate = async () => {
+    if (!selectedItem) return;
+    
+    let shouldClearSelection = true;
+    setGeneratingId(selectedItem.id);
+    
+    try {
+      const payload: {
+        url: string;
+        feedId: string;
+        title: string;
+        format: FormatOption;
+        sourceText?: string;
+        auth?: AuthPayload;
+      } = {
+        url: selectedItem.url,
+        feedId: feed.id,
+        title: selectedItem.title,
+        format: selectedFormat,
+        sourceText: selectedItem.contentText ?? undefined,
+      };
+      if (authPayload) {
+        payload.auth = authPayload;
+      }
+
+      const res = await fetch("/api/episodes/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        authHint?: "basic" | "bearer" | null;
+        episodeId?: string;
+      };
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          shouldClearSelection = false;
+          setAuthStep(false);
+          setFormatDialogOpen(false);
+          setCreditsDialogOpen(true);
+          return;
+        }
+        if (data.code === "FORBIDDEN") {
+          shouldClearSelection = false;
+          setAuthStep(true);
+          setAuthMessage(data.error || "Source requires authentication.");
+          if (data.authHint) {
+            setAuthHint(data.authHint);
+            setAuthMode(data.authHint);
+          }
+          return;
+        }
+        throw new Error(data.error || "Failed to generate");
+      }
+
+      toast.success("Generation started!");
+      router.refresh();
+      setAuthStep(false);
+      setFormatDialogOpen(false);
+
+      if (data.episodeId) {
+        router.push(`/app/episodes/${data.episodeId}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate");
+      setAuthStep(false);
+      setFormatDialogOpen(false);
+    } finally {
+      setGeneratingId(null);
+      if (shouldClearSelection) {
+        setSelectedItem(null);
+      }
+    }
+  };
+
+  const handleAuthContinue = async () => {
+    if (!authReady || authSubmitting) return;
+    setAuthSubmitting(true);
+    try {
+      await handleGenerate();
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const visibleEpisodes = useMemo(() => {
+    const statusPriority: Record<string, number> = {
+      PUBLISHED: 4,
+      RUNNING: 3,
+      QUEUED: 2,
+      FAILED: 1,
+    };
+    const byKey = new Map<string, Episode>();
+
+    for (const episode of episodes) {
+      const key = `${episode.sourceUrl}::${episode.title}`;
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, episode);
+        continue;
+      }
+
+      const existingPriority = statusPriority[existing.status] ?? 0;
+      const nextPriority = statusPriority[episode.status] ?? 0;
+      if (nextPriority > existingPriority) {
+        byKey.set(key, episode);
+        continue;
+      }
+
+      if (nextPriority === existingPriority) {
+        const existingTime = new Date(existing.createdAt).getTime();
+        const nextTime = new Date(episode.createdAt).getTime();
+        if (nextTime > existingTime) {
+          byKey.set(key, episode);
+        }
+      }
+    }
+
+    return Array.from(byKey.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [episodes]);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/feeds/${feed.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Feed deleted");
+      router.push("/app/feeds");
+    } catch {
+      toast.error("Failed to delete feed");
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
+  const statusBadge = (status: string | null) => {
+    if (!status) return null;
+    const colors: Record<string, string> = {
+      PUBLISHED: "bg-success/10 text-success",
+      QUEUED: "bg-warning/15 text-warning-foreground",
+      RUNNING: "bg-warning/15 text-warning-foreground",
+      FAILED: "bg-destructive/10 text-destructive",
+    };
+    const labels: Record<string, string> = {
+      PUBLISHED: "Generated",
+      QUEUED: "Queued",
+      RUNNING: "Generating",
+      FAILED: "Failed",
+    };
+    return (
+      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide", colors[status] || "bg-muted/60 text-muted-foreground")}>
+        {labels[status] || status}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-8 w-full max-w-5xl mx-auto">
+      {/* Header */}
+      <div>
+        <Link
+          href="/app/feeds"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to feeds
+        </Link>
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="font-display text-3xl md:text-4xl text-foreground">{feed.name}</h1>
+            <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground/80">{getDomainFromUrl(feed.feedUrl)}</span>
+              {feed.siteUrl && (
+                <>
+                  <span className="text-border">•</span>
+                  <a
+                    href={feed.siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-primary transition-colors"
+                  >
+                    Visit site <ExternalLink className="h-3 w-3" />
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end md:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="h-10 px-4"
+            >
+              <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
+              Refresh
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-10 w-10">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem onClick={() => window.open(feed.feedUrl, "_blank")}>
+                  View feed URL
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete feed
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
+        {/* Latest Articles */}
+        <div className="space-y-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-display text-foreground">Latest Articles</h2>
+            {feed.lastFetchedAt && (
+              <span className="text-xs font-medium text-muted-foreground bg-muted/60 border border-border/60 px-2.5 py-1 rounded-full">
+                Updated {formatRelativeTime(feed.lastFetchedAt)}
+              </span>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/30" />
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-20 text-center text-muted-foreground">
+                No articles found in feed.
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {items.map((item) => (
+                  <div key={item.id} className="group p-4 sm:p-6 hover:bg-muted/40 transition-colors">
+                    <div className="flex flex-col gap-4">
+                      <div className="space-y-2">
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-semibold text-foreground hover:text-primary transition-colors leading-tight block"
+                        >
+                          {item.title}
+                        </a>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.pubDate && <span className="font-medium">{formatRelativeTime(item.pubDate)}</span>}
+                          {item.status && (
+                            <>
+                              <span className="text-border">•</span>
+                              {statusBadge(item.status)}
+                            </>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        {item.status === "FAILED" ? (
+                          <a
+                            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                              "ListenLayer episode generation failed"
+                            )}&body=${encodeURIComponent(
+                              `Feed: ${feed.name}\nEpisode: ${item.title}\nSource: ${item.url}`
+                            )}`}
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            Contact support
+                          </a>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant={item.status ? "outline" : "default"}
+                          onClick={() => openFormatDialog(item)}
+                          disabled={
+                            generatingId === item.id ||
+                            item.status === "QUEUED" ||
+                            item.status === "RUNNING"
+                          }
+                          className={cn(
+                            "rounded-lg h-9 px-5 text-xs font-medium transition-colors",
+                            !item.status && "shadow-sm"
+                          )}
+                        >
+                          {generatingId === item.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              Creating...
+                            </>
+                          ) : item.status === "PUBLISHED" ? (
+                            "Regenerate"
+                          ) : item.status === "FAILED" ? (
+                            "Try again"
+                          ) : item.status === "QUEUED" || item.status === "RUNNING" ? (
+                            "Generating..."
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-3.5 w-3.5" />
+                              Create Audio
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar: Generated Episodes */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-display text-foreground">Generated Episodes</h2>
+          
+          {visibleEpisodes.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center bg-muted/30">
+              <p className="text-sm text-muted-foreground">
+                No episodes generated yet. Pick an article to start.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
+              <div className="divide-y divide-border/40">
+                {visibleEpisodes.map((ep) => (
+                  <Link
+                    key={ep.id}
+                    href={`/app/episodes/${ep.id}`}
+                    className="flex items-start gap-3 p-4 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+                        {ep.title}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatRelativeTime(ep.createdAt)}</span>
+                        {statusBadge(ep.status)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Dialogs */}
+      <Dialog
+        open={formatDialogOpen}
+        onOpenChange={(open) => {
+          setFormatDialogOpen(open);
+          if (!open) {
+            setAuthStep(false);
+            setAuthMessage(null);
+            setAuthHint(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">
+              {authStep ? "Credentials required" : "Choose Format"}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {authStep
+                ? "This source needs authentication before we can continue."
+                : "Select how you want this article to be narrated."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {authStep ? (
+            <>
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Access required
+                </div>
+                <div className="mt-2 text-lg font-semibold text-foreground">
+                  {authMessage || "Source requires authentication."}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-background p-4">
+                <div className="text-sm font-medium text-foreground">Provide credentials</div>
+                <div className="text-xs text-muted-foreground">
+                  {authHint === "basic"
+                    ? "This source appears to require Basic authentication."
+                    : authHint === "bearer"
+                    ? "This source appears to require a Bearer token."
+                    : "Choose the credential type required by the source."}
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={authMode === "basic" ? "default" : "outline"}
+                      onClick={() => setAuthMode("basic")}
+                    >
+                      Basic
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={authMode === "bearer" ? "default" : "outline"}
+                      onClick={() => setAuthMode("bearer")}
+                    >
+                      Bearer token
+                    </Button>
+                  </div>
+                  {authMode === "basic" ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Input
+                        placeholder="Username"
+                        value={authUsername}
+                        onChange={(e) => setAuthUsername(e.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Password"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      type="password"
+                      placeholder="Bearer token"
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="sm:justify-between gap-4">
+                <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAuthContinue}
+                  className="rounded-lg px-8"
+                  disabled={!authReady || authSubmitting}
+                >
+                  {authSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking access
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Continue
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-3 py-4">
+                {[
+                  { id: "narration", label: "Solo narration", desc: "Professional single-voice reading", icon: Mic },
+                  { id: "two-host", label: "Two hosts", desc: "Conversational discussion style", icon: Users },
+                  { id: "tldr", label: "TL;DR summary", desc: "Concise 2-minute overview", icon: Zap },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedFormat(option.id as FormatOption)}
+                    className={cn(
+                      "flex items-center gap-4 rounded-xl border border-border/60 p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
+                      selectedFormat === option.id
+                        ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border/60"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors",
+                        selectedFormat === option.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/60 text-muted-foreground"
+                      )}
+                    >
+                      <option.icon className="h-6 w-6" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <div
+                        className={cn(
+                          "font-semibold",
+                          selectedFormat === option.id ? "text-primary" : "text-foreground"
+                        )}
+                      >
+                        {option.label}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{option.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <DialogFooter className="sm:justify-between gap-4">
+                <Button variant="ghost" onClick={() => setFormatDialogOpen(false)} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button onClick={handleGenerate} className="rounded-lg px-8">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Audio
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <OutOfCreditsDialog
+        open={creditsDialogOpen}
+        onOpenChange={setCreditsDialogOpen}
+        currentPlan={currentPlan}
+        resetAt={creditsResetAt}
+      />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete feed subscription?</DialogTitle>
+            <DialogDescription>
+              This will remove <strong>{feed.name}</strong> from your dashboard. Generated episodes will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-lg">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded-lg"
+            >
+              {deleting ? "Deleting..." : "Delete Feed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

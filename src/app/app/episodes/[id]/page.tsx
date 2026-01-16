@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { AudioPlayer } from "@/components/audio-player";
 import { CopyField } from "@/components/copy-field";
 import { EmbedButton } from "@/components/embed-button";
@@ -21,115 +22,143 @@ export default async function EpisodeDetailPage({
   if (!user) redirect("/login");
 
   const episode = await prisma.episode.findFirst({
-    where: { id, site: { userId: user.id } },
-    include: { site: true, source: true },
+    where: { id, userId: user.id },
+    include: { feed: true },
   });
 
   if (!episode) {
     redirect("/app");
   }
 
-  const chapters = (Array.isArray(episode.chaptersJson)
-    ? episode.chaptersJson
-    : []) as { title: string; startApproxSec: number }[];
+  const chapters = (Array.isArray(episode.chaptersJson) ? episode.chaptersJson : []) as {
+    title: string;
+    startApproxSec: number;
+  }[];
   const baseUrl = getBaseUrl();
-  const config = mergeEmbedConfig(episode.site.embedConfig);
-  const embedHeightPx = embedHeight(config);
-  const embedQuery = embedConfigToQuery(config);
+  const embedHeightPx = embedHeight();
+  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}`;
+  const iframeSnippet = `<iframe src="${embedUrl}" style="width:100%;height:${embedHeightPx}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`;
   const playerUrl = `${baseUrl}/listen/e/${episode.publicId}`;
-  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}?${embedQuery}`;
-  const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${embedHeightPx}px;border:0\" loading=\"lazy\"></iframe>`;
-  const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${episode.publicId}\" data-theme=\"${config.theme}\" data-accent=\"${config.accentColor}\" data-radius=\"${config.radius}\" data-size=\"${config.size}\" data-chapters=\"${config.showChapters ? "1" : "0"}\" data-transcript=\"${config.showTranscript ? "1" : "0"}\" data-open=\"${config.showOpenPlayer ? "1" : "0"}\"></script>`;
   const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
 
   return (
     <div className="space-y-6">
+      {/* Back link */}
+      <Link
+        href="/app/episodes"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to episodes
+      </Link>
+
+      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="text-[12px] text-muted-foreground">{episode.site.name}</div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{episode.title}</h1>
-            <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
-              {statusLabel}
-            </Badge>
-          </div>
-          <div className="text-[13px] text-muted-foreground">
-            Source: {getDomainFromUrl(episode.sourceUrl)}
+        <div className="space-y-1">
+          {episode.feed ? (
+            <Link
+              href={`/app/feeds/${episode.feed.id}`}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              {episode.feed.name}
+            </Link>
+          ) : (
+            <div className="text-xs text-muted-foreground">Standalone episode</div>
+          )}
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground">
+            {episode.title}
+          </h1>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>{statusLabel}</span>
+            <a
+              href={episode.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
+              {getDomainFromUrl(episode.sourceUrl)}
+            </a>
+            {episode.status === "PUBLISHED" && (
+              <Link
+                href={`/listen/e/${episode.publicId}`}
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                Open player <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
           </div>
         </div>
-        <EmbedButton
-          publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
-          baseUrl={baseUrl}
-          config={config}
-        />
+        <EmbedButton publicId={episode.status === "PUBLISHED" ? episode.publicId : null} baseUrl={baseUrl} />
       </div>
 
+      {/* Player */}
       <Card>
-        <CardHeader>
-          <CardTitle>Audio</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {episode.status === "CANCELLED" ? (
-            <div className="mb-3 text-[13px] text-amber-700">
-              Generation was cancelled.
-            </div>
-          ) : null}
-          {episode.errorMessage && episode.status !== "CANCELLED" ? (
-            <div className="mb-3 text-[13px] text-red-600">
-              Generation failed: {episode.errorMessage}
-            </div>
-          ) : null}
+        <CardContent className="py-5">
+          {episode.status === "CANCELLED" && (
+            <p className="mb-3 text-sm text-warning-foreground">Generation was cancelled.</p>
+          )}
+          {episode.errorMessage && episode.status !== "CANCELLED" && (
+            <p className="mb-3 text-sm text-destructive">Generation failed: {episode.errorMessage}</p>
+          )}
           {episode.status === "PUBLISHED" ? (
-            <AudioPlayer publicId={episode.publicId} />
-          ) : (
-            <div className="text-[13px] text-muted-foreground">
-              Audio will be available once the episode is published.
+            <AudioPlayer
+              publicId={episode.publicId}
+              title={episode.title}
+              subtitle={episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}
+              useGlobal
+            />
+          ) : episode.status === "QUEUED" || episode.status === "RUNNING" ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-warning" />
+              Generating audio...
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Audio will be available once the episode is published.</p>
           )}
         </CardContent>
       </Card>
 
+      {/* Transcript */}
       <Card>
         <CardHeader>
-          <CardTitle>Transcript</CardTitle>
+          <CardTitle className="text-base">Transcript</CardTitle>
         </CardHeader>
-        <CardContent className="whitespace-pre-wrap text-[13px] text-foreground">
+        <CardContent className="whitespace-pre-wrap text-sm text-foreground">
           {episode.transcriptText || "Transcript will appear after publishing."}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Chapters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {chapters.length === 0 ? (
-            <div className="text-[13px] text-muted-foreground">No chapters yet.</div>
-          ) : (
-            <ul className="space-y-2 text-[13px] text-muted-foreground">
-              {chapters.map((chapter, index) => (
-                <li key={`${chapter.title}-${index}`}>
-                  <span className="font-semibold text-foreground">{chapter.title}</span>
-                  <span className="ml-2 text-[12px] text-muted-foreground">
-                    ~{chapter.startApproxSec}s
-                  </span>
+      {/* Chapters */}
+      {chapters.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Chapters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {chapters.map((chapter, idx) => (
+                <li key={`${chapter.title}-${idx}`}>
+                  <span className="font-medium text-foreground">{chapter.title}</span>
+                  <span className="ml-2 text-xs">~{chapter.startApproxSec}s</span>
                 </li>
               ))}
             </ul>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Embed</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-[13px]">
-          <CopyField label="Player URL" value={playerUrl} />
-          <CopyField label="Iframe snippet" value={iframeSnippet} mono />
-          <CopyField label="Widget.js snippet" value={widgetSnippet} mono />
-        </CardContent>
-      </Card>
+      {/* Embed */}
+      {episode.status === "PUBLISHED" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Embed</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <CopyField label="Player URL" value={playerUrl} />
+            <CopyField label="Iframe snippet" value={iframeSnippet} mono />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

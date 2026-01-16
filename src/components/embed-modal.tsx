@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { EmbedConfig, embedConfigToQuery, embedHeight } from "@/lib/embed";
+import { embedHeight } from "@/lib/embed";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,39 +11,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyField } from "@/components/copy-field";
+
+const PLAYER_HEIGHT = embedHeight();
 
 export function EmbedModal({
   open,
   onOpenChange,
   publicId,
   baseUrl,
-  config,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   publicId: string | null;
   baseUrl: string;
-  config: EmbedConfig;
 }) {
   const { embedUrl, iframeSnippet, widgetSnippet, playerUrl } = useMemo(() => {
     if (!publicId) {
-      return {
-        embedUrl: "",
-        iframeSnippet: "",
-        widgetSnippet: "",
-        playerUrl: "",
-      };
+      return { embedUrl: "", iframeSnippet: "", widgetSnippet: "", playerUrl: "" };
     }
-    const query = embedConfigToQuery(config);
-    const embedUrl = `${baseUrl}/embed/e/${publicId}?${query}`;
-    const height = embedHeight(config);
-    const iframeSnippet = `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${height}px;border:0\" loading=\"lazy\"></iframe>`;
-    const widgetSnippet = `<script async src=\"${baseUrl}/widget.js\" data-episode=\"${publicId}\" data-theme=\"${config.theme}\" data-accent=\"${config.accentColor}\" data-radius=\"${config.radius}\" data-size=\"${config.size}\" data-chapters=\"${config.showChapters ? "1" : "0"}\" data-transcript=\"${config.showTranscript ? "1" : "0"}\" data-open=\"${config.showOpenPlayer ? "1" : "0"}\"></script>`;
+    const embedUrl = `${baseUrl}/embed/e/${publicId}`;
+    const iframeSnippet = `<iframe src="${embedUrl}" style="width:100%;height:${PLAYER_HEIGHT}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`;
+    const widgetSnippet = `<script async src="${baseUrl}/widget.js" data-episode="${publicId}"></script>`;
     const playerUrl = `${baseUrl}/listen/e/${publicId}`;
     return { embedUrl, iframeSnippet, widgetSnippet, playerUrl };
-  }, [publicId, baseUrl, config]);
+  }, [publicId, baseUrl]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +47,7 @@ export function EmbedModal({
         </DialogHeader>
 
         {!publicId ? (
-          <div className="rounded-lg border border-border bg-muted p-4 text-[13px] text-muted-foreground">
+          <div className="rounded-lg border border-border/60 bg-muted/40 p-4 text-[13px] text-muted-foreground">
             Publish an episode to unlock embed snippets.
           </div>
         ) : (
@@ -77,16 +70,14 @@ export function EmbedModal({
               <CopyField label="Widget.js snippet" value={widgetSnippet} mono />
             </TabsContent>
             <TabsContent value="link" className="mt-4 space-y-4">
-              <p className="text-[13px] text-muted-foreground">
-                Share the hosted player link directly.
-              </p>
+              <p className="text-[13px] text-muted-foreground">Share the hosted player link directly.</p>
               <CopyField label="Hosted player URL" value={playerUrl} />
             </TabsContent>
           </Tabs>
         )}
 
         {publicId ? (
-          <div className="mt-4 flex items-center justify-between rounded-lg bg-muted px-4 py-3 text-[13px]">
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-[13px]">
             <div className="text-muted-foreground">Want to see the live embed?</div>
             <Button asChild size="sm" variant="outline">
               <Link href={`/app/embed?publicId=${publicId}`}>Test embed</Link>

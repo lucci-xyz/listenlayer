@@ -3,23 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-import { getDomainFromUrl } from "@/lib/url";
 import { formatRelativeTime } from "@/lib/time";
-import { mergeEmbedConfig } from "@/lib/embed";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { EmbedButton } from "@/components/embed-button";
 import { toast } from "sonner";
+import { ArrowRight, Search } from "lucide-react";
 
 export type EpisodeListItem = {
   id: string;
@@ -28,55 +16,40 @@ export type EpisodeListItem = {
   createdAt: string;
   sourceUrl: string;
   publicId: string | null;
-  siteName?: string;
-  siteId: string;
-  embedConfig?: unknown;
+  feedName?: string | null;
+  feedId?: string | null;
+  sourceDomain: string;
 };
 
 const filters = ["All", "Published", "Processing", "Failed", "Canceled"] as const;
 
 export default function EpisodesClient({
   episodes,
-  baseUrl,
-  showSite,
 }: {
   episodes: EpisodeListItem[];
   baseUrl: string;
-  showSite?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     let list = [...episodes];
     if (normalized) {
-      list = list.filter((episode) => episode.title.toLowerCase().includes(normalized));
+      list = list.filter((ep) => ep.title.toLowerCase().includes(normalized));
     }
     if (filter !== "All") {
-      list = list.filter((episode) => {
-        if (filter === "Published") return episode.status === "PUBLISHED";
-        if (filter === "Failed") return episode.status === "FAILED";
-        if (filter === "Canceled") return episode.status === "CANCELLED";
-        return episode.status === "QUEUED" || episode.status === "RUNNING";
+      list = list.filter((ep) => {
+        if (filter === "Published") return ep.status === "PUBLISHED";
+        if (filter === "Failed") return ep.status === "FAILED";
+        if (filter === "Canceled") return ep.status === "CANCELLED";
+        return ep.status === "QUEUED" || ep.status === "RUNNING";
       });
     }
-    list.sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return sort === "newest" ? bTime - aTime : aTime - bTime;
-    });
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
-  }, [episodes, query, filter, sort]);
-
-  const inProgress = filtered.filter((episode) =>
-    episode.status === "QUEUED" || episode.status === "RUNNING"
-  );
-  const rest = filtered.filter((episode) =>
-    episode.status !== "QUEUED" && episode.status !== "RUNNING"
-  );
+  }, [episodes, query, filter]);
 
   const handleCancel = async (episodeId: string) => {
     try {
@@ -85,9 +58,7 @@ export default function EpisodesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId }),
       });
-      if (!res.ok) {
-        throw new Error("Failed to stop generation");
-      }
+      if (!res.ok) throw new Error("Failed to stop generation");
       toast.success("Generation stopped.");
       router.refresh();
     } catch (error) {
@@ -95,138 +66,107 @@ export default function EpisodesClient({
     }
   };
 
-  const renderEpisode = (episode: EpisodeListItem) => {
-    const config = mergeEmbedConfig(episode.embedConfig || null);
-    const statusLabel = episode.status === "CANCELLED" ? "Canceled" : episode.status;
-    return (
-      <Card key={episode.id}>
-        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-foreground">
-                {episode.title}
-              </h3>
-              <Badge variant={episode.status === "PUBLISHED" ? "default" : "secondary"}>
-                {statusLabel}
-              </Badge>
-              <span className="text-[12px] text-muted-foreground">
-                {formatRelativeTime(episode.createdAt)}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
-              <span>{getDomainFromUrl(episode.sourceUrl)}</span>
-              {showSite && episode.siteName ? <span>Show: {episode.siteName}</span> : null}
-            </div>
-            {episode.status === "RUNNING" || episode.status === "QUEUED" ? (
-              <div className="text-[12px] text-muted-foreground">Generating…</div>
-            ) : null}
-          </div>
+  const statusText = (status: string) => {
+    const map: Record<string, string> = {
+      PUBLISHED: "Published",
+      QUEUED: "Queued",
+      RUNNING: "Generating",
+      FAILED: "Failed",
+      CANCELLED: "Canceled",
+    };
+    return map[status] ?? status;
+  };
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/app/episodes/${episode.id}`}>Open</Link>
-            </Button>
-            {episode.status === "QUEUED" || episode.status === "RUNNING" ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleCancel(episode.id)}
-              >
-                Stop
-              </Button>
-            ) : null}
-            <EmbedButton
-              label="Copy embed"
-              size="sm"
-              variant="outline"
-              publicId={episode.status === "PUBLISHED" ? episode.publicId : null}
-              baseUrl={baseUrl}
-              config={config}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled>Regenerate (soon)</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>Delete (soon)</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return "bg-success/10 text-success";
+      case "RUNNING":
+      case "QUEUED":
+        return "bg-warning/15 text-warning-foreground";
+      case "FAILED":
+        return "bg-destructive/10 text-destructive";
+      default:
+        return "bg-muted/60 text-muted-foreground";
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1 rounded-md bg-muted/60 p-1">
-          {filters.map((option) => (
-            <Button
-              key={option}
-              size="sm"
-              variant="ghost"
-              className={
-                filter === option
-                  ? "bg-background text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }
-              onClick={() => setFilter(option)}
+    <div className="space-y-6">
+      {/* Filters + search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          {filters.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                filter === opt
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-background border border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+              onClick={() => setFilter(opt)}
             >
-              {option}
-            </Button>
+              {opt}
+            </button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search episodes"
+            placeholder="Search episodes..."
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="w-52"
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
           />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-          >
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            {sort === "newest" ? "Newest" : "Oldest"}
-          </Button>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-[13px] text-muted-foreground">
-            No episodes yet.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {inProgress.length > 0 ? (
-            <div className="space-y-3">
-              <div className="text-[12px] font-medium text-muted-foreground">
-                In progress
-              </div>
-              {inProgress.map(renderEpisode)}
-            </div>
-          ) : null}
-          {rest.length > 0 ? (
-            <div className="space-y-3">
-              {inProgress.length > 0 ? (
-                <div className="text-[12px] font-medium text-muted-foreground">
-                  Library
+      {/* List Card */}
+      <div className="rounded-2xl bg-card border border-border/60 shadow-soft overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground">
+            No episodes found matching your filters.
+          </div>
+        ) : (
+          <div className="divide-y divide-border/40 p-2">
+            {filtered.map((ep) => (
+              <div
+                key={ep.id}
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-muted/40 rounded-xl transition-colors"
+              >
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${ep.status === 'PUBLISHED' ? 'bg-success' : ep.status === 'FAILED' ? 'bg-destructive' : 'bg-warning animate-pulse'}`} />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="font-medium text-foreground truncate text-base">{ep.title}</div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      <span>{ep.feedName || ep.sourceDomain}</span>
+                      <span className="hidden sm:inline text-border">•</span>
+                      <span>{formatRelativeTime(ep.createdAt)}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide ${statusColor(ep.status)}`}>
+                        {statusText(ep.status)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ) : null}
-              {rest.map(renderEpisode)}
-            </div>
-          ) : null}
-        </div>
-      )}
+                
+                <div className="flex items-center gap-3 pl-6 sm:pl-0">
+                  {(ep.status === "QUEUED" || ep.status === "RUNNING") && (
+                    <Button size="sm" variant="outline" onClick={() => handleCancel(ep.id)} className="text-xs h-8 rounded-lg">
+                      Stop
+                    </Button>
+                  )}
+                  <Button asChild size="sm" variant="outline" className="text-xs h-8 rounded-lg gap-1">
+                    <Link href={`/app/episodes/${ep.id}`}>
+                      Open <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

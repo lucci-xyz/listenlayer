@@ -10,27 +10,25 @@ import {
   Check,
 } from "lucide-react";
 import { PLANS } from "@/lib/stripe";
+import { LandingAudioPlayer } from "@/components/landing-audio-player";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-6">
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
+        <div className="mx-auto flex h-16 sm:h-20 max-w-[1200px] items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-background text-xs font-semibold">
-              L
-            </div>
-            <span className="text-[15px] font-medium">ListenLayer</span>
+            <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
               <Link href="#pricing">Pricing</Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" className="rounded-full px-5 sm:px-6" asChild>
               <Link href="/login">Get started</Link>
             </Button>
           </div>
@@ -38,210 +36,160 @@ export default function Home() {
       </nav>
 
       {/* Hero — two-column layout */}
-      <section className="relative overflow-hidden">
-        {/* Subtle orb background */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] orb-glow -z-10" />
-        
-        <div className="mx-auto max-w-[1200px] px-6 py-20 lg:py-28">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
+      <section className="relative overflow-hidden pt-10 pb-16 sm:pt-12 sm:pb-20 md:pt-20 md:pb-32">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 items-center">
             {/* Left: copy */}
             <div className="max-w-xl">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">
+              <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
                 Audio for blogs & newsletters
-              </p>
-              <h1 className="font-display text-[3.25rem] leading-[1.05] tracking-tight lg:text-[3.75rem]">
+              </div>
+              <h1 className="font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-[4rem] text-foreground mb-8">
                 Turn any article into an audio episode
               </h1>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-md">
                 Paste a URL. We extract the text, generate narration, and give you 
                 a player to embed. Your readers can listen while they commute, cook, 
                 or pretend to work out.
               </p>
               
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button size="lg" asChild className="h-11 px-5 text-[15px]">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                <Button size="lg" className="rounded-full px-8 h-11 sm:h-12 text-base shadow-sm" asChild>
                   <Link href="/login">
                     Start free <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild className="h-11 px-5 text-[15px]">
-                  <Link href="#demo">
-                    <Play className="mr-2 h-3.5 w-3.5" /> Listen to a sample
-                  </Link>
-                </Button>
               </div>
               
-              <p className="mt-4 text-sm text-muted-foreground">
+              <p className="mt-6 text-sm text-muted-foreground font-medium">
                 3 free episodes · No card required
               </p>
             </div>
 
-            {/* Right: mock player visual */}
-            <div className="relative lg:pl-8">
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-soft-lg">
-                {/* Mock player header */}
-                <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 flex items-center justify-center shrink-0">
-                    <Play className="h-6 w-6 text-violet-600" />
+            <div id="demo" className="relative">
+              <div className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6 shadow-soft-lg">
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Science highlights
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-foreground truncate">
-                      How We Redesigned Our Checkout Flow
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      The Design Blog · 8 min
-                    </div>
+                  <div className="text-2xl font-display text-foreground">
+                    Could Life Survive on Mars? Yeast Offers a Surprising Answer
                   </div>
                 </div>
-                
-                {/* Mock waveform */}
-                <div className="mt-6 flex items-center gap-1">
-                  {[...Array(40)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="flex-1 rounded-full bg-violet-500/20"
-                      style={{ 
-                        height: `${Math.random() * 24 + 8}px`,
-                        backgroundColor: i < 12 ? 'rgb(124 58 237 / 0.5)' : undefined
-                      }}
-                    />
-                  ))}
+
+                <div className="mt-6">
+                  <LandingAudioPlayer endpoint="/api/episodes/demo-audio" />
                 </div>
-                
-                {/* Mock controls */}
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>2:34</span>
-                  <span>8:12</span>
-                </div>
-              </div>
-              
-              {/* Floating badge */}
-              <div className="absolute -bottom-4 -left-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft-md">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
-                  <span className="text-sm font-medium">1,247 plays this week</span>
-                </div>
+
+                <p className="mt-4 text-xs text-muted-foreground">
+                  <a
+                    href="https://scitechdaily.com/could-life-survive-on-mars-yeast-offers-a-surprising-answer/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4 decoration-border/80 hover:text-foreground transition-colors"
+                  >
+                    Source: SciTechDaily.
+                  </a>
+                </p>
               </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* How it works — narrative section */}
-      <section className="border-t border-border/50 py-24 lg:py-28">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <div className="max-w-xl">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
-              How it works
-            </p>
-            <h2 className="font-display text-[2.5rem] tracking-tight">
+      {/* How it works */}
+      <section className="py-20 sm:py-24 md:py-32 bg-card rounded-2xl mx-3 sm:mx-4 md:mx-6 shadow-soft border border-border/60 mb-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="max-w-2xl mx-auto text-center mb-20">
+            <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Three steps to audio content
             </h2>
+            <p className="text-lg text-muted-foreground">
+              Transforming your written content into high-quality audio has never been easier.
+            </p>
           </div>
           
-          <div className="mt-16 grid gap-12 lg:grid-cols-3 lg:gap-8">
-            <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold">
-                1
-              </div>
-              <h3 className="mt-5 text-lg font-medium">Paste your URL</h3>
-              <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
-                Drop in any blog post, newsletter, or article link. 
-                We'll extract the text and clean it up for narration.
-              </p>
-            </div>
+          <div className="grid gap-12 md:grid-cols-3 relative">
+            {/* Connecting line */}
+            <div className="absolute top-8 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent hidden md:block" />
             
-            <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold">
-                2
+            {[
+              {
+                step: "01",
+                title: "Paste URL",
+                desc: "Drop in any blog post, newsletter, or article link. We'll extract the text automatically."
+              },
+              {
+                step: "02",
+                title: "Generate Audio",
+                desc: "Our AI creates natural-sounding narration in minutes. Choose from multiple voices."
+              },
+              {
+                step: "03",
+                title: "Embed & Track",
+                desc: "Copy a snippet to your site. Track plays and engagement with built-in analytics."
+              }
+            ].map((item, i) => (
+              <div key={i} className="relative flex flex-col items-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/60 border border-border/60 font-mono text-lg font-medium text-muted-foreground mb-6 relative z-10">
+                  {item.step}
+                </div>
+                <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
+                <p className="text-muted-foreground leading-relaxed max-w-xs">
+                  {item.desc}
+                </p>
               </div>
-              <h3 className="mt-5 text-lg font-medium">Generate audio</h3>
-              <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
-                Our system creates narration with natural pacing. 
-                The result: an MP3 file ready to share in a few minutes.
-              </p>
-            </div>
-            
-            <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold">
-                3
-              </div>
-              <h3 className="mt-5 text-lg font-medium">Embed & track</h3>
-              <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
-                Copy a snippet, drop it on your site. 
-                See how many people press play and how long they listen.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features — asymmetric layout */}
-      <section className="bg-muted/30 py-24 lg:py-28">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <div className="grid gap-16 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
-            {/* Left: main feature */}
-              <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
-                For newsletters & blogs
-              </p>
-              <h2 className="font-display text-[2.5rem] tracking-tight">
+      {/* Features */}
+      <section className="py-20 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] items-start">
+            <div>
+              <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-foreground mb-8">
+                Features
+              </div>
+              <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
                 Your writing, now with an audio option
               </h2>
-              <p className="mt-4 text-muted-foreground leading-relaxed">
-                Not everyone has time to read. Some prefer listening while doing 
-                other things. Give them the choice without recording anything yourself.
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Not everyone has time to read. Give them the choice to listen
+                without recording anything yourself. Perfect for newsletters and blogs.
               </p>
-              <p className="mt-4 text-sm text-muted-foreground italic">
-                Great for newsletters and blogs. Overkill for audiobooks.
-              </p>
-              
-              <div className="mt-8 flex items-center gap-4">
-                <div className="flex -space-x-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs font-medium"
-                    >
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  Used by creators at Substack, Ghost, Beehiiv
-                </span>
-              </div>
             </div>
-            
-            {/* Right: feature list */}
-            <div className="grid gap-6 sm:grid-cols-2">
+
+            <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
               {[
                 {
                   icon: Rss,
-                  title: "RSS auto-sync",
-                  description: "Connect your feed once. New posts become audio automatically.",
+                  title: "RSS Auto-sync",
+                  desc: "New posts become audio automatically."
                 },
                 {
                   icon: Code2,
-                  title: "Simple embed",
-                  description: "One line of code. Works on any site, any CMS.",
+                  title: "Simple Embed",
+                  desc: "One line of code. Works on any CMS."
                 },
                 {
                   icon: BarChart3,
-                  title: "Play analytics",
-                  description: "See total plays, completion rates, and listener trends.",
+                  title: "Deep Analytics",
+                  desc: "Track plays, completion rates, and more."
                 },
                 {
                   icon: Play,
-                  title: "Clean player",
-                  description: "Minimal design that doesn't fight with your site's look.",
+                  title: "Clean Player",
+                  desc: "Minimal design that fits your brand."
                 },
-              ].map((feature) => (
-                <div key={feature.title} className="rounded-2xl border border-border/70 bg-card p-5">
-                  <feature.icon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="mt-3 font-medium">{feature.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                    {feature.description}
+              ].map((feature, i) => (
+                <div key={i}>
+                  <feature.icon className="h-6 w-6 text-primary mb-4" strokeWidth={1.5} />
+                  <h3 className="font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm text-foreground/60 leading-relaxed">
+                    {feature.desc}
                   </p>
                 </div>
               ))}
@@ -251,133 +199,108 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 lg:py-28">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <div className="text-center max-w-xl mx-auto">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
-              Pricing
-            </p>
-            <h2 className="font-display text-[2.5rem] tracking-tight">
+      <section id="pricing" className="py-20 sm:py-24 md:py-32 bg-card mx-3 sm:mx-4 md:mx-6 rounded-2xl shadow-soft border border-border/60 mb-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-20">
+            <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6">
               Start free, scale as you grow
             </h2>
-            <p className="mt-4 text-muted-foreground">
+            <p className="text-lg text-muted-foreground">
               All plans include the embed player and basic analytics. 
               Upgrade for more episodes and features.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-6 lg:grid-cols-3">
-            {/* Free */}
-            <div className="rounded-2xl border border-border/70 bg-card p-6">
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.free.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">$0</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.free.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.free.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button variant="outline" className="w-full mt-6" asChild>
-                <Link href="/login">Get started</Link>
-              </Button>
-            </div>
-
-            {/* Starter — featured */}
-            <div className="relative rounded-2xl border-2 border-foreground bg-card p-6 shadow-soft-lg">
-              <Badge className="absolute -top-3 left-6">Popular</Badge>
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.starter.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">${PLANS.starter.price}</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.starter.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.starter.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button className="w-full mt-6" asChild>
-                <Link href="/login">Start free trial</Link>
-              </Button>
-            </div>
-
-            {/* Pro */}
-            <div className="rounded-2xl border border-border/70 bg-card p-6">
-              <div className="text-sm font-medium text-muted-foreground">{PLANS.pro.name}</div>
-              <div className="mt-3">
-                <span className="text-3xl font-semibold">${PLANS.pro.price}</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{PLANS.pro.description}</p>
-              
-              <ul className="mt-6 space-y-3">
-                {PLANS.pro.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button variant="outline" className="w-full mt-6" asChild>
-                <Link href="/login">Start free trial</Link>
-              </Button>
-            </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {(["free", "creator", "pro", "business"] as const).map((key) => {
+              const plan = PLANS[key];
+              const isPopular = key === "creator";
+              return (
+                <div
+                  key={key}
+                  className={`relative flex flex-col p-6 sm:p-8 rounded-2xl border transition-all duration-300 ${
+                    isPopular 
+                      ? "bg-primary/5 border-primary/30 shadow-soft-md" 
+                      : "bg-card border-border/60 hover:border-border"
+                  }`}
+                >
+                  {isPopular && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card text-primary border border-primary/30 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                      Popular
+                    </div>
+                  )}
+                  
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg text-foreground">
+                      {plan.name}
+                    </h3>
+                    <p className="text-sm mt-1 text-muted-foreground">
+                      {plan.description}
+                    </p>
+                  </div>
+                  
+                  <div className="mb-8">
+                    <span className="font-display text-4xl">
+                      {plan.price === 0 ? "$0" : `$${plan.price}`}
+                    </span>
+                    <span className="text-sm text-muted-foreground">/mo</span>
+                  </div>
+                  
+                  <ul className="space-y-4 mb-8 flex-1">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-sm">
+                        <Check className="h-4 w-4 shrink-0 mt-0.5 text-primary" strokeWidth={2} />
+                        <span className="text-foreground/80">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button
+                    variant={isPopular ? "default" : "outline"}
+                    className="w-full rounded-full h-12"
+                    asChild
+                  >
+                    <Link href={key === "free" ? "/login" : `/login?plan=${key}`}>
+                      {key === "free" ? "Get started" : "Start trial"}
+                    </Link>
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="border-t border-border/50 bg-foreground text-background py-20">
-        <div className="mx-auto max-w-[1200px] px-6 text-center">
-          <h2 className="font-display text-[2.25rem] tracking-tight">
-            Ready to add audio to your site?
-          </h2>
-          <p className="mt-3 text-background/70 max-w-md mx-auto">
-            Takes about 2 minutes to set up. No technical knowledge required.
-          </p>
-          <Button size="lg" variant="secondary" asChild className="mt-8 h-11 px-6 text-[15px]">
-            <Link href="/login">
-              Create your first episode <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        </section>
-
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+      <footer className="py-12 border-t border-border/60">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-background text-[10px] font-semibold">
-                L
-              </div>
-              <span className="text-sm font-medium">ListenLayer</span>
+              <span className="font-display text-xl font-bold tracking-tight">ListenLayer.</span>
             </div>
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-sm font-medium text-muted-foreground">
               <Link href="#pricing" className="hover:text-foreground transition-colors">
                 Pricing
               </Link>
+              <a
+                href="mailto:contact@luccilabs.xyz"
+                className="hover:text-foreground transition-colors"
+              >
+                contact@luccilabs.xyz
+              </a>
               <Link href="/login" className="hover:text-foreground transition-colors">
                 Sign in
               </Link>
               <span>© {new Date().getFullYear()}</span>
             </div>
           </div>
-      </div>
+          <p className="mt-6 text-xs text-muted-foreground">
+            Legal notice: You are responsible for ensuring you have the rights and permissions
+            to use any content you submit, and for complying with applicable copyright laws.
+          </p>
+        </div>
       </footer>
     </div>
   );

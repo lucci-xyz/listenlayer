@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
-import { embedConfigToQuery, embedHeight, mergeEmbedConfig } from "@/lib/embed";
-import { formatRelativeTime } from "@/lib/time";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { embedHeight } from "@/lib/embed";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyField } from "@/components/copy-field";
 import { EmbedButton } from "@/components/embed-button";
@@ -23,123 +22,83 @@ export default async function EmbedPreviewPage({
   }
 
   const params = await searchParams;
-  const siteParam = Array.isArray(params.siteId) ? params.siteId[0] : params.siteId;
   const publicIdParam = Array.isArray(params.publicId) ? params.publicId[0] : params.publicId;
+  const feedIdParam = Array.isArray(params.feedId) ? params.feedId[0] : params.feedId;
 
-  const sites = await prisma.site.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  const baseUrl = getBaseUrl();
+  const height = embedHeight();
 
-      if (sites.length === 0) {
+  // Get the latest published episode
+  let episode = null;
+
+  if (publicIdParam) {
+    episode = await prisma.episode.findFirst({
+      where: { publicId: publicIdParam, userId: user.id },
+    });
+  } else if (feedIdParam) {
+    episode = await prisma.episode.findFirst({
+      where: { feedId: feedIdParam, userId: user.id, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+    });
+  } else {
+    episode = await prisma.episode.findFirst({
+      where: { userId: user.id, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  if (!episode) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center">
-          <p className="text-[13px] text-muted-foreground">
-            Create a show to preview the player.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/app/onboarding">New show</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <h1 className="font-display text-3xl text-foreground">Embed preview</h1>
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              Generate and publish an episode to preview the embed.
+            </p>
+            <Button asChild className="mt-4">
+              <Link href="/app">Go to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  const activeSite = sites.find((site) => site.id === siteParam) || sites[0];
-  const baseUrl = getBaseUrl();
-  const config = mergeEmbedConfig(activeSite.embedConfig);
-  const query = embedConfigToQuery(config);
-  const height = embedHeight(config);
-
-  const episode = publicIdParam
-    ? await prisma.episode.findFirst({
-        where: { publicId: publicIdParam, site: { userId: user.id } },
-      })
-    : await prisma.episode.findFirst({
-        where: { siteId: activeSite.id, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" },
-      });
-
-  const embedUrl = episode ? `${baseUrl}/embed/e/${episode.publicId}?${query}` : null;
-  const iframeSnippet = embedUrl
-    ? `<iframe src=\"${embedUrl}\" style=\"width:100%;height:${height}px;border:0\" loading=\"lazy\"></iframe>`
-    : null;
+  const embedUrl = `${baseUrl}/embed/e/${episode.publicId}`;
+  const iframeSnippet = `<iframe src="${embedUrl}" style="width:100%;height:${height}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <EmbedButton
-          label="Copy embed"
-          publicId={episode?.publicId || null}
-          baseUrl={baseUrl}
-          config={config}
-        />
+        <div>
+          <h1 className="font-display text-3xl text-foreground">Embed preview</h1>
+          <p className="text-sm text-muted-foreground">{episode.title}</p>
+        </div>
+        <EmbedButton label="Copy embed" publicId={episode.publicId} baseUrl={baseUrl} />
       </div>
 
-      <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-[3px]">
-        {sites.map((site) => (
-          <Button
-            key={site.id}
-            asChild
-            size="sm"
-            variant="ghost"
-            className={
-              site.id === activeSite.id
-                ? "bg-background text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }
-          >
-            <Link href={`/app/embed?siteId=${site.id}`}>{site.name}</Link>
-          </Button>
-        ))}
-      </div>
+      {/* Live player preview */}
+      <Card>
+        <CardContent className="py-5">
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+            <iframe
+              title="Embed preview"
+              src={embedUrl}
+              style={{ height }}
+              className="w-full"
+              loading="lazy"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Live player</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {embedUrl ? (
-              <div className="rounded-lg border border-border/70 bg-background p-4">
-                <iframe
-                  title="Embed preview"
-                  src={embedUrl}
-                  style={{ height }}
-                  className="w-full"
-                  loading="lazy"
-                />
-              </div>
-            ) : (
-              <p className="text-[13px] text-muted-foreground">
-                Publish an episode to preview the embed.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-[13px]">
-            <div>
-              <div className="text-[12px] font-medium text-muted-foreground">Show</div>
-              <div className="text-[13px] text-foreground">{activeSite.name}</div>
-            </div>
-            <div>
-              <div className="text-[12px] font-medium text-muted-foreground">Latest episode</div>
-              <div className="text-[13px] text-muted-foreground">
-                {episode?.publishedAt
-                  ? formatRelativeTime(episode.publishedAt)
-                  : "No published episodes yet"}
-              </div>
-            </div>
-            {iframeSnippet ? <CopyField label="Iframe snippet" value={iframeSnippet} mono /> : null}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Copy snippet */}
+      <Card>
+        <CardContent className="py-5">
+          <CopyField label="Iframe snippet" value={iframeSnippet} mono />
+        </CardContent>
+      </Card>
     </div>
   );
 }

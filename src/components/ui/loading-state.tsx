@@ -37,7 +37,7 @@ export function LoadingCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card p-6",
+        "rounded-xl border border-border/70 bg-card p-6 shadow-soft",
         className
       )}
     >

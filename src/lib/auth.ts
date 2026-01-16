@@ -55,13 +55,17 @@ async function getOrCreateDemoUser() {
 }
 
 export async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email;
+  if (email) {
+    return prisma.user.findUnique({ where: { email } });
+  }
+
   if (process.env.DEV_AUTH_BYPASS === "true") {
     return getOrCreateDemoUser();
   }
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
-  if (!email) return null;
-  return prisma.user.findUnique({ where: { email } });
+
+  return null;
 }
 
 export async function requireUser() {

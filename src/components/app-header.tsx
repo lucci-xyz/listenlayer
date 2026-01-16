@@ -21,7 +21,7 @@ export function AppHeader() {
   const title = matched?.title ?? "Dashboard";
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/70 bg-background/80 px-6 py-4 backdrop-blur-sm lg:px-8">
+    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/90 px-6 py-4 backdrop-blur-sm lg:px-8">
       <div className="text-[15px] font-medium text-foreground">{title}</div>
     </header>
   );

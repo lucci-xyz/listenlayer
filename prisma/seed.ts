@@ -12,26 +12,16 @@ async function main() {
     create: { email: demoEmail, passwordHash },
   });
 
-  const site = await prisma.site.upsert({
-    where: { id: `${user.id}-demo-site` },
+  // Create a demo feed subscription
+  await prisma.feed.upsert({
+    where: { id: `${user.id}-demo-feed` },
     update: {},
     create: {
-      id: `${user.id}-demo-site`,
+      id: `${user.id}-demo-feed`,
       userId: user.id,
-      name: "Demo Site",
-      domain: "techcrunch.com",
-    },
-  });
-
-  await prisma.source.upsert({
-    where: { id: `${site.id}-demo-source` },
-    update: {},
-    create: {
-      id: `${site.id}-demo-source`,
-      siteId: site.id,
-      type: "RSS",
-      url: "https://feeds.feedburner.com/TechCrunch/",
-      displayName: "TechCrunch",
+      name: "TechCrunch",
+      feedUrl: "https://feeds.feedburner.com/TechCrunch/",
+      siteUrl: "https://techcrunch.com",
       faviconUrl: "https://techcrunch.com/favicon.ico",
     },
   });

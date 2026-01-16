@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { EmbedConfig } from "@/lib/embed";
 import { Button } from "@/components/ui/button";
 import { EmbedModal } from "@/components/embed-modal";
 
@@ -11,7 +10,6 @@ export function EmbedButton({
   variant = "outline",
   publicId,
   baseUrl,
-  config,
   disabled,
 }: {
   label?: string;
@@ -19,7 +17,6 @@ export function EmbedButton({
   variant?: "default" | "outline" | "secondary" | "ghost";
   publicId: string | null;
   baseUrl: string;
-  config: EmbedConfig;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -30,13 +27,7 @@ export function EmbedButton({
       <Button size={size} variant={variant} onClick={() => setOpen(true)} disabled={isDisabled}>
         {label}
       </Button>
-      <EmbedModal
-        open={open}
-        onOpenChange={setOpen}
-        publicId={publicId}
-        baseUrl={baseUrl}
-        config={config}
-      />
+      <EmbedModal open={open} onOpenChange={setOpen} publicId={publicId} baseUrl={baseUrl} />
     </>
   );
 }

@@ -14,8 +14,8 @@ export default async function AnalyticsPage() {
   }
 
   const episodes = await prisma.episode.findMany({
-    where: { site: { userId: user.id } },
-    include: { site: true },
+    where: { userId: user.id },
+    include: { feed: true },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -27,85 +27,75 @@ export default async function AnalyticsPage() {
       })
     : [];
 
-  const stats: Record<
-    string,
-    { plays: number; progress: Record<number, number> }
-  > = {};
+  const stats: Record<string, { plays: number; completions: number }> = {};
   for (const row of playbackCounts) {
     if (!stats[row.episodeId]) {
-      stats[row.episodeId] = { plays: 0, progress: {} };
+      stats[row.episodeId] = { plays: 0, completions: 0 };
     }
     if (row.kind === "play") {
       stats[row.episodeId].plays += row._count._all;
     }
-    if (row.kind === "progress" && row.value !== null) {
-      stats[row.episodeId].progress[row.value] =
-        (stats[row.episodeId].progress[row.value] || 0) + row._count._all;
+    if (row.kind === "progress" && row.value === 100) {
+      stats[row.episodeId].completions += row._count._all;
     }
   }
 
+  const hasData = episodes.some((ep) => (stats[ep.id]?.plays || 0) > 0);
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Playback milestones</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Episode</TableHead>
-                <TableHead>Show</TableHead>
-                <TableHead>Plays</TableHead>
-                <TableHead>25%</TableHead>
-                <TableHead>50%</TableHead>
-                <TableHead>75%</TableHead>
-                <TableHead>100%</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {episodes.length === 0 ? (
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="border-b border-border/60 pb-6">
+        <h1 className="font-display text-4xl text-foreground">Analytics</h1>
+        <p className="mt-2 text-lg text-muted-foreground">
+          Track episode plays and completion rates.
+        </p>
+      </div>
+
+      {!hasData ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            No playback data yet. Share an episode to start tracking.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Playback</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-[13px] text-muted-foreground">
-                    No analytics yet.
-                  </TableCell>
+                  <TableHead>Episode</TableHead>
+                  <TableHead className="text-right">Plays</TableHead>
+                  <TableHead className="text-right">Completion</TableHead>
                 </TableRow>
-              ) : (
-                episodes.map((episode) => (
-                  <TableRow key={episode.id}>
-                    <TableCell>
-                      <Link
-                        href={`/app/episodes/${episode.id}`}
-                        className="text-[13px] font-semibold text-foreground underline"
-                      >
-                        {episode.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {episode.site.name}
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {stats[episode.id]?.plays || 0}
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {stats[episode.id]?.progress?.[25] || 0}
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {stats[episode.id]?.progress?.[50] || 0}
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {stats[episode.id]?.progress?.[75] || 0}
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {stats[episode.id]?.progress?.[100] || 0}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {episodes.map((ep) => {
+                  const s = stats[ep.id] || { plays: 0, completions: 0 };
+                  const completionPct = s.plays > 0 ? Math.round((s.completions / s.plays) * 100) : 0;
+                  return (
+                    <TableRow key={ep.id}>
+                      <TableCell>
+                        <Link href={`/app/episodes/${ep.id}`} className="font-medium text-foreground hover:underline">
+                          {ep.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {s.plays}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {completionPct}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
