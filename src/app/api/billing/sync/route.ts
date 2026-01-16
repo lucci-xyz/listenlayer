@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { stripe, getPlanLimits, stripeMode } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { SubscriptionStatus } from "@prisma/client";
 import type Stripe from "stripe";
 
-function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
+function mapStripeStatus(status: Stripe.Subscription.Status): string {
   switch (status) {
     case "trialing":
       return "TRIALING";
