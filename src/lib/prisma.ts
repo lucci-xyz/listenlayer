@@ -14,7 +14,22 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is not set");
 }
 
-const pool = global.prismaPool || new Pool({ connectionString: databaseUrl });
+const poolMaxRaw = process.env.PG_POOL_MAX;
+const poolMax = Math.max(
+  1,
+  Number(poolMaxRaw ?? (process.env.NODE_ENV === "production" ? 1 : 10))
+);
+
+// Important for serverless: keep pool size small (especially with Supabase session mode / poolers)
+// and reuse the pool across bundled copies of this module within the same runtime.
+const pool =
+  global.prismaPool ||
+  new Pool({
+    connectionString: databaseUrl,
+    max: poolMax,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
 const adapter = new PrismaPg(pool);
 
 export const prisma =
@@ -24,7 +39,7 @@ export const prisma =
     log: ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
-  global.prismaPool = pool;
-}
+// Always cache in globalThis so multiple Next.js server bundles/functions inside the same
+// runtime instance don't create extra pools/clients and exhaust DB connection limits.
+global.prisma = prisma;
+global.prismaPool = pool;
