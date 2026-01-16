@@ -110,9 +110,9 @@ export default function LoginPage() {
         <Card className="border-border/60 shadow-soft-lg bg-card">
           <CardContent className="p-8">
             <Tabs defaultValue={planParam ? "register" : "login"} className="w-full">
-              <TabsList className="mb-8 grid w-full grid-cols-2 bg-muted/60 border border-border/60 p-1 rounded-full">
-                <TabsTrigger value="login" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign in</TabsTrigger>
-                <TabsTrigger value="register" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Create account</TabsTrigger>
+              <TabsList className="mb-8 flex w-full rounded-full bg-muted/60 border border-border/60 p-1">
+                <TabsTrigger value="login" className="flex-1 justify-center rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign in</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1 justify-center rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Create account</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login" className="space-y-5">

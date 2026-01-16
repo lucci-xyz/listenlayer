@@ -59,11 +59,6 @@ export default function Home() {
                     Start free <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="rounded-full px-8 h-12 text-base bg-background/80 border-border/60 hover:bg-muted/50" asChild>
-                  <Link href="#demo">
-                    <Play className="mr-2 h-4 w-4 fill-current" /> Listen to sample
-                  </Link>
-                </Button>
               </div>
               
               <p className="mt-6 text-sm text-muted-foreground font-medium">
@@ -230,7 +225,7 @@ export default function Home() {
                   }`}
                 >
                   {isPopular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary/10 text-primary border border-primary/20 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card text-primary border border-primary/30 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
                       Popular
                     </div>
                   )}
@@ -289,6 +284,12 @@ export default function Home() {
               <Link href="#pricing" className="hover:text-foreground transition-colors">
                 Pricing
               </Link>
+              <a
+                href="mailto:contact@luccilabs.xyz"
+                className="hover:text-foreground transition-colors"
+              >
+                contact@luccilabs.xyz
+              </a>
               <Link href="/login" className="hover:text-foreground transition-colors">
                 Sign in
               </Link>

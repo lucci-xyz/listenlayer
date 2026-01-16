@@ -64,6 +64,16 @@ export default async function SettingsPage() {
                   </Badge>
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-muted-foreground">Support</label>
+                <a
+                  href="mailto:contact@luccilabs.xyz"
+                  className="flex items-center gap-2 text-foreground font-medium hover:text-primary transition-colors"
+                >
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  contact@luccilabs.xyz
+                </a>
+              </div>
             </div>
               <div className="mt-6 border-t border-border/40 pt-6">
               <SignOutButton />

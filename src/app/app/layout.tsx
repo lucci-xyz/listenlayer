@@ -25,9 +25,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const plan = PLANS[currentPlan];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="flex min-h-screen">
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-sidebar px-6 py-8">
+    <div className="h-screen bg-background text-foreground overflow-hidden">
+      <div className="flex h-screen">
+        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-sidebar px-6 py-8 h-screen sticky top-0">
           {/* Logo */}
           <div className="mb-10 px-3">
             <Link href="/app" className="flex items-center gap-2">

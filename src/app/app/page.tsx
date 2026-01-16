@@ -77,7 +77,10 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground mb-8 text-lg">
             Paste an article or RSS feed URL to create your first audio episode.
           </p>
-          <CreateAudioCard />
+          <CreateAudioCard
+            currentPlan={currentPlan}
+            creditsResetAt={user.subscriptionCurrentPeriodEnd?.toISOString() ?? null}
+          />
         </div>
       </>
     );
@@ -161,7 +164,10 @@ export default async function DashboardPage() {
               Paste a link or RSS feed, review the source, then choose a narration style.
             </p>
           </div>
-          <CreateAudioCard />
+          <CreateAudioCard
+            currentPlan={currentPlan}
+            creditsResetAt={user.subscriptionCurrentPeriodEnd?.toISOString() ?? null}
+          />
         </section>
 
         <div className="grid gap-8 lg:grid-cols-2">

@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/time";
 import { getDomainFromUrl } from "@/lib/url";
+import { OutOfCreditsDialog } from "@/components/out-of-credits-dialog";
+import type { PlanKey } from "@/lib/stripe";
 
 const formats = [
   {
@@ -120,7 +122,13 @@ const modalStepMeta: Record<ModalStep, { title: string; description: string }> =
   },
 };
 
-export function CreateAudioCard() {
+export function CreateAudioCard({
+  currentPlan = "free",
+  creditsResetAt = null,
+}: {
+  currentPlan?: PlanKey;
+  creditsResetAt?: string | null;
+}) {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [format, setFormat] = useState<Format>("narration");
@@ -148,6 +156,7 @@ export function CreateAudioCard() {
   >(null);
   const [authSource, setAuthSource] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
 
   const isAuthStep = modalStep === "auth-required";
   const modalSteps = useMemo(() => {
@@ -210,6 +219,7 @@ export function CreateAudioCard() {
     setAuthContext(null);
     setAuthSource(null);
     setAuthSubmitting(false);
+    setCreditsDialogOpen(false);
   };
 
   const handleModalOpenChange = (open: boolean) => {
@@ -449,6 +459,10 @@ export function CreateAudioCard() {
         episodeId?: string;
       };
       if (!res.ok) {
+        if (res.status === 402) {
+          setCreditsDialogOpen(true);
+          return;
+        }
         if (data.code === "FORBIDDEN") {
           const message = data.error || requiresAuthNotice;
           const hint = data.authHint ?? null;
@@ -926,6 +940,13 @@ export function CreateAudioCard() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <OutOfCreditsDialog
+        open={creditsDialogOpen}
+        onOpenChange={setCreditsDialogOpen}
+        currentPlan={currentPlan}
+        resetAt={creditsResetAt}
+      />
     </>
   );
 }

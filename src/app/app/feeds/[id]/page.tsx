@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPlanFromPriceId } from "@/lib/stripe";
 import { FeedDetailClient } from "./feed-detail-client";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export default async function FeedDetailPage({
   if (!user) {
     redirect("/login");
   }
+
+  const currentPlan = getPlanFromPriceId(user.subscriptionPriceId ?? null);
 
   const feed = await prisma.feed.findFirst({
     where: { id, userId: user.id },
@@ -57,6 +60,8 @@ export default async function FeedDetailPage({
         publicId: ep.publicId,
         createdAt: ep.createdAt.toISOString(),
       }))}
+      currentPlan={currentPlan}
+      creditsResetAt={user.subscriptionCurrentPeriodEnd?.toISOString() ?? null}
     />
   );
 }

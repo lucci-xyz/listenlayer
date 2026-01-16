@@ -92,7 +92,6 @@ export const PLANS = {
       "Unlimited shows",
       "White-label player",
       "90-day analytics",
-      "API access",
       "Priority support",
     ],
     limits: {
@@ -108,7 +107,6 @@ export const PLANS = {
     features: [
       "500 episodes / month",
       "Unlimited shows",
-      "Custom domain & player",
       "180-day analytics",
       "SSO & SLA",
       "Priority support",

@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OutOfCreditsDialog } from "@/components/out-of-credits-dialog";
+import type { PlanKey } from "@/lib/stripe";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,9 +83,13 @@ const SUPPORT_EMAIL = "ops@luccilabs.xyz";
 export function FeedDetailClient({
   feed,
   episodes,
+  currentPlan = "free",
+  creditsResetAt = null,
 }: {
   feed: Feed;
   episodes: Episode[];
+  currentPlan?: PlanKey;
+  creditsResetAt?: string | null;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -105,6 +111,7 @@ export function FeedDetailClient({
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [authStep, setAuthStep] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
 
   const authReady =
     authMode === "basic" ? Boolean(authUsername && authPassword) : Boolean(authToken);
@@ -193,6 +200,13 @@ export function FeedDetailClient({
       };
 
       if (!res.ok) {
+        if (res.status === 402) {
+          shouldClearSelection = false;
+          setAuthStep(false);
+          setFormatDialogOpen(false);
+          setCreditsDialogOpen(true);
+          return;
+        }
         if (data.code === "FORBIDDEN") {
           shouldClearSelection = false;
           setAuthStep(true);
@@ -688,6 +702,13 @@ export function FeedDetailClient({
           )}
         </DialogContent>
       </Dialog>
+
+      <OutOfCreditsDialog
+        open={creditsDialogOpen}
+        onOpenChange={setCreditsDialogOpen}
+        currentPlan={currentPlan}
+        resetAt={creditsResetAt}
+      />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="rounded-2xl">
