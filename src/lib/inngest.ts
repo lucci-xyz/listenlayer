@@ -2,7 +2,6 @@ import { Inngest } from "inngest";
 import Parser from "rss-parser";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
-import { extractReadableText } from "@/lib/content";
 import { extractTitleFromHtml } from "@/lib/html";
 import { chunkText, estimateDurationSec, extractJsonObject } from "@/lib/text";
 import { openai } from "@/lib/openai";
@@ -11,8 +10,33 @@ import { maybeNormalizeMp3 } from "@/lib/audio";
 import { validateExternalUrl } from "@/lib/url-validator";
 import { loggers, logError } from "@/lib/logger";
 import { fetchWithTimeout, browserLikeHeaders, feedHeaders } from "@/lib/fetch";
+import { fetchHtmlSmart } from "@/lib/html-stream";
 
 const log = loggers.inngest;
+
+// TTS Configuration - optimized for cost/performance
+const TTS_CHUNK_SIZE = 4000; // Max is 4096, use 4000 for safety margin
+const TTS_CONCURRENCY = 3; // Process 3 TTS requests in parallel
+const CANCEL_CHECK_INTERVAL = 3; // Check cancellation every N chunks
+
+/**
+ * Process items in batches with concurrency limit
+ */
+async function processBatch<T, R>(
+  items: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  concurrency: number
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map((item, idx) => fn(item, i + idx))
+    );
+    results.push(...batchResults);
+  }
+  return results;
+}
 
 export const inngest = new Inngest({ id: "listenlayer" });
 
@@ -83,29 +107,41 @@ class FetchError extends Error {
   }
 }
 
-async function fetchHtml(url: string, auth?: SourceAuth | null) {
-  // Validate URL to prevent SSRF
-  validateExternalUrl(url);
+/**
+ * Fetch HTML with streaming support for large pages like live blogs.
+ * Returns both HTML and pre-extracted text for efficiency.
+ */
+async function fetchHtmlWithText(url: string, auth?: SourceAuth | null) {
+  const authHeaders = buildAuthHeaders(auth);
   
-  let response = await fetchWithHeaders(url, buildAuthHeaders(auth));
-  if (!response.ok && (response.status === 403 || response.status === 429)) {
-    response = await fetchWithHeaders(url, {
-      "User-Agent": "ListenLayer/1.0",
-      ...buildAuthHeaders(auth),
-    });
+  try {
+    const result = await fetchHtmlSmart(url, authHeaders);
+    
+    log.info({
+      url,
+      bytesDownloaded: result.bytesDownloaded,
+      textLength: result.text.length,
+      stoppedEarly: result.stoppedEarly,
+    }, "HTML fetched successfully");
+    
+    return result;
+  } catch (error) {
+    // Try with simpler user agent if blocked
+    if (error instanceof Error && error.message.includes("403")) {
+      const result = await fetchHtmlSmart(url, {
+        "User-Agent": "ListenLayer/1.0",
+        ...authHeaders,
+      });
+      return result;
+    }
+    throw error;
   }
-  if (!response.ok) {
-    throw new FetchError(response.status);
-  }
-  const lengthHeader = response.headers.get("content-length");
-  if (lengthHeader && Number(lengthHeader) > 5 * 1024 * 1024) {
-    throw new Error("Article exceeds 5MB limit");
-  }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.byteLength > 5 * 1024 * 1024) {
-    throw new Error("Article exceeds 5MB limit");
-  }
-  return buffer.toString("utf-8");
+}
+
+// Legacy function for compatibility
+async function fetchHtml(url: string, auth?: SourceAuth | null) {
+  const result = await fetchHtmlWithText(url, auth);
+  return result.html;
 }
 
 async function generateScriptAndChapters(
@@ -372,41 +408,41 @@ export const generateEpisode = inngest.createFunction(
         });
       }
 
-      const cancelBeforeScript = await step.run("check-cancel-before-script", async () => {
-        const episode = await prisma.episode.findUnique({
-          where: { id: episodeId },
-          select: { status: true },
-        });
-        if (!episode) return true;
-        return episode.status === "CANCELLED";
-      });
-      if (cancelBeforeScript) {
-        return { cancelled: true };
-      }
-
-      await step.run("generate-script", async () => {
+      // Script generation (includes cancellation and existence checks)
+      const scriptResult = await step.run("generate-script", async () => {
         const existing = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true, chaptersJson: true },
+          select: { scriptText: true, chaptersJson: true, status: true },
         });
-
-        if (existing?.scriptText && existing.scriptText.trim().length > 0) {
-          log.info({ episodeId }, "Script exists, skipping generation");
-          return { skipped: true };
+        
+        // Early exit if cancelled or missing
+        if (!existing || existing.status === "CANCELLED") {
+          return { cancelled: true, script: null };
         }
 
-        let html: string | null = null;
+        if (existing.scriptText && existing.scriptText.trim().length > 0) {
+          log.info({ episodeId }, "Script exists, skipping generation");
+          return { skipped: true, script: existing.scriptText, cancelled: false };
+        }
+
+        let fetchResult: { html: string; text: string; title: string | null; stoppedEarly: boolean } | null = null;
         let readableText = resolved.sourceText?.trim() || "";
+        
+        // Check if provided source text is sufficient
         if (readableText) {
           const words = readableText.split(/\s+/).filter(Boolean);
           if (words.length < 120) {
             readableText = "";
           }
         }
+        
+        // Fetch HTML with streaming if no sufficient source text
         if (!readableText) {
-          html = await fetchHtml(resolved.canonicalUrl, sourceAuth);
-          readableText = extractReadableText(html, resolved.canonicalUrl);
+          fetchResult = await fetchHtmlWithText(resolved.canonicalUrl, sourceAuth);
+          // Use pre-extracted text from streaming fetch (more efficient for large pages)
+          readableText = fetchResult.text;
         }
+        
         const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
         const minWords = 300;
         if (!readableText || words.length < minWords) {
@@ -417,11 +453,15 @@ export const generateEpisode = inngest.createFunction(
           episodeId,
           wordCount: words.length,
           usedSourceText: Boolean(resolved.sourceText),
+          stoppedEarly: fetchResult?.stoppedEarly ?? false,
         }, "Article text ready for processing");
 
-        const betterTitle = html
-          ? deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle)
-          : resolved.episodeTitle;
+        // Use title from fetch result if available, otherwise derive from HTML
+        const betterTitle = fetchResult?.title 
+          ? fetchResult.title
+          : (fetchResult?.html 
+              ? deriveTitleFromHtml(fetchResult.html, resolved.canonicalUrl, resolved.episodeTitle)
+              : resolved.episodeTitle);
         const { script, chapters } = await generateScriptAndChapters(
           betterTitle,
           resolved.canonicalUrl,
@@ -448,94 +488,130 @@ export const generateEpisode = inngest.createFunction(
             format: format || null,
           },
         });
-        return { length: script.length };
+        return { length: script.length, script: cleanScript, cancelled: false };
       });
 
-      const cancelBeforeAudio = await step.run("check-cancel-before-audio", async () => {
-        const episode = await prisma.episode.findUnique({
-          where: { id: episodeId },
-          select: { status: true },
-        });
-        if (!episode) return true;
-        return episode.status === "CANCELLED";
-      });
-      if (cancelBeforeAudio) {
+      // Early exit if script generation was cancelled
+      if ('cancelled' in scriptResult && scriptResult.cancelled) {
         return { cancelled: true };
       }
 
       const uploadKey = await step.run("generate-and-upload-audio", async () => {
-        const episode = await prisma.episode.findUnique({
+        // First check if audio already exists (for retry scenarios)
+        const existing = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { scriptText: true, format: true, audioObjectKey: true },
+          select: { audioObjectKey: true },
         });
-        if (episode?.audioObjectKey) {
+        if (existing?.audioObjectKey) {
           log.info({ episodeId }, "Audio exists, skipping generation");
-          return episode.audioObjectKey;
+          return existing.audioObjectKey;
         }
-        if (!episode?.scriptText) {
+
+        // Use script from previous step result if available, otherwise fetch
+        let scriptText: string | null = null;
+        if ('script' in scriptResult && scriptResult.script) {
+          scriptText = scriptResult.script;
+        } else {
+          const episode = await prisma.episode.findUnique({
+            where: { id: episodeId },
+            select: { scriptText: true },
+          });
+          scriptText = episode?.scriptText || null;
+        }
+
+        if (!scriptText) {
           throw new Error("Script is missing");
         }
+
         const primaryVoice = process.env.OPENAI_TTS_VOICE || "marin";
         const secondaryVoice = process.env.OPENAI_TTS_VOICE_SECONDARY || "verse";
-        const buffers: Buffer[] = [];
 
-        const audioFormat = episode.format || format;
+        const audioFormat = format || null;
         log.info({
           episodeId,
           audioFormat,
           primaryVoice,
           secondaryVoice,
         }, "Starting TTS generation");
+
+        // Prepare all TTS work items upfront
+        type TtsWorkItem = { text: string; voice: string };
+        const workItems: TtsWorkItem[] = [];
+
+        // Use cached segments if available, otherwise parse
         const twoHostSegments =
-          audioFormat === "two-host" ? buildTwoHostSegments(episode.scriptText) : null;
+          audioFormat === "two-host" 
+            ? (cachedTwoHostSegments || buildTwoHostSegments(scriptText)) 
+            : null;
 
         if (audioFormat === "two-host" && twoHostSegments?.length) {
           for (const segment of twoHostSegments) {
             const voice = segment.speaker === "H2" ? secondaryVoice || primaryVoice : primaryVoice;
-            const chunks = chunkText(segment.text, 3500);
+            const chunks = chunkText(segment.text, TTS_CHUNK_SIZE);
             for (const chunk of chunks) {
-              const cancelled = await prisma.episode.findUnique({
-                where: { id: episodeId },
-                select: { status: true },
-              });
-              if (!cancelled || cancelled.status === "CANCELLED") {
-                return null;
-              }
-              const audio = await openai.audio.speech.create({
-                model: "gpt-4o-mini-tts",
-                voice,
-                input: chunk,
-                response_format: "mp3",
-              });
-              const buffer = Buffer.from(await audio.arrayBuffer());
-              buffers.push(buffer);
+              workItems.push({ text: chunk, voice });
             }
           }
         } else {
-          const chunks = chunkText(episode.scriptText, 3500);
+          const chunks = chunkText(scriptText, TTS_CHUNK_SIZE);
           for (const chunk of chunks) {
-            const cancelled = await prisma.episode.findUnique({
-              where: { id: episodeId },
-              select: { status: true },
-            });
-            if (!cancelled || cancelled.status === "CANCELLED") {
-              return null;
-            }
-            const audio = await openai.audio.speech.create({
-              model: "gpt-4o-mini-tts",
-              voice: primaryVoice,
-              input: chunk,
-              response_format: "mp3",
-            });
-            const buffer = Buffer.from(await audio.arrayBuffer());
-            buffers.push(buffer);
+            workItems.push({ text: chunk, voice: primaryVoice });
           }
         }
 
-        if (buffers.length === 0) {
+        log.info({
+          episodeId,
+          totalChunks: workItems.length,
+          concurrency: TTS_CONCURRENCY,
+        }, "TTS work prepared");
+
+        // Track cancellation status (check periodically, not every chunk)
+        let isCancelled = false;
+        let chunksProcessed = 0;
+
+        // Process TTS in parallel batches with periodic cancel checks
+        const buffers = await processBatch(
+          workItems,
+          async (item) => {
+            // Check cancellation every CANCEL_CHECK_INTERVAL chunks (batched check)
+            if (chunksProcessed > 0 && chunksProcessed % CANCEL_CHECK_INTERVAL === 0) {
+              const status = await prisma.episode.findUnique({
+                where: { id: episodeId },
+                select: { status: true },
+              });
+              if (!status || status.status === "CANCELLED") {
+                isCancelled = true;
+              }
+            }
+            chunksProcessed++;
+
+            if (isCancelled) {
+              return null;
+            }
+
+            const audio = await openai.audio.speech.create({
+              model: "gpt-4o-mini-tts",
+              voice: item.voice,
+              input: item.text,
+              response_format: "mp3",
+            });
+            return Buffer.from(await audio.arrayBuffer());
+          },
+          TTS_CONCURRENCY
+        );
+
+        // Filter out nulls (from cancellation) and check if we got anything
+        const validBuffers = buffers.filter((b) => b !== null);
+        if (validBuffers.length === 0 || isCancelled) {
           return null;
         }
-        const combined = Buffer.concat(buffers);
+
+        log.info({
+          episodeId,
+          buffersGenerated: validBuffers.length,
+        }, "TTS generation complete");
+
+        const combined = Buffer.concat(validBuffers);
         const normalized = await maybeNormalizeMp3(combined);
 
         const key = `episodes/${episodeId}.mp3`;
@@ -556,43 +632,44 @@ export const generateEpisode = inngest.createFunction(
         return { cancelled: true };
       }
 
-      const cancelBeforePublish = await step.run("check-cancel-before-publish", async () => {
+      // Publish episode - combine cancel check with update to reduce DB queries
+      await step.run("publish-episode", async () => {
         const episode = await prisma.episode.findUnique({
           where: { id: episodeId },
-          select: { status: true },
+          select: { status: true, audioObjectKey: true },
         });
-        if (!episode) return true;
-        return episode.status === "CANCELLED";
-      });
-      if (cancelBeforePublish) {
-        await step.run("cleanup-audio", async () => {
+        
+        // Already published or cancelled
+        if (!episode) return { skipped: true };
+        if (episode.status === "PUBLISHED" && episode.audioObjectKey) {
+          return { skipped: true };
+        }
+        if (episode.status === "CANCELLED") {
+          // Cleanup uploaded audio if cancelled
           try {
             await deleteAudioObjects([uploadKey]);
           } catch {
-            // Ignore cleanup failures in local/dev environments.
+            // Ignore cleanup failures
           }
-        });
-        return { cancelled: true };
-      }
-
-      await step.run("update-episode", async () => {
-        const episode = await prisma.episode.findUnique({
-          where: { id: episodeId },
-          select: { scriptText: true, status: true, audioObjectKey: true },
-        });
-        if (episode?.status === "PUBLISHED" && episode.audioObjectKey) {
-          return;
+          return { cancelled: true };
         }
+
+        // Use script from earlier step result to calculate duration (avoid re-fetch)
+        const scriptForDuration = 'script' in scriptResult && scriptResult.script 
+          ? scriptResult.script 
+          : null;
+
         await prisma.episode.update({
           where: { id: episodeId },
           data: {
             status: "PUBLISHED",
             audioObjectKey: uploadKey,
-            durationSec: episode?.scriptText ? estimateDurationSec(episode.scriptText) : null,
+            durationSec: scriptForDuration ? estimateDurationSec(scriptForDuration) : null,
             publishedAt: new Date(),
             errorMessage: null,
           },
         });
+        return { published: true };
       });
 
       return { episodeId, userId };
@@ -632,8 +709,21 @@ export const generateEpisode = inngest.createFunction(
       });
 
       const message = error instanceof Error ? error.message : "Unknown error";
+      
+      // Permanent errors that should NOT be retried
+      const permanentErrorPatterns = [
+        "Not enough article text to generate an episode",
+        "Article exceeds 5MB limit",
+        "exceeds 5MB limit",
+        "Content too large",
+        "URL not allowed",
+        "Hostname not allowed",
+        "IP address not allowed",
+        "Protocol not allowed",
+      ];
+      
       const isPermanent =
-        message === "Not enough article text to generate an episode" ||
+        permanentErrorPatterns.some(pattern => message.includes(pattern)) ||
         (error instanceof FetchError && [401, 403, 404, 410].includes(error.status));
 
       if (shouldThrow && !isPermanent) {
