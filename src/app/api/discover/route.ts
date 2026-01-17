@@ -185,22 +185,25 @@ export async function POST(request: Request) {
     
     const platform = detectPlatform(finalUrl, html);
 
-    // Discover feeds from link tags
-    const feeds: FeedInfo[] = [];
+    // Discover feeds from link tags - validate in parallel
     const alternateLinks = linkTags.filter((l) => {
       const rel = (l["rel"] || "").toLowerCase();
       const type = (l["type"] || "").toLowerCase();
       return rel.includes("alternate") && (type.includes("rss") || type.includes("atom"));
     });
-    for (const link of alternateLinks) {
-      const href = link["href"];
-      if (!href) continue;
-      const feedUrl = new URL(href, finalUrl).href;
-      const feedInfo = await isValidFeed(feedUrl);
-      if (feedInfo) feeds.push(feedInfo);
-    }
+    
+    const alternateFeedUrls = alternateLinks
+      .map(link => link["href"])
+      .filter((href): href is string => Boolean(href))
+      .map(href => new URL(href, finalUrl).href);
+    
+    // Validate all alternate feeds in parallel
+    const alternateFeedResults = await Promise.all(
+      alternateFeedUrls.map(url => isValidFeed(url))
+    );
+    const feeds: FeedInfo[] = alternateFeedResults.filter((f): f is FeedInfo => f !== null);
 
-    // If no feeds found via link tags, try common endpoints
+    // If no feeds found via link tags, try common endpoints in parallel
     if (feeds.length === 0) {
       const commonPaths = ["/feed", "/rss", "/rss.xml", "/feed.xml", "/atom.xml", "/index.xml"];
       
@@ -209,13 +212,16 @@ export async function POST(request: Request) {
         commonPaths.unshift("/feed");
       }
 
-      for (const path of commonPaths) {
-        const feedUrl = `${urlObj.origin}${path}`;
-        const feedInfo = await isValidFeed(feedUrl);
-        if (feedInfo) {
-          feeds.push(feedInfo);
-          break; // Found one, that's enough
-        }
+      // Validate all common paths in parallel
+      const commonFeedUrls = commonPaths.map(path => `${urlObj.origin}${path}`);
+      const commonFeedResults = await Promise.all(
+        commonFeedUrls.map(url => isValidFeed(url))
+      );
+      
+      // Take the first valid feed found
+      const firstValid = commonFeedResults.find((f): f is FeedInfo => f !== null);
+      if (firstValid) {
+        feeds.push(firstValid);
       }
     }
 

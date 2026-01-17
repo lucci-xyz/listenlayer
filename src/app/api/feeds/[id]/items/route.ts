@@ -4,10 +4,7 @@ import { requireUser } from "@/lib/auth";
 import Parser from "rss-parser";
 import { fetchWithTimeout, feedHeaders } from "@/lib/fetch";
 import { sanitizeErrorMessage } from "@/lib/errors";
-
-function stripHtml(input: string) {
-  return input.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
+import { stripHtml } from "@/lib/html";
 
 // Fetch latest items from a feed subscription
 export async function GET(
@@ -44,11 +41,22 @@ export async function GET(
     const xml = await response.text();
     const feedData = await parser.parseString(xml);
 
-    // Get existing episodes for this feed to mark which items are already generated
-    const existingEpisodes = await prisma.episode.findMany({
-      where: { feedId: feed.id },
-      select: { sourceUrl: true, status: true, title: true },
-    });
+    // Get URLs from the feed items we'll display (limit to 20)
+    const feedItemUrls = (feedData.items || [])
+      .slice(0, 20)
+      .map(item => item.link)
+      .filter((url): url is string => Boolean(url));
+
+    // Only query episodes matching URLs we'll actually display (optimized query)
+    const existingEpisodes = feedItemUrls.length > 0
+      ? await prisma.episode.findMany({
+          where: { 
+            feedId: feed.id,
+            sourceUrl: { in: feedItemUrls }, // Only episodes matching displayed items
+          },
+          select: { sourceUrl: true, status: true, title: true },
+        })
+      : [];
 
     const statusPriority: Record<string, number> = {
       PUBLISHED: 4,

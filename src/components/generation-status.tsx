@@ -18,28 +18,54 @@ type StatusResponse = {
   activeEpisodes: StatusEpisode[];
 };
 
+// Polling intervals - poll faster when active, slower when idle
+const ACTIVE_POLL_INTERVAL = 3000;  // 3s when generating
+const IDLE_POLL_INTERVAL = 15000;   // 15s when idle (reduced from constant 5s)
+
 export function GenerationStatus() {
   const [data, setData] = useState<StatusResponse | null>(null);
   const [stopping, setStopping] = useState(false);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const previousActiveCount = useRef<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/episodes/status", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const json = (await res.json()) as StatusResponse;
       setData(json);
+      return json;
     } catch {
       // Ignore transient errors.
+      return null;
     }
   }, []);
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
+  // Smart polling with adaptive intervals
+  const scheduleNextPoll = useCallback((hasActiveGenerations: boolean) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    const interval = hasActiveGenerations ? ACTIVE_POLL_INTERVAL : IDLE_POLL_INTERVAL;
+    timeoutRef.current = setTimeout(async () => {
+      const result = await fetchStatus();
+      scheduleNextPoll(result ? result.activeCount > 0 : false);
+    }, interval);
   }, [fetchStatus]);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchStatus().then(result => {
+      scheduleNextPoll(result ? result.activeCount > 0 : false);
+    });
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [fetchStatus, scheduleNextPoll]);
 
   useEffect(() => {
     if (!data) return;
@@ -71,7 +97,9 @@ export function GenerationStatus() {
         throw new Error("Failed to stop generation");
       }
       toast.success("Stopped all active generations.");
-      fetchStatus();
+      // Immediately refresh and reschedule
+      const result = await fetchStatus();
+      scheduleNextPoll(result ? result.activeCount > 0 : false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to stop");
     } finally {
