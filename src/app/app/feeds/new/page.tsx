@@ -36,7 +36,7 @@ export default function NewFeedPage() {
         body: JSON.stringify({ url: normalizedUrl }),
       });
 
-      let feedUrl = normalizedUrl;
+      let feedUrl: string | null = null;
       let name: string | undefined;
       let faviconUrl: string | undefined;
 
@@ -55,6 +55,21 @@ export default function NewFeedPage() {
         }
         name = discovery?.displayName;
         faviconUrl = discovery?.faviconUrl;
+        
+        // If no feed was found, show a helpful error
+        if (!feedUrl) {
+          if (discovery?.kind === "article") {
+            throw new Error(
+              "This looks like an article page, not a feed. Try the website's homepage or look for an RSS link."
+            );
+          }
+          throw new Error(
+            "No RSS feed found on this page. Try pasting a direct RSS/Atom feed URL, or the homepage of a blog."
+          );
+        }
+      } else {
+        // Discovery failed, try using the URL directly (might be a feed URL)
+        feedUrl = normalizedUrl;
       }
 
       // Create the feed subscription
