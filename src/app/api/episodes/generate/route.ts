@@ -5,6 +5,11 @@ import { requireUser } from "@/lib/auth";
 import { inngest } from "@/lib/inngest";
 import { randomBytes } from "node:crypto";
 import Parser from "rss-parser";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { validateExternalUrl, SSRFError } from "@/lib/url-validator";
+import { loggers } from "@/lib/logger";
+
+const log = loggers.episode;
 
 const authSchema = z
   .object({
@@ -107,6 +112,11 @@ async function checkSourceAccess(url: string, authHeaders: Record<string, string
 }
 
 export async function POST(request: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const user = await requireUser();
     const body = await request.json().catch(() => null);
@@ -114,6 +124,15 @@ export async function POST(request: Request) {
     // Try simple URL-based generation first
     const urlParsed = schema.safeParse(body);
     if (urlParsed.success) {
+      // SSRF validation
+      try {
+        validateExternalUrl(urlParsed.data.url);
+      } catch (error) {
+        if (error instanceof SSRFError) {
+          return NextResponse.json({ error: "URL not allowed" }, { status: 400 });
+        }
+        return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+      }
       return handleUrlGeneration(user, urlParsed.data);
     }
     
@@ -159,12 +178,12 @@ async function handleUrlGeneration(
   if (needsSourceCheck) {
     try {
       const res = await checkSourceAccess(data.url, authHeaders);
-      console.info("[generate] preflight", {
+      log.info({
         url: data.url,
         status: res.status,
         ok: res.ok,
         hasAuth: Boolean(sourceAuth),
-      });
+      }, "Source preflight check completed");
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           const authHint = getAuthHint(res);
@@ -188,22 +207,22 @@ async function handleUrlGeneration(
         );
       }
     } catch (error) {
-      console.info("[generate] preflight error", {
+      log.warn({
         url: data.url,
         message: error instanceof Error ? error.message : "Unknown error",
         hasAuth: Boolean(sourceAuth),
-      });
+      }, "Source preflight error");
       return NextResponse.json(
         { error: "Unable to reach source" },
         { status: 400 }
       );
     }
   } else {
-    console.info("[generate] preflight skipped (sourceText)", {
+    log.debug({
       url: data.url,
       sourceWordCount,
       hasAuth: Boolean(sourceAuth),
-    });
+    }, "Preflight skipped - sourceText provided");
   }
 
   const episodeData = {
@@ -308,12 +327,12 @@ async function handleFeedGeneration(
   for (const seed of seeds) {
     try {
       const res = await checkSourceAccess(seed.canonicalUrl, authHeaders);
-      console.info("[generate] preflight", {
+      log.info({
         url: seed.canonicalUrl,
         status: res.status,
         ok: res.ok,
         hasAuth: Boolean(sourceAuth),
-      });
+      }, "Batch preflight check completed");
       if (!res.ok) {
         blocked.push({ url: seed.canonicalUrl, status: res.status });
         if (!authHint && (res.status === 401 || res.status === 403)) {
@@ -321,11 +340,11 @@ async function handleFeedGeneration(
         }
       }
     } catch (error) {
-      console.info("[generate] preflight error", {
+      log.warn({
         url: seed.canonicalUrl,
         message: error instanceof Error ? error.message : "Unknown error",
         hasAuth: Boolean(sourceAuth),
-      });
+      }, "Batch preflight error");
       blocked.push({ url: seed.canonicalUrl, status: 0 });
     }
   }

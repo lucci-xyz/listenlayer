@@ -4,7 +4,10 @@ import Parser from "rss-parser";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAllowedAppOrigin } from "@/lib/security";
-import { extractLinkTags, extractMetaContent, extractTitleFromHtml, stripHtml } from "@/lib/html";
+import { extractLinkTags, extractMetaContent, extractTitleFromHtml } from "@/lib/html";
+import { validateExternalUrl, SSRFError } from "@/lib/url-validator";
+import { fetchWithTimeout, feedHeaders, browserLikeHeaders } from "@/lib/fetch";
+import { sanitizeErrorMessage } from "@/lib/errors";
 
 const schema = z.object({
   url: z.string().url(),
@@ -33,9 +36,10 @@ type DiscoveryResult = {
 async function isValidFeed(url: string): Promise<FeedInfo | null> {
   try {
     const parser = new Parser();
-    const response = await fetch(url, { 
+    const response = await fetchWithTimeout(url, { 
       redirect: "follow",
-      headers: { "User-Agent": "ListenLayer/1.0" }
+      timeoutMs: 10000,
+      headers: feedHeaders
     });
     if (!response.ok) return null;
     
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0] ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  const rate = rateLimit(`discover:${ip}`, 30, 60_000);
+  const rate = await rateLimit(`discover:${ip}`, "discover");
   if (!rate.ok) {
     return NextResponse.json({ error: "Rate limit" }, { status: 429 });
   }
@@ -120,6 +124,16 @@ export async function POST(request: Request) {
   }
 
   const inputUrl = parsed.data.url;
+
+  // SSRF validation
+  try {
+    validateExternalUrl(inputUrl);
+  } catch (error) {
+    if (error instanceof SSRFError) {
+      return NextResponse.json({ error: "URL not allowed" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+  }
 
   try {
     // First check if the URL itself is a feed
@@ -138,9 +152,10 @@ export async function POST(request: Request) {
     }
 
     // Fetch the page HTML
-    const response = await fetch(inputUrl, { 
+    const response = await fetchWithTimeout(inputUrl, { 
       redirect: "follow",
-      headers: { "User-Agent": "ListenLayer/1.0" }
+      timeoutMs: 15000,
+      headers: browserLikeHeaders
     });
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.status}`);
@@ -224,7 +239,7 @@ export async function POST(request: Request) {
     } satisfies DiscoveryResult);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Discovery failed" },
+      { error: sanitizeErrorMessage(error) },
       { status: 500 }
     );
   }

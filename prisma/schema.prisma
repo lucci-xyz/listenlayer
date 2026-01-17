@@ -92,6 +92,10 @@ model Episode {
   @@index([userId])
   @@index([feedId])
   @@index([status])
+  // Compound index for listing episodes by feed sorted by date
+  @@index([feedId, createdAt])
+  // Compound index for user dashboard queries
+  @@index([userId, createdAt])
 }
 
 model PlaybackEvent {
@@ -106,4 +110,6 @@ model PlaybackEvent {
 
   @@index([episodeId])
   @@index([createdAt])
+  // Compound index for analytics queries that filter by episode and time range
+  @@index([episodeId, createdAt])
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { isAllowedAppOrigin } from "@/lib/security";
 
 const schema = z.object({
   episodeId: z.string().min(1).optional(),
@@ -9,6 +10,11 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let user;
   try {
     user = await requireUser();

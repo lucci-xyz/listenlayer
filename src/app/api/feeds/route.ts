@@ -3,6 +3,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import Parser from "rss-parser";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { validateFeedUrl, SSRFError } from "@/lib/url-validator";
+import { fetchWithTimeout, feedHeaders } from "@/lib/fetch";
 
 const createSchema = z.object({
   feedUrl: z.string().url(),
@@ -30,6 +33,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const user = await requireUser();
     const body = await request.json().catch(() => null);
@@ -39,6 +47,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
+    // SSRF validation
+    try {
+      validateFeedUrl(parsed.data.feedUrl);
+    } catch (error) {
+      if (error instanceof SSRFError) {
+        return NextResponse.json({ error: "Feed URL not allowed" }, { status: 400 });
+      }
+      return NextResponse.json({ error: "Invalid feed URL" }, { status: 400 });
+    }
+
     // Validate the feed URL by fetching it
     const parser = new Parser();
     let feedTitle: string | undefined;
@@ -46,7 +64,11 @@ export async function POST(request: Request) {
     let latestItemUrl: string | null = null;
 
     try {
-      const response = await fetch(parsed.data.feedUrl);
+      const response = await fetchWithTimeout(parsed.data.feedUrl, {
+        redirect: "follow",
+        timeoutMs: 12000,
+        headers: feedHeaders,
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch feed: ${response.status}`);
       }

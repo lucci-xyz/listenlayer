@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { stripe, PLANS, stripeMode } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { loggers, logError } from "@/lib/logger";
+
+const log = loggers.billing;
 
 export async function POST(req: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -28,11 +37,11 @@ export async function POST(req: Request) {
       .map((plan) => plan.priceId)
       .filter(Boolean);
 
-    console.log("Checkout debug:", {
+    log.debug({
       receivedPriceId: priceId,
       validPriceIds,
       stripeMode,
-    });
+    }, "Processing checkout request");
 
     if (!validPriceIds.includes(priceId)) {
       return NextResponse.json(
@@ -108,7 +117,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
-    console.error("Checkout error:", error);
+    logError(log, error, "Checkout error");
     const stripeError = error as {
       code?: string;
       param?: string;

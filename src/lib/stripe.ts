@@ -35,8 +35,13 @@ const isTestMode = inferredMode ? inferredMode === "test" : explicitTestMode;
 export const stripeMode = isTestMode ? "test" : "live";
 
 // Debug: Log Stripe mode on server (only logs once at module load)
+// Note: Using dynamic import to avoid issues during build
 if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
-  console.log("[stripe] mode:", stripeMode, "| APP_ENV:", process.env.NEXT_PUBLIC_APP_ENV);
+  import("@/lib/logger").then(({ loggers }) => {
+    loggers.stripe.debug({ stripeMode, appEnv: process.env.NEXT_PUBLIC_APP_ENV }, "Stripe mode initialized");
+  }).catch(() => {
+    // Ignore if logger not available during build
+  });
 }
 
 // Get the appropriate secret key based on resolved mode

@@ -4,6 +4,10 @@ import Parser from "rss-parser";
 import { getDomainFromUrl } from "@/lib/url";
 import { requireUser } from "@/lib/auth";
 import { extractMainTextFromHtml, extractMetaContent, extractTitleFromHtml, summarize } from "@/lib/html";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { validateExternalUrl, SSRFError } from "@/lib/url-validator";
+import { fetchWithTimeout, browserLikeHeaders } from "@/lib/fetch";
+import { sanitizeErrorMessage } from "@/lib/errors";
 
 const authSchema = z
   .object({
@@ -20,14 +24,6 @@ const schema = z.object({
 });
 
 const feedMarker = /<(rss|feed|channel)\b/i;
-const defaultHeaders = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Cache-Control": "no-cache",
-  Pragma: "no-cache",
-};
 
 function stripHtml(input: string) {
   // Backwards-compatible helper for RSS content snippets (RSS parser may provide HTML fragments).
@@ -61,6 +57,11 @@ function getAuthHint(response: Response) {
 }
 
 export async function POST(request: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     await requireUser();
     const body = await request.json().catch(() => null);
@@ -69,10 +70,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
 
+    // SSRF validation
+    try {
+      validateExternalUrl(parsed.data.url);
+    } catch (error) {
+      if (error instanceof SSRFError) {
+        return NextResponse.json({ error: "URL not allowed" }, { status: 400 });
+      }
+      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    }
+
     const authHeaders = buildAuthHeaders(parsed.data.auth);
-    const res = await fetch(parsed.data.url, {
+    const res = await fetchWithTimeout(parsed.data.url, {
       redirect: "follow",
-      headers: { ...defaultHeaders, ...authHeaders },
+      timeoutMs: 15000,
+      headers: { ...browserLikeHeaders, ...authHeaders },
     });
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
@@ -176,7 +188,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to preview article" },
+      { error: sanitizeErrorMessage(error) },
       { status: 500 }
     );
   }
