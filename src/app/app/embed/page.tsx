@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl } from "@/lib/url";
+import { getBaseUrlFromHeaders } from "@/lib/url";
 import { embedHeight } from "@/lib/embed";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default async function EmbedPreviewPage({
   const publicIdParam = Array.isArray(params.publicId) ? params.publicId[0] : params.publicId;
   const feedIdParam = Array.isArray(params.feedId) ? params.feedId[0] : params.feedId;
 
-  const baseUrl = getBaseUrl();
+  const baseUrl = getBaseUrlFromHeaders(await headers());
   const height = embedHeight();
 
   // Get the latest published episode

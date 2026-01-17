@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
+import { getBaseUrlFromHeaders, getDomainFromUrl } from "@/lib/url";
 import { embedHeight } from "@/lib/embed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AudioPlayer } from "@/components/audio-player";
@@ -34,7 +35,7 @@ export default async function EpisodeDetailPage({
     title: string;
     startApproxSec: number;
   }[];
-  const baseUrl = getBaseUrl();
+  const baseUrl = getBaseUrlFromHeaders(await headers());
   const embedHeightPx = embedHeight();
   const embedUrl = `${baseUrl}/embed/e/${episode.publicId}`;
   const iframeSnippet = `<iframe src="${embedUrl}" style="width:100%;height:${embedHeightPx}px;border:0;background:transparent" loading="lazy" allow="autoplay"></iframe>`;

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl, getDomainFromUrl } from "@/lib/url";
+import { getBaseUrlFromHeaders, getDomainFromUrl } from "@/lib/url";
 import EpisodesClient, { EpisodeListItem } from "@/app/app/episodes/episodes-client";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function EpisodesPage() {
     take: 60,
   });
 
-  const baseUrl = getBaseUrl();
+  const baseUrl = getBaseUrlFromHeaders(await headers());
   const items: EpisodeListItem[] = episodes.map((episode) => ({
     id: episode.id,
     title: episode.title,
