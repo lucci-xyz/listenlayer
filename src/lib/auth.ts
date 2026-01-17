@@ -44,28 +44,29 @@ async function getOrCreateAppUser(supabaseUser: { id: string; email?: string }) 
 
   const email = supabaseUser.email.toLowerCase();
 
-  // Try to find by supabaseId first, then by email
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [{ supabaseId: supabaseUser.id }, { email }],
-    },
+  // First, try to find existing user by supabaseId (most specific match)
+  let user = await prisma.user.findUnique({
+    where: { supabaseId: supabaseUser.id },
   });
 
-  if (!user) {
-    // Create new user linked to Supabase
-    user = await prisma.user.create({
-      data: {
-        email,
-        supabaseId: supabaseUser.id,
-      },
-    });
-  } else if (!user.supabaseId) {
-    // Link existing user to Supabase
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: { supabaseId: supabaseUser.id },
-    });
+  if (user) {
+    return user;
   }
+
+  // Use upsert to atomically create or update by email
+  // This handles race conditions when multiple requests hit simultaneously
+  // (e.g., during email verification callback)
+  user = await prisma.user.upsert({
+    where: { email },
+    update: {
+      // Link existing email-based user to this Supabase account
+      supabaseId: supabaseUser.id,
+    },
+    create: {
+      email,
+      supabaseId: supabaseUser.id,
+    },
+  });
 
   return user;
 }
