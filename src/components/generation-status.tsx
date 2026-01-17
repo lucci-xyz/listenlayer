@@ -18,28 +18,87 @@ type StatusResponse = {
   activeEpisodes: StatusEpisode[];
 };
 
+// Polling intervals - poll faster when active, slower when idle
+const ACTIVE_POLL_INTERVAL = 3000;  // 3s when generating
+const IDLE_POLL_INTERVAL = 30000;   // 30s when idle (no active generations)
+const MAX_CONSECUTIVE_ERRORS = 3;   // Stop polling after consecutive errors
+
 export function GenerationStatus() {
   const [data, setData] = useState<StatusResponse | null>(null);
   const [stopping, setStopping] = useState(false);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Assume auth until proven otherwise
   const previousActiveCount = useRef<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consecutiveErrorsRef = useRef(0);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (): Promise<{ data: StatusResponse | null; shouldContinue: boolean }> => {
     try {
       const res = await fetch("/api/episodes/status", { cache: "no-store" });
-      if (!res.ok) return;
+      
+      // Stop polling on auth errors - user not logged in
+      if (res.status === 401 || res.status === 403) {
+        setIsAuthenticated(false);
+        return { data: null, shouldContinue: false };
+      }
+      
+      if (!res.ok) {
+        consecutiveErrorsRef.current++;
+        // Stop polling after too many consecutive errors
+        if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+          return { data: null, shouldContinue: false };
+        }
+        return { data: null, shouldContinue: true };
+      }
+      
+      // Reset error count on success
+      consecutiveErrorsRef.current = 0;
+      setIsAuthenticated(true);
+      
       const json = (await res.json()) as StatusResponse;
       setData(json);
+      return { data: json, shouldContinue: true };
     } catch {
-      // Ignore transient errors.
+      consecutiveErrorsRef.current++;
+      if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+        return { data: null, shouldContinue: false };
+      }
+      return { data: null, shouldContinue: true };
     }
   }, []);
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
+  // Smart polling with adaptive intervals
+  const scheduleNextPoll = useCallback((hasActiveGenerations: boolean, shouldContinue: boolean) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Don't schedule if we should stop polling
+    if (!shouldContinue) {
+      return;
+    }
+    
+    const interval = hasActiveGenerations ? ACTIVE_POLL_INTERVAL : IDLE_POLL_INTERVAL;
+    timeoutRef.current = setTimeout(async () => {
+      const result = await fetchStatus();
+      scheduleNextPoll(result.data ? result.data.activeCount > 0 : false, result.shouldContinue);
+    }, interval);
   }, [fetchStatus]);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchStatus().then(result => {
+      if (result.shouldContinue) {
+        scheduleNextPoll(result.data ? result.data.activeCount > 0 : false, result.shouldContinue);
+      }
+    });
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [fetchStatus, scheduleNextPoll]);
 
   useEffect(() => {
     if (!data) return;
@@ -71,7 +130,9 @@ export function GenerationStatus() {
         throw new Error("Failed to stop generation");
       }
       toast.success("Stopped all active generations.");
-      fetchStatus();
+      // Immediately refresh and reschedule
+      const result = await fetchStatus();
+      scheduleNextPoll(result.data ? result.data.activeCount > 0 : false, result.shouldContinue);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to stop");
     } finally {
@@ -81,7 +142,8 @@ export function GenerationStatus() {
 
   const latestEpisode = data?.activeEpisodes?.[0];
 
-  if (!data || (data.activeCount === 0 && !showCompleteNotice)) {
+  // Don't render if not authenticated or no data to show
+  if (!isAuthenticated || !data || (data.activeCount === 0 && !showCompleteNotice)) {
     return null;
   }
 

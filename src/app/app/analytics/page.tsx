@@ -15,14 +15,17 @@ export default async function AnalyticsPage() {
 
   const episodes = await prisma.episode.findMany({
     where: { userId: user.id },
-    include: { feed: true },
+    select: { id: true, title: true }, // Only select needed fields
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
-  const playbackCounts = episodes.length
+  // CRITICAL: Filter by user's episode IDs to avoid fetching ALL playback events
+  const episodeIds = episodes.map(ep => ep.id);
+  const playbackCounts = episodeIds.length > 0
     ? await prisma.playbackEvent.groupBy({
         by: ["episodeId", "kind", "value"],
+        where: { episodeId: { in: episodeIds } }, // Only user's episodes
         _count: { _all: true },
       })
     : [];

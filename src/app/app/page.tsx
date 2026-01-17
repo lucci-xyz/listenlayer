@@ -21,47 +21,48 @@ export default async function DashboardPage() {
 
   const currentPlan = getPlanFromPriceId(user.subscriptionPriceId ?? null);
 
-  // Fetch data in parallel
-  const [episodeStats, recentEpisodes, feeds] = await Promise.all([
-    // 1. Stats & Chart Data
+  // Fetch ALL data in parallel - optimized to avoid sequential queries
+  const [episodes, feeds, episodeCount, playCount] = await Promise.all([
+    // Combined query: episodes with stats and feed info (for both chart and recent list)
     prisma.episode.findMany({
       where: { userId: user.id },
       select: {
         id: true,
         title: true,
+        sourceUrl: true,
+        createdAt: true,
+        feed: { select: { name: true } },
         _count: {
           select: { playbackEvents: { where: { kind: "play" } } }
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 20, // Enough for both chart (20) and recent list (5)
     }),
 
-    // 2. Recent Episodes List
-    prisma.episode.findMany({
-      where: { userId: user.id },
-      include: { feed: true },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-
-    // 3. Feeds List
+    // Feeds list
     prisma.feed.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { episodes: true } } },
       take: 5,
     }),
+
+    // Total episode count
+    prisma.episode.count({ where: { userId: user.id } }),
+
+    // Total play count
+    prisma.playbackEvent.count({
+      where: { episode: { userId: user.id }, kind: "play" },
+    }),
   ]);
 
-  const episodeCount = await prisma.episode.count({ where: { userId: user.id } });
-  const playCount = await prisma.playbackEvent.count({
-    where: { episode: { userId: user.id }, kind: "play" },
-  });
+  // Derive data from combined query
+  const recentEpisodes = episodes.slice(0, 5);
   const latestEpisode = recentEpisodes[0] ?? null;
 
-  // Prepare chart data
-  const chartData = episodeStats.map(ep => ({
+  // Prepare chart data from combined query
+  const chartData = episodes.map(ep => ({
     id: ep.id,
     title: ep.title,
     playCount: ep._count.playbackEvents
@@ -204,7 +205,7 @@ export default async function DashboardPage() {
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <span>{formatRelativeTime(episode.createdAt)}</span>
                           <span>•</span>
-                          <span>{episode.feed?.name || getDomainFromUrl(episode.sourceUrl)}</span>
+                          <span>{episode.feed?.name ?? getDomainFromUrl(episode.sourceUrl)}</span>
                         </div>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
