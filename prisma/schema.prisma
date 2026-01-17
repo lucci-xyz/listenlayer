@@ -20,19 +20,20 @@ enum PlaybackKind {
 }
 
 model User {
-  id                    String    @id @default(cuid())
-  email                 String    @unique
-  supabaseId            String?   @unique
-  stripeCustomerId      String?   @unique
-  subscriptionId        String?   @unique
-  subscriptionStatus    String?
-  subscriptionPriceId   String?
+  id                           String    @id @default(cuid())
+  email                        String    @unique
+  supabaseId                   String?   @unique
+  stripeCustomerId             String?   @unique
+  subscriptionId               String?   @unique
+  subscriptionStatus           String?
+  subscriptionPriceId          String?
   subscriptionCurrentPeriodEnd DateTime?
-  episodeCredits        Int                 @default(3)
-  createdAt             DateTime            @default(now())
-  feeds                 Feed[]
-  episodes              Episode[]
-  usageRecords          UsageRecord[]
+  subscriptionCancelAtPeriodEnd Boolean?  // True if user canceled but still has access until period end
+  episodeCredits               Int       @default(3)
+  createdAt                    DateTime  @default(now())
+  feeds                        Feed[]
+  episodes                     Episode[]
+  usageRecords                 UsageRecord[]
 }
 
 model UsageRecord {

@@ -82,6 +82,7 @@ export async function POST(req: Request) {
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
               subscriptionCurrentPeriodEnd: periodEnd,
+              subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
               episodeCredits: limits.episodesPerMonth,
             },
           });
@@ -103,12 +104,20 @@ export async function POST(req: Request) {
         });
 
         if (user) {
+          log.info({
+            userId: user.id,
+            status: subscription.status,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            periodEnd: periodEnd?.toISOString(),
+          }, "Subscription updated");
+
           await prisma.user.update({
             where: { id: user.id },
             data: {
               subscriptionStatus: mapStripeStatus(subscription.status),
               subscriptionPriceId: priceId,
               subscriptionCurrentPeriodEnd: periodEnd,
+              subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
             },
           });
         }
@@ -124,6 +133,8 @@ export async function POST(req: Request) {
         });
 
         if (user) {
+          log.info({ userId: user.id }, "Subscription deleted - resetting to free tier");
+          
           await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -131,6 +142,7 @@ export async function POST(req: Request) {
               subscriptionStatus: "CANCELED",
               subscriptionPriceId: null,
               subscriptionCurrentPeriodEnd: null,
+              subscriptionCancelAtPeriodEnd: null,
               episodeCredits: 3, // Reset to free tier
             },
           });

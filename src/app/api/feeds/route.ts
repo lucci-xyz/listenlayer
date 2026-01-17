@@ -73,6 +73,13 @@ export async function POST(request: Request) {
         throw new Error(`Failed to fetch feed: ${response.status}`);
       }
       const xml = await response.text();
+      
+      // Check if this looks like HTML instead of XML
+      const trimmed = xml.trim().toLowerCase();
+      if (trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html")) {
+        throw new Error("This URL returns a web page, not an RSS feed. Please provide a direct RSS/Atom feed URL.");
+      }
+      
       const feed = await parser.parseString(xml);
       
       if (!feed.items || feed.items.length === 0) {
@@ -83,8 +90,13 @@ export async function POST(request: Request) {
       latestItemTitle = feed.items[0]?.title || null;
       latestItemUrl = (feed.items[0]?.link as string) || null;
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid RSS feed";
+      // Improve XML parsing error messages
+      const friendlyMessage = message.includes("Unexpected close tag") || message.includes("Unexpected token")
+        ? "This URL doesn't contain a valid RSS/Atom feed. It may be an HTML page."
+        : message;
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid RSS feed" },
+        { error: friendlyMessage },
         { status: 400 }
       );
     }

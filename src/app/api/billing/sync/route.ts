@@ -80,6 +80,7 @@ export async function POST(req: Request) {
           subscriptionStatus: mapStripeStatus(subscription.status),
           subscriptionPriceId: priceId,
           subscriptionCurrentPeriodEnd: periodEnd,
+          subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
           episodeCredits: limits.episodesPerMonth,
         },
       });
@@ -96,6 +97,7 @@ export async function POST(req: Request) {
             subscriptionStatus: null,
             subscriptionPriceId: null,
             subscriptionCurrentPeriodEnd: null,
+            subscriptionCancelAtPeriodEnd: null,
           },
         });
         return NextResponse.json(
