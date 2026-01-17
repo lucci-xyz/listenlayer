@@ -3,11 +3,12 @@ import { z } from "zod";
 import Parser from "rss-parser";
 import { getDomainFromUrl } from "@/lib/url";
 import { requireUser } from "@/lib/auth";
-import { extractMainTextFromHtml, extractMetaContent, extractTitleFromHtml, summarize } from "@/lib/html";
+import { extractMetaContent, summarize } from "@/lib/html";
 import { isAllowedAppOrigin } from "@/lib/security";
 import { validateExternalUrl, SSRFError } from "@/lib/url-validator";
 import { fetchWithTimeout, browserLikeHeaders } from "@/lib/fetch";
 import { sanitizeErrorMessage } from "@/lib/errors";
+import { validateContentForGeneration, MIN_WORDS_FOR_GENERATION } from "@/lib/content-validator";
 
 const authSchema = z
   .object({
@@ -165,23 +166,28 @@ export async function POST(request: Request) {
       }
     }
 
-    const title = extractTitleFromHtml(html, "Untitled article") || "Untitled article";
-    const normalizedText = extractMainTextFromHtml(html);
+    // Validate content for generation (includes read-more link following)
+    const validation = await validateContentForGeneration(parsed.data.url, authHeaders);
+    
     const description =
       extractMetaContent(html, "description") || extractMetaContent(html, "og:description");
-    const excerptSource = description || normalizedText;
+    const excerptSource = description || validation.excerpt;
     const excerpt = excerptSource ? summarize(excerptSource, 180) : "";
-    const wordCount = normalizedText ? normalizedText.split(" ").length : 0;
-    const estimatedMinutes = wordCount ? Math.max(1, Math.round(wordCount / 180)) : 0;
+    const estimatedMinutes = validation.wordCount ? Math.max(1, Math.round(validation.wordCount / 180)) : 0;
 
     return NextResponse.json({
       kind: "article",
-      title,
+      title: validation.title || "Untitled article",
       excerpt,
-      wordCount,
+      wordCount: validation.wordCount,
       estimatedMinutes,
       siteName: extractMetaContent(html, "og:site_name") || getDomainFromUrl(parsed.data.url),
-      url: parsed.data.url,
+      url: validation.followedLink || parsed.data.url,
+      // Validation fields for UI
+      isValid: validation.isValid,
+      minWordCount: MIN_WORDS_FOR_GENERATION,
+      validationMessage: validation.message,
+      followedReadMoreLink: validation.followedLink,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

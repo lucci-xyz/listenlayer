@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  AlertCircle,
   ArrowLeft,
   ExternalLink,
   Loader2,
@@ -112,6 +113,11 @@ export function FeedDetailClient({
   const [authStep, setAuthStep] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
+  
+  // Content too short dialog state
+  const [contentShortDialogOpen, setContentShortDialogOpen] = useState(false);
+  const [contentShortMessage, setContentShortMessage] = useState<string | null>(null);
+  const [contentShortWordCount, setContentShortWordCount] = useState<number | null>(null);
 
   const authReady =
     authMode === "basic" ? Boolean(authUsername && authPassword) : Boolean(authToken);
@@ -197,6 +203,8 @@ export function FeedDetailClient({
         code?: string;
         authHint?: "basic" | "bearer" | null;
         episodeId?: string;
+        wordCount?: number;
+        minWordCount?: number;
       };
 
       if (!res.ok) {
@@ -215,6 +223,15 @@ export function FeedDetailClient({
             setAuthHint(data.authHint);
             setAuthMode(data.authHint);
           }
+          return;
+        }
+        if (data.code === "CONTENT_TOO_SHORT") {
+          shouldClearSelection = false;
+          setAuthStep(false);
+          setFormatDialogOpen(false);
+          setContentShortMessage(data.error || "This article is too short to generate an audio episode.");
+          setContentShortWordCount(data.wordCount ?? null);
+          setContentShortDialogOpen(true);
           return;
         }
         throw new Error(data.error || "Failed to generate");
@@ -709,6 +726,35 @@ export function FeedDetailClient({
         currentPlan={currentPlan}
         resetAt={creditsResetAt}
       />
+
+      {/* Content Too Short Dialog */}
+      <Dialog open={contentShortDialogOpen} onOpenChange={setContentShortDialogOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <DialogTitle className="text-center">Article Too Short</DialogTitle>
+            <DialogDescription className="text-center">
+              {contentShortMessage}
+              {contentShortWordCount !== null && (
+                <span className="mt-2 block text-xs text-muted-foreground">
+                  Found {contentShortWordCount} words · Minimum 300 words required
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setContentShortDialogOpen(false)}
+              className="rounded-lg"
+            >
+              Try Another Article
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="rounded-2xl">

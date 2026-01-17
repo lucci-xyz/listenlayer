@@ -446,7 +446,7 @@ export const generateEpisode = inngest.createFunction(
         const words = readableText ? readableText.split(/\s+/).filter(Boolean) : [];
         const minWords = 300;
         if (!readableText || words.length < minWords) {
-          throw new Error("Not enough article text to generate an episode");
+          throw new Error(`Article too short: found ${words.length} words, need at least ${minWords}. This article may be too brief for audio generation.`);
         }
 
         log.info({
