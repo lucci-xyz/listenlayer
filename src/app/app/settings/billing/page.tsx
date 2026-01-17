@@ -42,6 +42,7 @@ export default async function BillingPage() {
           subscriptionStatus: user.subscriptionStatus,
           subscriptionPriceId: user.subscriptionPriceId,
           subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
+          subscriptionCancelAtPeriodEnd: user.subscriptionCancelAtPeriodEnd,
           episodeCredits: user.episodeCredits,
         }}
         currentPlan={currentPlan}

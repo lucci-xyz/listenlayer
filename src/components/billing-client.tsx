@@ -16,6 +16,7 @@ interface BillingClientProps {
     subscriptionStatus: string | null;
     subscriptionPriceId: string | null;
     subscriptionCurrentPeriodEnd: Date | null;
+    subscriptionCancelAtPeriodEnd: boolean | null;
     episodeCredits: number;
   };
   currentPlan: PlanKey;
@@ -85,22 +86,37 @@ export function BillingClient({ user, currentPlan }: BillingClientProps) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold">{plan.name}</span>
-                {user.subscriptionStatus === "ACTIVE" && (
+                {user.subscriptionStatus === "ACTIVE" && !user.subscriptionCancelAtPeriodEnd && (
                   <Badge variant="success">
                     Active
+                  </Badge>
+                )}
+                {user.subscriptionStatus === "ACTIVE" && user.subscriptionCancelAtPeriodEnd && (
+                  <Badge variant="warning">
+                    Canceling
                   </Badge>
                 )}
                 {user.subscriptionStatus === "TRIALING" && (
                   <Badge variant="secondary">Trial</Badge>
                 )}
+                {user.subscriptionStatus === "CANCELED" && (
+                  <Badge variant="destructive">Canceled</Badge>
+                )}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
               {user.subscriptionCurrentPeriodEnd && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {user.subscriptionStatus === "CANCELED"
+                  {user.subscriptionCancelAtPeriodEnd
                     ? "Access until"
+                    : user.subscriptionStatus === "CANCELED"
+                    ? "Ended on"
                     : "Renews on"}{" "}
                   {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString()}
+                </p>
+              )}
+              {user.subscriptionCancelAtPeriodEnd && user.subscriptionStatus === "ACTIVE" && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  You'll keep your current plan benefits until this date.
                 </p>
               )}
             </div>
