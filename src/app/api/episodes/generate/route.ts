@@ -8,6 +8,7 @@ import Parser from "rss-parser";
 import { isAllowedAppOrigin } from "@/lib/security";
 import { validateExternalUrl, SSRFError } from "@/lib/url-validator";
 import { loggers } from "@/lib/logger";
+import { validateContentForGeneration, MIN_WORDS_FOR_GENERATION } from "@/lib/content-validator";
 
 const log = loggers.episode;
 
@@ -225,6 +226,32 @@ async function handleUrlGeneration(
     }, "Preflight skipped - sourceText provided");
   }
 
+  // Content validation - check BEFORE charging credits
+  const validation = await validateContentForGeneration(data.url, authHeaders, data.sourceText);
+  
+  if (!validation.isValid) {
+    log.info({
+      url: data.url,
+      wordCount: validation.wordCount,
+      minRequired: MIN_WORDS_FOR_GENERATION,
+      followedLink: validation.followedLink,
+    }, "Content too short for generation");
+    
+    return NextResponse.json(
+      {
+        error: validation.message || `Article too short: ${validation.wordCount} words (minimum ${MIN_WORDS_FOR_GENERATION})`,
+        code: "CONTENT_TOO_SHORT",
+        wordCount: validation.wordCount,
+        minWordCount: MIN_WORDS_FOR_GENERATION,
+        followedReadMoreLink: validation.followedLink,
+      },
+      { status: 422 }
+    );
+  }
+
+  // Use the validated URL (may have followed a "read more" link)
+  const finalUrl = validation.followedLink || data.url;
+
   const episodeData = {
     userId: user.id,
     feedId: data.feedId || null,
@@ -265,17 +292,17 @@ async function handleUrlGeneration(
       return created;
     });
 
-    // Queue the generation job
+    // Queue the generation job - use finalUrl if we followed a "read more" link
     await inngest.send({
       name: "episode/generate.requested",
       data: {
         userId: user.id,
         episodeId: episode.id,
         feedId: data.feedId || null,
-        canonicalUrl: data.url,
+        canonicalUrl: finalUrl,
         episodeTitle: data.title,
         format: data.format,
-        sourceText: data.sourceText,
+        sourceText: validation.text || data.sourceText, // Use pre-validated text if available
         sourceAuth,
       },
     });

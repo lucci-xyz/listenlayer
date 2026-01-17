@@ -91,6 +91,25 @@ export function extractTitleFromHtml(html: string, fallback?: string) {
   return fallback || null;
 }
 
+/**
+ * Extract content from common CMS class-based containers.
+ * Returns the content of the first matching div with these classes.
+ */
+function extractDivByClass(html: string, classNames: string[]): string | null {
+  for (const className of classNames) {
+    // Match div with the class (handles multiple classes on same element)
+    const regex = new RegExp(
+      `<div[^>]*class\\s*=\\s*["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)</div>`,
+      "i"
+    );
+    const match = html.match(regex);
+    if (match?.[1] && match[1].length > 500) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
 export function extractMainTextFromHtml(html: string) {
   const cleaned = removeTagBlocks(html, [
     "script",
@@ -100,13 +119,41 @@ export function extractMainTextFromHtml(html: string) {
     "iframe",
     "canvas",
     "template",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "form",
   ]);
 
-  const preferred =
+  // Try semantic HTML5 tags first
+  let preferred =
     extractFirstTagInnerHtml(cleaned, "article") ||
-    extractFirstTagInnerHtml(cleaned, "main") ||
-    extractFirstTagInnerHtml(cleaned, "body") ||
-    cleaned;
+    extractFirstTagInnerHtml(cleaned, "main");
+  
+  // If semantic tags didn't yield much, try common CMS content classes
+  if (!preferred || preferred.length < 1000) {
+    const classContent = extractDivByClass(cleaned, [
+      "entry-content",      // WordPress
+      "post-content",       // WordPress/Ghost
+      "article-content",    // Various
+      "content-body",       // Various
+      "story-body",         // News sites
+      "article-body",       // News sites
+      "post-body",          // Blogger
+      "blog-content",       // Various
+      "single-content",     // WordPress themes
+      "page-content",       // Various
+    ]);
+    if (classContent && (!preferred || classContent.length > preferred.length)) {
+      preferred = classContent;
+    }
+  }
+
+  // Fallback to body
+  if (!preferred) {
+    preferred = extractFirstTagInnerHtml(cleaned, "body") || cleaned;
+  }
 
   return stripHtml(preferred);
 }
