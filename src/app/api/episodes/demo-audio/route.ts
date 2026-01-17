@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0] ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  const rate = rateLimit(`demo-audio:${ip}`, 30, 60_000);
+  const rate = await rateLimit(`demo-audio:${ip}`, "standard");
   if (!rate.ok) {
     return NextResponse.json({ error: "Rate limit" }, { status: 429 });
   }

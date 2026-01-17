@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Newsreader } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { RootProviders } from "@/components/root-providers";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${newsreader.variable} antialiased`}>
         <RootProviders>{children}</RootProviders>
+        <Analytics />
       </body>
     </html>
   );

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { loggers, logError } from "@/lib/logger";
+
+const log = loggers.billing;
 
 export async function POST(req: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -29,7 +38,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Portal error:", error);
+    logError(log, error, "Portal session creation error");
     return NextResponse.json(
       { error: "Unable to create portal session" },
       { status: 500 }

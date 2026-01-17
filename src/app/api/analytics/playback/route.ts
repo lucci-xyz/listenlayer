@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0] ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  const rate = rateLimit(`analytics:${ip}`, 120, 60_000);
+  const rate = await rateLimit(`analytics:${ip}`, "analytics");
   if (!rate.ok) {
     return NextResponse.json({ error: "Rate limit" }, { status: 429 });
   }

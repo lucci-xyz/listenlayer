@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { isAllowedAppOrigin } from "@/lib/security";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -48,6 +49,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const user = await requireUser();
     const { id } = await params;
@@ -84,6 +90,11 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const user = await requireUser();
     const { id } = await params;

@@ -71,8 +71,11 @@ async function getOrCreateAppUser(supabaseUser: { id: string; email?: string }) 
 }
 
 export async function getCurrentUser() {
-  // DEV_AUTH_BYPASS for local development
-  if (process.env.DEV_AUTH_BYPASS === "true") {
+  // DEV_AUTH_BYPASS for local development only - never allow in production
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEV_AUTH_BYPASS === "true"
+  ) {
     return getOrCreateDemoUser();
   }
 

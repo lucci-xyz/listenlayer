@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe, getPlanLimits } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { loggers, logError } from "@/lib/logger";
 import type Stripe from "stripe";
+
+const log = loggers.billing;
 
 // Use test webhook secret in preview environment
 const isPreview = process.env.NEXT_PUBLIC_APP_ENV === "preview";
@@ -29,7 +32,7 @@ function mapStripeStatus(status: string): string {
 
 export async function POST(req: Request) {
   if (!stripe || !webhookSecret) {
-    console.error("Stripe not fully configured");
+    log.error("Stripe not fully configured for webhooks");
     return NextResponse.json(
       { error: "Billing not configured" },
       { status: 503 }
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
   try {
     event = stripeClient.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+    logError(log, err, "Webhook signature verification failed");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -159,9 +162,10 @@ export async function POST(req: Request) {
       }
     }
 
+    log.info({ eventType: event.type }, "Webhook processed successfully");
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook handler error:", error);
+    logError(log, error, "Webhook handler error");
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }

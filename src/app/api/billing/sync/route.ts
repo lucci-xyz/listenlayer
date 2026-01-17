@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { stripe, getPlanLimits, stripeMode } from "@/lib/stripe";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAllowedAppOrigin } from "@/lib/security";
+import { loggers, logError } from "@/lib/logger";
 import type Stripe from "stripe";
+
+const log = loggers.billing;
 
 function mapStripeStatus(status: Stripe.Subscription.Status): string {
   switch (status) {
@@ -21,7 +25,12 @@ function mapStripeStatus(status: Stripe.Subscription.Status): string {
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  // CSRF protection
+  if (!isAllowedAppOrigin(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -99,7 +108,7 @@ export async function POST() {
       throw error;
     }
   } catch (error) {
-    console.error("Billing sync error:", error);
+    logError(log, error, "Billing sync error");
     return NextResponse.json(
       { error: "Unable to sync billing status" },
       { status: 500 }

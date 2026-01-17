@@ -8,18 +8,16 @@ import { chunkText, estimateDurationSec, extractJsonObject } from "@/lib/text";
 import { openai } from "@/lib/openai";
 import { getR2Client, getR2Bucket, deleteAudioObjects } from "@/lib/r2";
 import { maybeNormalizeMp3 } from "@/lib/audio";
+import { validateExternalUrl } from "@/lib/url-validator";
+import { loggers, logError } from "@/lib/logger";
+import { fetchWithTimeout, browserLikeHeaders, feedHeaders } from "@/lib/fetch";
+
+const log = loggers.inngest;
 
 export const inngest = new Inngest({ id: "listenlayer" });
 
 const parser = new Parser();
-const defaultHeaders = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Cache-Control": "no-cache",
-  Pragma: "no-cache",
-};
+// Using imported headers from fetch.ts
 
 type SourceAuth = {
   type: "basic" | "bearer";
@@ -44,16 +42,21 @@ async function fetchWithHeaders(
   url: string,
   headers: Record<string, string> = {}
 ) {
-  return fetch(url, {
+  return fetchWithTimeout(url, {
     redirect: "follow",
-    headers: { ...defaultHeaders, ...headers },
+    timeoutMs: 15000,
+    headers: { ...browserLikeHeaders, ...headers },
   });
 }
 
 async function fetchLatestFromRss(url: string, auth?: SourceAuth | null) {
-  const response = await fetchWithHeaders(url, {
-    Accept: "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
-    ...buildAuthHeaders(auth),
+  const response = await fetchWithTimeout(url, {
+    redirect: "follow",
+    timeoutMs: 12000,
+    headers: {
+      ...feedHeaders,
+      ...buildAuthHeaders(auth),
+    },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch RSS: ${response.status}`);
@@ -81,6 +84,9 @@ class FetchError extends Error {
 }
 
 async function fetchHtml(url: string, auth?: SourceAuth | null) {
+  // Validate URL to prevent SSRF
+  validateExternalUrl(url);
+  
   let response = await fetchWithHeaders(url, buildAuthHeaders(auth));
   if (!response.ok && (response.status === 403 || response.status === 429)) {
     response = await fetchWithHeaders(url, {
@@ -275,7 +281,7 @@ export const generateEpisode = inngest.createFunction(
     let cachedTwoHostSegments: TwoHostSegment[] | null = null;
     const sourceWordCount = sourceText ? sourceText.split(/\s+/).filter(Boolean).length : 0;
 
-    console.info("[episode-generate] start", {
+    log.info({
       episodeId,
       userId,
       feedId,
@@ -283,7 +289,7 @@ export const generateEpisode = inngest.createFunction(
       format,
       sourceWordCount,
       hasAuth: Boolean(sourceAuth),
-    });
+    }, "Episode generation started");
 
     try {
       const episodeState = await step.run("load-episode", async () => {
@@ -307,7 +313,7 @@ export const generateEpisode = inngest.createFunction(
       }
 
       if (episodeState.status === "PUBLISHED" && episodeState.audioObjectKey) {
-        console.info("[episode-generate] skip published", { episodeId });
+        log.info({ episodeId }, "Skipping already published episode");
         return { skipped: true };
       }
 
@@ -345,11 +351,11 @@ export const generateEpisode = inngest.createFunction(
         };
       });
 
-      console.info("[episode-generate] source resolved", {
+      log.info({
         episodeId,
         canonicalUrl: resolved.canonicalUrl,
         sourceTextWords: resolved.sourceText ? resolved.sourceText.split(/\s+/).filter(Boolean).length : 0,
-      });
+      }, "Source resolved");
 
       // Update feed metadata if this came from a feed
       if (feedId) {
@@ -385,7 +391,7 @@ export const generateEpisode = inngest.createFunction(
         });
 
         if (existing?.scriptText && existing.scriptText.trim().length > 0) {
-          console.info("[episode-generate] script exists, skipping generation", { episodeId });
+          log.info({ episodeId }, "Script exists, skipping generation");
           return { skipped: true };
         }
 
@@ -407,11 +413,11 @@ export const generateEpisode = inngest.createFunction(
           throw new Error("Not enough article text to generate an episode");
         }
 
-        console.info("[episode-generate] text ready", {
+        log.info({
           episodeId,
           wordCount: words.length,
           usedSourceText: Boolean(resolved.sourceText),
-        });
+        }, "Article text ready for processing");
 
         const betterTitle = html
           ? deriveTitleFromHtml(html, resolved.canonicalUrl, resolved.episodeTitle)
@@ -463,7 +469,7 @@ export const generateEpisode = inngest.createFunction(
           select: { scriptText: true, format: true, audioObjectKey: true },
         });
         if (episode?.audioObjectKey) {
-          console.info("[episode-generate] audio exists, skipping generation", { episodeId });
+          log.info({ episodeId }, "Audio exists, skipping generation");
           return episode.audioObjectKey;
         }
         if (!episode?.scriptText) {
@@ -474,12 +480,12 @@ export const generateEpisode = inngest.createFunction(
         const buffers: Buffer[] = [];
 
         const audioFormat = episode.format || format;
-        console.info("[episode-generate] tts", {
+        log.info({
           episodeId,
           audioFormat,
           primaryVoice,
           secondaryVoice,
-        });
+        }, "Starting TTS generation");
         const twoHostSegments =
           audioFormat === "two-host" ? buildTwoHostSegments(episode.scriptText) : null;
 
@@ -591,12 +597,11 @@ export const generateEpisode = inngest.createFunction(
 
       return { episodeId, userId };
     } catch (error) {
-      console.error("[episode-generate] error", {
+      logError(log, error, "Episode generation failed", {
         episodeId,
         feedId,
         canonicalUrl,
         hasAuth: Boolean(sourceAuth),
-        message: error instanceof Error ? error.message : String(error),
       });
       const shouldThrow = await step.run("mark-failed", async () => {
         const episode = await prisma.episode.findUnique({

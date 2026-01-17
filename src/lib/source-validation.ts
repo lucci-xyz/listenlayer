@@ -1,10 +1,19 @@
 import { extractReadableText } from "@/lib/content";
 import { extractMetaContent } from "@/lib/html";
+import { fetchWithTimeout, browserLikeHeaders } from "@/lib/fetch";
+import { validateExternalUrl } from "@/lib/url-validator";
 
 const MAX_BYTES = 800_000;
 
 export async function fetchHtmlSnippet(url: string) {
-  const response = await fetch(url, { redirect: "follow" });
+  // Validate URL to prevent SSRF
+  validateExternalUrl(url);
+  
+  const response = await fetchWithTimeout(url, {
+    redirect: "follow",
+    timeoutMs: 15000,
+    headers: browserLikeHeaders,
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch URL: ${response.status}`);
   }

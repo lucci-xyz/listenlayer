@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import Parser from "rss-parser";
+import { fetchWithTimeout, feedHeaders } from "@/lib/fetch";
+import { sanitizeErrorMessage } from "@/lib/errors";
 
 function stripHtml(input: string) {
   return input.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -26,7 +28,11 @@ export async function GET(
 
     // Fetch the RSS feed
     const parser = new Parser();
-    const response = await fetch(feed.feedUrl);
+    const response = await fetchWithTimeout(feed.feedUrl, {
+      redirect: "follow",
+      timeoutMs: 12000,
+      headers: feedHeaders,
+    });
     
     if (!response.ok) {
       return NextResponse.json(
@@ -129,7 +135,7 @@ export async function GET(
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch feed" },
+      { error: sanitizeErrorMessage(error) },
       { status: 500 }
     );
   }
